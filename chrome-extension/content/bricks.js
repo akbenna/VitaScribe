@@ -249,7 +249,7 @@ function setRecLabel(tekst) {
 // vroeger eerst opgenomen en na stop in zijn geheel verstuurd.
 async function startLive() {
   try {
-    var config = await chrome.storage.sync.get(['apiUrl', 'apiKey', 'llmProvider', 'consultLive']);
+    var config = await SVInstellingen.lees(['apiUrl', 'apiKey', 'llmProvider', 'consultLive']);
     if (config.consultLive === 'uit' || typeof SVConsultLive === 'undefined') return null;
     var praktijk = await SVPraktijk.nummers();
     return SVConsultLive.start({
@@ -325,7 +325,7 @@ function stopRecording() {
 
 async function sendAudioToAPI(blob, mimeType) {
   try {
-    var config = await chrome.storage.sync.get(['apiUrl', 'apiKey', 'sttProvider', 'llmProvider']);
+    var config = await SVInstellingen.lees(['apiUrl', 'apiKey', 'sttProvider', 'llmProvider']);
     var apiUrl = (config.apiUrl || 'http://localhost:8002').replace(/\/$/, '');
 
     var formData = new FormData();

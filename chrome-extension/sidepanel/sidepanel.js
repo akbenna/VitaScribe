@@ -88,7 +88,7 @@ function stopTimer() {
 }
 
 async function getConfig() {
-  var c = await chrome.storage.sync.get(['apiUrl', 'apiKey', 'micDevice', 'llmProvider']);
+  var c = await SVInstellingen.lees(['apiUrl', 'apiKey', 'micDevice', 'llmProvider']);
   return {
     apiUrl: (c.apiUrl || 'http://localhost:8002').replace(/\/$/, ''),
     apiKey: (c.apiKey || '').trim(),
