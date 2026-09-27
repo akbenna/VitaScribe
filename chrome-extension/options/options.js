@@ -1,6 +1,7 @@
 /**
  * VitaScribe - Options Page Controller
- * Manages extension settings stored in chrome.storage.sync.
+ * Manages extension settings: chrome.storage.sync for most, chrome.storage.local
+ * for the server key (see lib/instellingen.js).
  */
 
 // delenPerMail is off by default: mailing is a decision of the practice, not
@@ -31,7 +32,8 @@ function showToast(message, duration) {
 // ── Load settings ──
 
 async function loadSettings() {
-  var stored = await chrome.storage.sync.get(FIELDS.concat(['bricksSelectors']));
+  await SVInstellingen.migreer();
+  var stored = await SVInstellingen.lees(FIELDS.concat(['bricksSelectors']));
 
   FIELDS.forEach(function(key) {
     var el = document.getElementById(key);
@@ -80,7 +82,7 @@ async function saveSettings() {
     data.bricksSelectors = JSON.stringify(selectors);
   }
 
-  await chrome.storage.sync.set(data);
+  await SVInstellingen.bewaar(data);
   showToast('Instellingen opgeslagen!');
 }
 

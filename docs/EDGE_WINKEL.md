@@ -156,7 +156,9 @@ PERMISSIONS
   - offscreen (USER_MEDIA, CLIPBOARD): keep the microphone recording when the
     popup closes; clipboard as fallback for dictated text.
   - sidePanel: the main user interface.
-  - storage: settings, user-defined text snippets, and the last result.
+  - storage: settings (sync), user-defined text snippets and the last result
+    (local). The server API key is kept in local storage only and never in
+    sync storage, so it does not travel with the user's Google account.
   - clipboardWrite: copy results. clipboardRead: only when the user clicks
     "Uit schermafdruk (klembord)" (from screenshot on clipboard) to read an
     image of a referral letter they copied themselves.
