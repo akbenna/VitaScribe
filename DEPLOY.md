@@ -209,3 +209,55 @@ SLEUTELKLUIS=<Fernet-sleutel, zie hieronder>       # eigen AI-sleutels van prakt
 ```
 
 Maak de kluissleutel met `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`. Zonder `DATABASE_URL` werkt de server zoals voorheen, met `API_USERS` en `API_KEYS`. Die sleutels blijven ook met het register werken. Hoe het beheer werkt, staat in [docs/LICENTIEBEHEER.md](docs/LICENTIEBEHEER.md).
+
+### Beheerders en tweestapsverificatie
+
+Geef elke beheerder een eigen sleutel en een eigen geheim voor een
+authenticator-app. Het beheerlog laat dan zien wie wat deed, en een gestolen
+sleutel alleen is niet genoeg.
+
+```bash
+ADMIN_USERS=anna:<openssl rand -hex 32>,piet:<openssl rand -hex 32>
+ADMIN_TOTP=anna:<geheim>,piet:<geheim>
+BEHEER_SESSIE_UREN=8          # optioneel; daarna opnieuw inloggen
+```
+
+Maak een geheim met
+`python -c "import base64,os; print(base64.b32encode(os.urandom(20)).decode())"`
+en zet het in de app met de link
+`otpauth://totp/VitaScribe:anna?secret=<geheim>&issuer=VitaScribe` (als QR-code,
+of door het geheim over te typen). `ADMIN_KEY` blijft werken als gedeelde
+sleutel onder de naam "beheerder", zonder code. Haal hem weg zodra iedereen een
+eigen sleutel met code heeft.
+
+### Auditlog (NEN 7513)
+
+Met het register aan schrijft de server elk gebruik ook naar de tabel
+`vs_auditlog`. De database weigert daar wijzigen en leegmaken, en een regel
+jonger dan een jaar kan niet worden verwijderd. `AUDIT_BEWAARDAGEN` (standaard
+1825, vijf jaar; minimaal 365) bepaalt wanneer oude regels opgeruimd worden.
+Nalopen kan via `GET /api/v1/beheer/auditlog?dagen=30&gebruiker=<naam>`.
+
+### Een server zonder sleutels
+
+Zonder `API_USERS`, `API_KEYS` en register weigert de server elk verzoek.
+Alleen voor lokale ontwikkeling zet je `VITASCRIBE_OPEN=1`. Controleer na elke
+uitrol met `curl -H "X-API-Key: fout" https://<server>/api/v1/providers` dat het
+antwoord 403 of 503 is en geen 200.
+
+### Brieven in de EU
+
+Een praktijk die geen brieven naar de VS wil, krijgt in `/beheer` het vinkje
+"Brieven in de EU". Brieven gaan dan naar Mistral, ook als de praktijk een eigen
+sleutel bij Anthropic of OpenAI heeft. Voor alle praktijken tegelijk zet je
+`LETTERS_LLM_PROVIDER=mistral`.
+
+### Back-up van het register
+
+- Zet in Railway de back-ups van de PostgreSQL-dienst aan (Backups, dagelijks)
+  en noteer hoe lang ze bewaard worden.
+- Download maandelijks de export uit `/beheer` (knop Export) en bewaar die
+  versleuteld buiten Railway. De export bevat geen sleutels.
+- Oefen één keer per jaar een herstel: zet een back-up terug in een nieuwe
+  PostgreSQL-dienst, koppel een testserver en controleer dat `/beheer` de
+  praktijken toont. Leg de datum vast.

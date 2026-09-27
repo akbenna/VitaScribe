@@ -21,7 +21,7 @@ from unittest.mock import patch
 import pytest
 from fastapi.testclient import TestClient
 
-from services.cloud_api import kluis, licentie, main, praktijk_sleutels, register
+from services.cloud_api import audit, beheer, kluis, licentie, main, praktijk_sleutels, register
 from services.cloud_api.config import get_config
 
 
@@ -94,6 +94,9 @@ def api(database_url, monkeypatch):
     aanmelden._per_adres.clear()
     aanmelden._totaal.clear()
     beheer._mislukt.clear()
+    beheer._sessies.clear()
+    monkeypatch.delenv("ADMIN_USERS", raising=False)
+    monkeypatch.delenv("ADMIN_TOTP", raising=False)
     with TestClient(main.app) as client:
         client.portal.call(register.execute,
                            "TRUNCATE vs_praktijk_sleutels, vs_gebruikers, vs_praktijken, vs_instellingen, vs_beheerlog RESTART IDENTITY CASCADE")
@@ -417,3 +420,101 @@ def test_binding_helpers():
     assert licentie.binding_fout(["2876"], []) is None
     assert licentie.binding_fout(["2876"], ["4410", "2876"]) is None
     assert "2876" in licentie.binding_fout(["2876"], ["4410"])
+
+
+# ── Auditlog (NEN 7513) in het register ──
+
+def _log_in_register(api, gebruiker, handeling, **detail):
+    async def schrijf():
+        audit.log_event(gebruiker, handeling, **detail)
+        await audit.flush()
+    api.portal.call(schrijf)
+
+
+def test_audit_events_are_stored_without_content(api):
+    _log_in_register(api, "dr.audit-a", "letters.generate", kind="verwijzing", tekst="Jan de Vries")
+    rij = api.portal.call(register.fetchrow,
+                          "SELECT gebruiker, handeling, details FROM vs_auditlog WHERE gebruiker = 'dr.audit-a'")
+    assert rij["handeling"] == "letters.generate"
+    assert "Vries" not in str(rij["details"]) and "verwijzing" in str(rij["details"])
+    r = api.get("/api/v1/beheer/auditlog", headers=BEHEER, params={"gebruiker": "dr.audit-a"})
+    assert r.status_code == 200 and r.json()["log"][0]["handeling"] == "letters.generate"
+
+
+def test_audit_log_is_append_only(api):
+    import asyncpg
+
+    _log_in_register(api, "dr.audit-b", "dictation.stream")
+    for opdracht in ("UPDATE vs_auditlog SET gebruiker = 'iemand anders' WHERE gebruiker = 'dr.audit-b'",
+                     "DELETE FROM vs_auditlog WHERE gebruiker = 'dr.audit-b'",
+                     "TRUNCATE vs_auditlog"):
+        with pytest.raises(asyncpg.RaiseError):
+            api.portal.call(register.execute, opdracht)
+    assert api.portal.call(register.fetchrow, "SELECT count(*) AS n FROM vs_auditlog WHERE gebruiker = 'dr.audit-b'")["n"] == 1
+
+
+def test_audit_retention_is_at_least_a_year(monkeypatch):
+    monkeypatch.setenv("AUDIT_BEWAARDAGEN", "30")
+    assert audit.retention_days() == 365
+    monkeypatch.setenv("AUDIT_BEWAARDAGEN", "3650")
+    assert audit.retention_days() == 3650
+    monkeypatch.delenv("AUDIT_BEWAARDAGEN")
+    assert audit.retention_days() == 1825
+
+
+# ── Beheerders met tweestapsverificatie ──
+
+GEHEIM = "JBSWY3DPEHPK3PXP"
+
+
+def test_totp_matches_rfc_6238():
+    # RFC 6238, bijlage B: SHA1-geheim "12345678901234567890", T = 59 s -> 94287082 (8 cijfers).
+    import base64 as b64
+    geheim = b64.b32encode(b"12345678901234567890").decode()
+    assert beheer.totp_code(geheim, 59) == "287082"
+    assert beheer.totp_klopt(geheim, "287082", 59)
+    assert beheer.totp_klopt(geheim, beheer.totp_code(geheim, 59 + 30), 59)   # klok iets voor
+    assert not beheer.totp_klopt(geheim, "000000", 59)
+    assert not beheer.totp_klopt(geheim, "abc", 59)
+
+
+def test_admin_with_totp_needs_code_and_gets_a_session(api, monkeypatch):
+    monkeypatch.setenv("ADMIN_USERS", "anna:anna-sleutel")
+    monkeypatch.setenv("ADMIN_TOTP", f"anna:{GEHEIM}")
+    # Rechtstreeks met de sleutel mag niet meer als er een code hoort te komen.
+    assert api.get("/api/v1/beheer/praktijken", headers={"X-Beheer-Sleutel": "anna-sleutel"}).status_code == 401
+    fout = api.post("/api/v1/beheer/inloggen", json={"sleutel": "anna-sleutel", "code": "000000"})
+    assert fout.status_code == 403
+    import time
+    goed = api.post("/api/v1/beheer/inloggen",
+                    json={"sleutel": "anna-sleutel", "code": beheer.totp_code(GEHEIM, time.time())})
+    assert goed.status_code == 200 and goed.json()["naam"] == "anna" and goed.json()["tweestaps"]
+    sessie = {"X-Beheer-Sessie": goed.json()["sessie"]}
+    assert api.get("/api/v1/beheer/praktijken", headers=sessie).status_code == 200
+    api.post("/api/v1/beheer/praktijken", headers=sessie, json={"naam": "Praktijk Anna", "plaats": "Venlo"})
+    log = api.get("/api/v1/beheer/log", headers=sessie).json()["log"]
+    assert log[0]["door"] == "anna"
+    api.post("/api/v1/beheer/uitloggen", headers=sessie)
+    assert api.get("/api/v1/beheer/praktijken", headers=sessie).status_code == 401
+
+
+def test_expired_session_is_refused(api, monkeypatch):
+    monkeypatch.setenv("BEHEER_SESSIE_UREN", "0.25")
+    goed = api.post("/api/v1/beheer/inloggen", json={"sleutel": "beheer-test"})
+    sessie = goed.json()["sessie"]
+    naam, tot = beheer._sessies[sessie]
+    beheer._sessies[sessie] = (naam, tot - 3600)
+    assert api.get("/api/v1/beheer/praktijken", headers={"X-Beheer-Sessie": sessie}).status_code == 401
+
+
+# ── Brieven in de EU ──
+
+def test_practice_can_keep_letters_in_the_eu(api):
+    from services.cloud_api import praktijk_sleutels
+
+    p = _praktijk(api)
+    _activeer(api, p["id"], brieven_in_eu=True)
+    sleutel = _gebruiker(api, p["id"])["sleutel"]
+    ident = api.portal.call(licentie.identificeer, sleutel, "2876")
+    assert ident.brieven_in_eu
+    assert api.portal.call(praktijk_sleutels.kies_brieven, ident) == ("mistral", None)

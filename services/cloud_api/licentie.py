@@ -70,6 +70,7 @@ class Identiteit:
     geldig_tot: Optional[date] = None
     praktijknummers: List[str] = field(default_factory=list)
     eigen_sleutels_verplicht: bool = False
+    brieven_in_eu: bool = False
 
     @property
     def is_praktijkbeheerder(self) -> bool:
@@ -156,7 +157,7 @@ async def _haal(h: str):
         """
         SELECT g.id AS gebruiker_id, g.naam AS gebruiker_naam, g.rol, g.actief AS gebruiker_actief,
                p.id AS praktijk_id, p.naam AS praktijk_naam, p.status, p.licentietype, p.geldig_tot,
-               p.praktijknummers, p.eigen_sleutels_verplicht
+               p.praktijknummers, p.eigen_sleutels_verplicht, p.brieven_in_eu
           FROM vs_gebruikers g JOIN vs_praktijken p ON p.id = g.praktijk_id
          WHERE g.sleutel_hash = $1
         """,
@@ -191,7 +192,11 @@ async def identificeer(sleutel: Optional[str], praktijk_kop: Optional[str] = Non
     """De identiteit bij een sleutel, of LicentieFout met een melding voor de arts."""
     tabel = _omgevingstabel()
     if not tabel and not register.actief():
-        return Identiteit(label="dev", bron="dev")
+        from .auth import open_mode
+        if open_mode():
+            return Identiteit(label="dev", bron="dev")
+        raise LicentieFout(503, "De server heeft geen sleutels en geen register. "
+                                "Neem contact op met de beheerder van VitaScribe.")
     if not sleutel:
         raise LicentieFout(401, "API sleutel ontbreekt.")
 
@@ -233,4 +238,5 @@ async def identificeer(sleutel: Optional[str], praktijk_kop: Optional[str] = Non
         geldig_tot=tot,
         praktijknummers=list(rij["praktijknummers"] or []),
         eigen_sleutels_verplicht=bool(rij["eigen_sleutels_verplicht"]),
+        brieven_in_eu=bool(rij["brieven_in_eu"]),
     )

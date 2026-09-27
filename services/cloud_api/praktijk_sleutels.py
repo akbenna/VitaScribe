@@ -63,7 +63,11 @@ async def _eigen(praktijk_id: int, dienst: str) -> Optional[Tuple[str, str]]:
 
 
 async def kies_brieven(ident: licentie.Identiteit) -> Tuple[str, Optional[str]]:
-    """(aanbieder, sleutel) voor een brief. Sleutel None = die van de server."""
+    """(aanbieder, sleutel) voor een brief. Sleutel None = die van de server.
+    Heeft de praktijk gekozen voor brieven in de EU, dan gaat die keuze voor:
+    ook een eigen sleutel bij een aanbieder in de VS wordt dan niet gebruikt."""
+    if ident.brieven_in_eu:
+        return "mistral", None
     if ident.bron == "register" and ident.praktijk_id:
         eigen = await _eigen(ident.praktijk_id, "brieven")
         if eigen:
@@ -144,6 +148,7 @@ async def licentie_status(ident: licentie.Identiteit = Depends(huidige_identitei
         "praktijknummers": ident.praktijknummers,
         "eigen_sleutels_mogelijk": ident.bron == "register" and kluis.actief(),
         "eigen_sleutels_verplicht": ident.eigen_sleutels_verplicht,
+        "brieven_in_eu": ident.brieven_in_eu,
         "eigen_sleutels": {"brieven": None, "spraak": None},
     }
     if ident.bron == "register" and ident.praktijk_id:
