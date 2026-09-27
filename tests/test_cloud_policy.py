@@ -26,6 +26,19 @@ def test_keys_map_to_users():
     assert auth.user_for_key("fout") is None
 
 
+def test_server_without_keys_fails_closed(monkeypatch):
+    monkeypatch.delenv("API_USERS")
+    monkeypatch.delenv("API_KEYS")
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    monkeypatch.delenv("VITASCRIBE_OPEN", raising=False)
+    get_config.cache_clear()
+    assert auth.user_for_key("wat-dan-ook") is None
+    r = TestClient(main.app).get("/api/v1/providers", headers={"X-API-Key": "wat-dan-ook"})
+    assert r.status_code == 503
+    monkeypatch.setenv("VITASCRIBE_OPEN", "1")
+    assert auth.user_for_key("") == "dev"
+
+
 def test_audit_log_keeps_no_content(tmp_path):
     audit.log_event("dr.x", "letters.generate", kind="verwijzing", tekst="Jan de Vries BSN 123456789",
                     chars=5000, status="x" * 100)

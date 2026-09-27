@@ -3,14 +3,15 @@
  *
  * Alles wat van een praktijk komt (een aanmelding kan iedereen doen) gaat als
  * tekst de pagina in, nooit als HTML: el() zet textContent, er is geen
- * innerHTML met gegevens. De beheersleutel staat alleen in sessionStorage van
- * dit tabblad en verdwijnt als het tabblad sluit.
+ * innerHTML met gegevens. Inloggen geeft een sessie; alleen die staat in
+ * sessionStorage van dit tabblad en verdwijnt als het tabblad sluit. De
+ * beheersleutel zelf wordt nergens bewaard.
  */
 (function () {
   'use strict';
 
   var API = '/api/v1/beheer';
-  var OPSLAG = 'vs-beheersleutel';
+  var OPSLAG = 'vs-beheersessie';
   var TYPES = { kandidaat: 'Kandidaat', pilot: 'Gratis pilot', betaald: 'Betaald', intern: 'Eigen praktijk / intern' };
   var STATUS = { aangemeld: 'Aangemeld', actief: 'Actief', uitgehaald: 'Uitgehaald', afgewezen: 'Afgewezen' };
   var AANBIEDER = { anthropic: 'Claude', openai: 'ChatGPT', deepgram: 'Deepgram' };
@@ -78,18 +79,22 @@
 
   function euro(n) { return '€ ' + Math.round(n).toLocaleString('nl-NL'); }
 
-  function sleutel() { try { return sessionStorage.getItem(OPSLAG) || ''; } catch (e) { return ''; } }
+  function sessie() { try { return sessionStorage.getItem(OPSLAG) || ''; } catch (e) { return ''; } }
 
   async function vraag(pad, opties) {
     opties = opties || {};
-    var kop = { 'X-Beheer-Sleutel': sleutel() };
+    var kop = { 'X-Beheer-Sessie': sessie() };
     if (opties.body !== undefined) kop['Content-Type'] = 'application/json';
     var r = await fetch(API + pad, {
       method: opties.methode || 'GET',
       headers: kop,
       body: opties.body !== undefined ? JSON.stringify(opties.body) : undefined,
     });
-    if (r.status === 403 && pad === '/praktijken') throw new Error('sleutel');
+    if (r.status === 401) {
+      try { sessionStorage.removeItem(OPSLAG); } catch (e) { /* niets */ }
+      if (pad !== '/praktijken') inlogscherm('De sessie is verlopen. Log opnieuw in.');
+      throw new Error('sessie');
+    }
     var body = await r.json().catch(function () { return {}; });
     if (!r.ok) {
       var d = body.detail;
@@ -104,25 +109,34 @@
   function inlogscherm(fout) {
     document.getElementById('uitloggen').hidden = true;
     leeg(app);
-    var invoer = el('input', { type: 'password', id: 'beheersleutel', autocomplete: 'current-password', placeholder: 'ADMIN_KEY' });
+    var invoer = el('input', { type: 'password', id: 'beheersleutel', autocomplete: 'current-password', placeholder: 'Beheersleutel' });
+    var code = el('input', { type: 'text', id: 'beheercode', autocomplete: 'one-time-code', inputmode: 'numeric', placeholder: 'Code uit de app (6 cijfers)' });
     var knop = el('button', { klasse: 'hoofd', tekst: 'Openen' });
     async function probeer() {
-      try { sessionStorage.setItem(OPSLAG, invoer.value.trim()); } catch (e) { /* privévenster */ }
-      try { await laad(); }
-      catch (e) { inlogscherm(e.message === 'sleutel' ? 'Onjuiste beheersleutel.' : e.message); }
+      try {
+        var r = await fetch(API + '/inloggen', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sleutel: invoer.value.trim(), code: code.value.trim() }),
+        });
+        var body = await r.json().catch(function () { return {}; });
+        if (!r.ok) throw new Error(body.detail || ('Fout ' + r.status));
+        try { sessionStorage.setItem(OPSLAG, body.sessie); } catch (e) { /* privévenster */ }
+        await laad();
+      } catch (e) { inlogscherm(e.message === 'sessie' ? 'De sessie is verlopen. Log opnieuw in.' : e.message); }
     }
     knop.addEventListener('click', probeer);
-    invoer.addEventListener('keydown', function (e) { if (e.key === 'Enter') probeer(); });
+    [invoer, code].forEach(function (veld) { veld.addEventListener('keydown', function (e) { if (e.key === 'Enter') probeer(); }); });
     app.appendChild(el('div', { klasse: 'kaart inlog' },
       el('h2', { tekst: 'Beheer openen' }),
-      el('p', { klasse: 'klein', tekst: 'Vul de beheersleutel in (ADMIN_KEY op de server). Hij blijft alleen in dit tabblad bewaard.' }),
-      invoer,
+      el('p', { klasse: 'klein', tekst: 'Vul je beheersleutel in en, als tweestapsverificatie aan staat, de code uit je authenticator-app. De sleutel wordt niet bewaard; het tabblad krijgt een sessie die na een werkdag verloopt.' }),
+      invoer, code,
       fout ? el('p', { klasse: 'klein', style: 'color:var(--rood);margin-top:8px', tekst: fout }) : null,
       el('div', { klasse: 'knoppen' }, knop)));
     invoer.focus();
   }
 
   document.getElementById('uitloggen').addEventListener('click', function () {
+    fetch(API + '/uitloggen', { method: 'POST', headers: { 'X-Beheer-Sessie': sessie() } }).catch(function () { /* niets */ });
     try { sessionStorage.removeItem(OPSLAG); } catch (e) { /* niets */ }
     staat.gekozen = null;
     inlogscherm();
@@ -255,6 +269,7 @@
     v.geldig_tot = el('input', { type: 'date', waarde: p.geldig_tot || '' });
     v.onbeperkt = el('input', { type: 'checkbox', aan: !p.geldig_tot && p.licentietype === 'intern' });
     v.verplicht = el('input', { type: 'checkbox', aan: p.eigen_sleutels_verplicht });
+    v.eu = el('input', { type: 'checkbox', aan: p.brieven_in_eu });
     v.notities = el('textarea', { rows: 3, waarde: p.notities || '' });
 
     async function opslaan(extra) {
@@ -265,7 +280,7 @@
         fte: v.fte.value.trim() === '' ? null : Number(v.fte.value.trim().replace(',', '.')),
         werkplekken: v.werkplekken.value === '' ? null : Math.round(Number(v.werkplekken.value)),
         licentietype: v.licentietype.value, status: v.status.value, serienummer: v.serienummer.value.trim(),
-        eigen_sleutels_verplicht: v.verplicht.checked, notities: v.notities.value,
+        eigen_sleutels_verplicht: v.verplicht.checked, brieven_in_eu: v.eu.checked, notities: v.notities.value,
       };
       if (v.onbeperkt.checked) {
         if (body.licentietype !== 'intern' && !confirm('Een onbeperkte licentie is niet in te trekken door te laten verlopen. Alleen bedoeld voor de eigen praktijk. Toch opslaan?')) return;
@@ -320,6 +335,7 @@
         veld('Geldig tot', v.geldig_tot),
         el('div', null, el('label', { tekst: ' ' }), el('label', { klasse: 'vink' }, v.onbeperkt, 'Onbeperkt (alleen eigen praktijk)')),
         el('div', { klasse: 'breed' }, el('label', { klasse: 'vink' }, v.verplicht, 'Eigen AI-sleutels verplicht: geen brieven of spraak op de sleutels van de server')),
+        el('div', { klasse: 'breed' }, el('label', { klasse: 'vink' }, v.eu, 'Brieven in de EU: brieven naar Mistral (EU), ook als er een eigen sleutel in de VS is')),
         veld('Notities', v.notities, true)),
       el('div', { klasse: 'knoppen' }, acties),
       el('h3', { tekst: 'Eigen AI-sleutels van de praktijk' }),
@@ -453,7 +469,7 @@
 
   async function exporteer() {
     try {
-      var r = await fetch(API + '/export', { headers: { 'X-Beheer-Sleutel': sleutel() } });
+      var r = await fetch(API + '/export', { headers: { 'X-Beheer-Sessie': sessie() } });
       if (!r.ok) throw new Error('Export mislukt (' + r.status + ').');
       var blob = await r.blob();
       var a = el('a', { href: URL.createObjectURL(blob), download: 'vitascribe-register-' + staat.vandaag + '.json' });
@@ -481,6 +497,6 @@
   }
 
   // ── Start ──
-  if (sleutel()) laad().catch(function (e) { inlogscherm(e.message === 'sleutel' ? 'Onjuiste beheersleutel.' : e.message); });
+  if (sessie()) laad().catch(function (e) { inlogscherm(e.message === 'sessie' ? 'De sessie is verlopen. Log opnieuw in.' : e.message); });
   else inlogscherm();
 })();

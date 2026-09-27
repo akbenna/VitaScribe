@@ -9,7 +9,7 @@
  * 4. RECORDER_AUDIO — legacy handler for recorder page
  */
 
-importScripts('../lib/praktijk.js');
+importScripts('../lib/praktijk.js', '../lib/instellingen.js');
 
 // ── Bricks-praktijknummer bijhouden (voor de licentie, zie lib/praktijk.js) ──
 // Alleen Bricks-adressen leveren een nummer op; van andere tabbladen wordt niets bewaard.
@@ -26,7 +26,7 @@ chrome.tabs.onActivated.addListener(function (active) {
 // ── API call (runs in service worker — survives popup close) ──
 
 async function callCloudAPI(base64Audio, mimeType) {
-  const config = await chrome.storage.sync.get(['apiUrl', 'apiKey', 'sttProvider', 'llmProvider']);
+  const config = await SVInstellingen.lees(['apiUrl', 'apiKey', 'sttProvider', 'llmProvider']);
   const apiUrl = (config.apiUrl || 'http://localhost:8002').replace(/\/$/, '');
   const endpoint = apiUrl + '/api/v1/consult/process';
 
@@ -296,7 +296,7 @@ async function quickToggle(tabId) {
   quickTarget = { tabId: svTarget.tabId, frameId: svTarget.frameId };
   quickInsertFailed = false;
   await chrome.storage.session.set({ svQuickTarget: quickTarget });
-  const sync = await chrome.storage.sync.get(['apiUrl', 'apiKey', 'micDevice']);
+  const sync = await SVInstellingen.lees(['apiUrl', 'apiKey', 'micDevice']);
   const local = await chrome.storage.local.get('svTextRules');
   toOffscreen('SV_QUICK_START', {
     config: {
@@ -542,6 +542,8 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 // Scripts already running in open pages are cut off by an update; re-inject
 // so the doctor doesn't have to refresh Bricks (only where we have access).
 chrome.runtime.onInstalled.addListener(async () => {
+  // The server key used to live in chrome.storage.sync; move it to this device.
+  await SVInstellingen.migreer().catch(() => { /* settings stay readable as before */ });
   const tabs = await chrome.tabs.query({});
   for (const tab of tabs) {
     if (!tab.id || !/^https?:/.test(tab.url || '')) continue;

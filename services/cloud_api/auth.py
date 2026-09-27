@@ -9,7 +9,9 @@ Keys:
              one workplace can be switched off without touching the others.
   API_KEYS   "sleutel1,sleutel2"            legacy shared keys (user "gedeeld").
   register   keys of practices with a licence (DATABASE_URL); see licentie.py.
-Dev mode: no keys configured and no register = allow all requests (user "dev").
+Open mode: no keys and no register allows every request (user "dev"), but only
+when VITASCRIBE_OPEN=1 is set explicitly. Without it such a server refuses all
+calls, so a deploy that lost its keys fails closed instead of open.
 """
 
 from __future__ import annotations
@@ -40,14 +42,19 @@ def _key_table() -> Dict[str, str]:
     return table
 
 
+def open_mode() -> bool:
+    """Open mode must be switched on by hand, for local development only."""
+    return (os.getenv("VITASCRIBE_OPEN") or "").strip() == "1"
+
+
 def user_for_key(api_key: str) -> Optional[str]:
-    """User name for an environment key, "dev" in dev mode, None otherwise.
+    """User name for an environment key, "dev" in open mode, None otherwise.
     Register keys are looked up asynchronously in licentie.identificeer."""
     from . import register
 
     table = _key_table()
     if not table and not register.actief():
-        return "dev"
+        return "dev" if open_mode() else None
     for key, name in table.items():
         if api_key and hmac.compare_digest(key, api_key):
             return name

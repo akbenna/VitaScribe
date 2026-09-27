@@ -1,0 +1,111 @@
+<title>VitaScribe</title>
+<meta name="description" content="VitaScribe: dicteren, SOEP-verslagen en brieven voor huisartsen die werken met Bricks Huisarts.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Schibsted+Grotesk:wght@600;700&family=Source+Sans+3:wght@400;600&display=swap">
+<link rel="stylesheet" href="site.css">
+
+<div class="wrap">
+  <header class="top">
+    <a class="logo" href="./">Vita<span>Scribe</span></a>
+    <nav class="nav" aria-label="Hoofdmenu">
+      <a href="./" aria-current="page">Home</a>
+      <a href="bricks.html">Voor Bricks</a>
+      <a href="privacy.html">Privacy</a>
+      <a href="aanmelden.html">Aanmelden</a>
+    </nav>
+  </header>
+
+  <main>
+    <div class="hero">
+      <div class="stack">
+        <p class="eyebrow">Voor de huisartsenpraktijk</p>
+        <h1>Jij praat. Het journaal staat er.</h1>
+        <p class="lead">VitaScribe zet je dictaat en je consult om in een SOEP-regel, en schrijft je verwijs- en informatiebrieven mee. Jij controleert, jij ondertekent.</p>
+        <div class="cta">
+          <a class="btn primary" href="aanmelden.html">Praktijk aanmelden</a>
+          <a class="btn ghost" href="bricks.html">Zo werkt het in Bricks</a>
+        </div>
+      </div>
+
+      <figure class="journal" aria-label="Voorbeeld van een SOEP-regel die VitaScribe maakt">
+        <div class="journal-head"><span>Journaal · dictaat → SOEP</span><span>fictief voorbeeld</span></div>
+        <table>
+          <tr><td>S</td><td>Sinds 4 dagen hoesten en keelpijn. Geen koorts gemeten, niet benauwd.</td></tr>
+          <tr><td>O</td><td>T 37,6 °C. Keel licht rood, geen beslag. Longen: VAG, geen bijgeluiden.</td></tr>
+          <tr><td>E</td><td>Acute infectie bovenste luchtwegen <span class="icpc">R74</span></td></tr>
+          <tr><td>P</td><td>Uitleg beloop, paracetamol z.n. Thuisarts.nl meegegeven. Terug bij koorts &gt; 3 dagen<span class="caret" aria-hidden="true"></span></td></tr>
+        </table>
+        <figcaption class="journal-foot">Een concept. De ICPC-code kies je zelf.</figcaption>
+      </figure>
+    </div>
+
+    <section aria-labelledby="momenten">
+      <div class="stack">
+        <p class="eyebrow">Drie momenten op een spreekuur</p>
+        <h2 id="momenten">Minder typen, en de regie blijft bij jou</h2>
+      </div>
+      <div class="moments">
+        <article class="moment">
+          <span class="when">tijdens en na het consult</span>
+          <h3>Dicteren waar de cursor staat</h3>
+          <p>Klik in een veld in Bricks, druk <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>D</kbd> en spreek. De tekst komt in dat veld. Met één klik wordt het dictaat een SOEP-regel.</p>
+        </article>
+        <article class="moment">
+          <span class="when">met toestemming van de patiënt</span>
+          <h3>Het consult laten meeschrijven</h3>
+          <p>Pas als je aanvinkt dat de patiënt is geïnformeerd en toestemt, luistert VitaScribe mee. Het houdt arts en patiënt uit elkaar en maakt na afloop een SOEP-verslag. De opname wordt niet bewaard.</p>
+        </article>
+        <article class="moment">
+          <span class="when">aan het eind van de dag</span>
+          <h3>Brieven uit het dossier</h3>
+          <p>Kies per onderdeel wat meegaat: journaal, medicatie, lab. Naam, BSN, adres en geboortedatum gaan eruit voordat er iets de praktijk verlaat.</p>
+        </article>
+      </div>
+    </section>
+
+    <section aria-labelledby="brief">
+      <div class="split">
+        <div class="stack">
+          <p class="eyebrow">Pseudonimisering die je ziet</p>
+          <h2 id="brief">Je leest precies wat er verstuurd wordt</h2>
+          <p class="note">Voordat een brief naar een taalmodel gaat, toont VitaScribe de tekst zoals die vertrekt. Directe gegevens worden in de browser weggehaald, en op de server nog een keer als vangnet.</p>
+        </div>
+        <div class="letter" aria-label="Voorbeeld van een gepseudonimiseerd briefdeel">
+          <span class="label">wat het taalmodel ontvangt</span>
+          <p>Betreft: <span class="redact">[INITIALEN]</span>, geb. <span class="redact">[VERWIJDERD]</span>, BSN <span class="redact">[VERWIJDERD]</span></p>
+          <p>Op <span class="redact">[DATUM]</span> zag ik patiënt met sinds drie maanden toenemende pijn in de rechterknie bij traplopen. Geen trauma. Paracetamol gaf onvoldoende effect.</p>
+        </div>
+      </div>
+    </section>
+
+    <section aria-labelledby="grens">
+      <div class="split">
+        <div class="stack">
+          <p class="eyebrow">Wat VitaScribe niet doet</p>
+          <h2 id="grens">Geen diagnose, geen behandeladvies</h2>
+        </div>
+        <div class="stack prose">
+          <p>VitaScribe schrijft op wat je zegt en doet. Het kiest geen diagnose en rekent geen risico's uit. Een Thuisarts-link of naslag verschijnt pas bij de ICPC-code die je zelf vastlegt, uit een tabel die een arts heeft nagekeken.</p>
+          <p>Gebouwd door een huisarts die zelf in Bricks werkt. Elke keuze in het ontwerp komt uit die spreekkamer.</p>
+        </div>
+      </div>
+    </section>
+
+    <section aria-labelledby="start">
+      <div class="stack">
+        <h2 id="start">In de testfase gratis</h2>
+        <p class="note">Meld je praktijk aan. Elke arts krijgt daarna een eigen sleutel.</p>
+      </div>
+      <div class="cta">
+        <a class="btn primary" href="aanmelden.html">Praktijk aanmelden</a>
+        <a class="btn ghost" href="privacy.html">Hoe gaan we om met gegevens?</a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <p>VitaScribe is een product van ProVita Care · <a href="https://www.provita-care.nl">provita-care.nl</a> · info@provita-care.nl</p>
+    <p>Bricks Huisarts is een product van Tetra. VitaScribe is een eigen product en wordt niet door Tetra ontwikkeld of ondersteund.</p>
+  </footer>
+</div>

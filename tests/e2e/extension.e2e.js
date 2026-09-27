@@ -63,7 +63,10 @@ function check(name, cond, extra) {
     await sleep(100);
   }
   const id = new URL(sw.url()).host;
-  await sw.evaluate(() => chrome.storage.sync.set({ apiUrl: 'http://localhost:8002', apiKey: 'test' }));
+  await sw.evaluate(async () => {
+    await chrome.storage.sync.set({ apiUrl: 'http://localhost:8002' });
+    await chrome.storage.local.set({ apiKey: 'test' });
+  });
   const page = await ctx.newPage();
   await page.goto('https://test.bfrcloud.com/patient');
   await sleep(800);

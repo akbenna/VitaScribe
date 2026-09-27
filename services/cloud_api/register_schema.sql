@@ -51,6 +51,10 @@ CREATE TABLE IF NOT EXISTS vs_gebruikers (
 );
 CREATE INDEX IF NOT EXISTS vs_gebruikers_praktijk ON vs_gebruikers (praktijk_id);
 
+-- Aan: brieven gaan naar het taalmodel in de EU (Mistral) in plaats van naar
+-- de brievenaanbieder van de server of een eigen sleutel in de VS.
+ALTER TABLE vs_praktijken ADD COLUMN IF NOT EXISTS brieven_in_eu BOOLEAN NOT NULL DEFAULT FALSE;
+
 -- Eigen sleutels van een praktijk bij een AI-dienst, versleuteld (zie kluis.py).
 -- 'brieven': Anthropic of OpenAI, alleen voor gepseudonimiseerde brieven.
 -- 'spraak':  Deepgram.
@@ -83,3 +87,38 @@ CREATE TABLE IF NOT EXISTS vs_beheerlog (
     details      JSONB NOT NULL DEFAULT '{}'::jsonb
 );
 CREATE INDEX IF NOT EXISTS vs_beheerlog_op ON vs_beheerlog (op DESC);
+
+-- Het gebruikslog volgens NEN 7513: wie welke functie wanneer gebruikte, met
+-- welke uitkomst, nooit inhoud (zie audit.py). Alleen toevoegen: wijzigen of
+-- leegmaken weigert de database, en een regel verdwijnt pas als hij ouder is
+-- dan een jaar (audit.py ruimt op na AUDIT_BEWAARDAGEN, minimaal 365).
+CREATE TABLE IF NOT EXISTS vs_auditlog (
+    id         BIGSERIAL PRIMARY KEY,
+    op         TIMESTAMPTZ NOT NULL DEFAULT now(),
+    gebruiker  TEXT NOT NULL,
+    handeling  TEXT NOT NULL,
+    details    JSONB NOT NULL DEFAULT '{}'::jsonb
+);
+CREATE INDEX IF NOT EXISTS vs_auditlog_op ON vs_auditlog (op);
+CREATE INDEX IF NOT EXISTS vs_auditlog_gebruiker ON vs_auditlog (gebruiker, op);
+
+CREATE OR REPLACE FUNCTION vs_auditlog_bewaken() RETURNS trigger
+LANGUAGE plpgsql AS $$
+BEGIN
+    IF TG_OP = 'UPDATE' THEN
+        RAISE EXCEPTION 'Het auditlog kan niet worden gewijzigd.';
+    ELSIF TG_OP = 'TRUNCATE' THEN
+        RAISE EXCEPTION 'Het auditlog kan niet worden leeggemaakt.';
+    ELSIF OLD.op > now() - interval '365 days' THEN
+        RAISE EXCEPTION 'Regels in het auditlog blijven minstens een jaar staan.';
+    END IF;
+    RETURN OLD;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS vs_auditlog_rij ON vs_auditlog;
+CREATE TRIGGER vs_auditlog_rij BEFORE UPDATE OR DELETE ON vs_auditlog
+    FOR EACH ROW EXECUTE FUNCTION vs_auditlog_bewaken();
+DROP TRIGGER IF EXISTS vs_auditlog_leeg ON vs_auditlog;
+CREATE TRIGGER vs_auditlog_leeg BEFORE TRUNCATE ON vs_auditlog
+    FOR EACH STATEMENT EXECUTE FUNCTION vs_auditlog_bewaken();

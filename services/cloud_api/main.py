@@ -75,6 +75,7 @@ async def _levensloop(_app):
         except Exception as exc:
             logger.error("register.verbinden_mislukt", error=str(exc))
     yield
+    await audit.flush()
     await register.sluit()
 
 

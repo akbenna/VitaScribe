@@ -1,0 +1,75 @@
+/**
+ * node --test tests/js/instellingen.test.js
+ *
+ * De serversleutel blijft op het apparaat (chrome.storage.local) en staat nooit
+ * in chrome.storage.sync, dat Chrome via het Google-account naar andere
+ * apparaten kopieert. De overige instellingen blijven wel in sync.
+ */
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const path = require('node:path');
+
+const I = require(path.join(__dirname, '..', '..', 'chrome-extension', 'lib', 'instellingen.js'));
+
+function vak(begin) {
+  const data = Object.assign({}, begin);
+  return {
+    data,
+    async get(keys) {
+      const uit = {};
+      [].concat(keys).forEach((k) => { if (k in data) uit[k] = data[k]; });
+      return uit;
+    },
+    async set(obj) { Object.assign(data, obj); },
+    async remove(keys) { [].concat(keys).forEach((k) => { delete data[k]; }); },
+  };
+}
+
+function opslag(sync, local) {
+  return { sync: vak(sync), local: vak(local) };
+}
+
+test('bewaar zet de sleutel lokaal en de rest in sync', async () => {
+  const s = opslag({}, {});
+  await I.bewaar({ apiUrl: 'https://server', apiKey: 'geheim', micDevice: 'm1' }, s);
+  assert.deepEqual(s.sync.data, { apiUrl: 'https://server', micDevice: 'm1' });
+  assert.deepEqual(s.local.data, { apiKey: 'geheim' });
+});
+
+test('bewaar ruimt een oude sleutel in sync op', async () => {
+  const s = opslag({ apiKey: 'oud' }, {});
+  await I.bewaar({ apiUrl: 'https://server', apiKey: 'nieuw' }, s);
+  assert.equal(s.sync.data.apiKey, undefined);
+  assert.equal(s.local.data.apiKey, 'nieuw');
+});
+
+test('lees combineert sync en local', async () => {
+  const s = opslag({ apiUrl: 'https://server', llmProvider: 'mistral' }, { apiKey: 'geheim' });
+  assert.deepEqual(await I.lees(['apiUrl', 'apiKey', 'llmProvider'], s),
+    { apiUrl: 'https://server', apiKey: 'geheim', llmProvider: 'mistral' });
+});
+
+test('lees valt terug op de oude sleutel zolang de overzetting niet gedaan is', async () => {
+  const s = opslag({ apiUrl: 'https://server', apiKey: 'oud' }, {});
+  assert.equal((await I.lees(['apiKey'], s)).apiKey, 'oud');
+});
+
+test('migreer verplaatst de sleutel en haalt hem uit sync', async () => {
+  const s = opslag({ apiUrl: 'https://server', apiKey: 'oud' }, {});
+  await I.migreer(s);
+  assert.deepEqual(s.sync.data, { apiUrl: 'https://server' });
+  assert.deepEqual(s.local.data, { apiKey: 'oud' });
+});
+
+test('migreer overschrijft geen sleutel die al lokaal staat', async () => {
+  const s = opslag({ apiKey: 'oud' }, { apiKey: 'nieuw' });
+  await I.migreer(s);
+  assert.equal(s.local.data.apiKey, 'nieuw');
+  assert.equal(s.sync.data.apiKey, undefined);
+});
+
+test('zonder chrome geen fout', async () => {
+  assert.deepEqual(await I.lees(['apiKey']), {});
+  await I.bewaar({ apiKey: 'x' });
+  await I.migreer();
+});

@@ -4,9 +4,21 @@ VitaScribe Cloud API - Beheer van praktijken, gebruikers en licenties
   /beheer                  de beheerpagina (static/beheer.html)
   /api/v1/beheer/...       de gegevens erachter, alleen met X-Beheer-Sleutel
 
-De beheersleutel is ADMIN_KEY uit de omgeving. Zonder ADMIN_KEY of zonder
-register staat het beheer uit. Na tien foute pogingen vanaf één adres in een
-kwartier weigert de server dat adres een kwartier lang.
+Beheerders staan in de omgeving:
+
+  ADMIN_USERS  "naam:sleutel,naam2:sleutel2"  een sleutel per beheerder, zodat
+               het beheerlog laat zien wie wat deed (voorkeur);
+  ADMIN_KEY    één gedeelde sleutel (naam "beheerder"), voor oudere uitrol;
+  ADMIN_TOTP   "naam:GEHEIM,..."  tweestapsverificatie per beheerder, met een
+               base32-geheim voor een authenticator-app (RFC 6238, 30 s, 6 cijfers).
+
+Inloggen gaat via POST /api/v1/beheer/inloggen met sleutel en, als die beheerder
+een ADMIN_TOTP heeft, de code uit de app. Dat geeft een sessie van
+BEHEER_SESSIE_UREN (standaard 8) uur, die de pagina meestuurt als
+X-Beheer-Sessie. Een beheerder zonder ADMIN_TOTP mag ook nog rechtstreeks met
+X-Beheer-Sleutel. Zonder beheerders of zonder register staat het beheer uit. Na
+tien foute pogingen vanaf één adres in een kwartier weigert de server dat adres
+een kwartier lang.
 
 Werkwijze, gelijk aan Bricks Companion maar op de server:
 
@@ -25,20 +37,24 @@ Kwijt is kwijt: dan maakt de beheerder een nieuwe, en werkt de oude niet meer.
 
 from __future__ import annotations
 
+import base64
+import hashlib
 import hmac
 import json
 import os
+import secrets
+import struct
 import time
 from datetime import date
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 import structlog
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, Field
 
-from . import licentie, register
+from . import audit, licentie, register
 
 logger = structlog.get_logger()
 router = APIRouter(tags=["beheer"])
@@ -70,10 +86,77 @@ def _adres(request: Request) -> str:
     return request.client.host if request.client else "?"
 
 
-async def vereis_beheerder(request: Request, sleutel: Optional[str] = Header(default=None, alias="X-Beheer-Sleutel")) -> str:
-    verwacht = (os.getenv("ADMIN_KEY") or "").strip()
-    if not verwacht:
-        raise HTTPException(status_code=503, detail="Beheer staat uit: ADMIN_KEY ontbreekt op de server.")
+# ── Beheerders, tweestapsverificatie en sessies ──
+
+_sessies: Dict[str, Tuple[str, float]] = {}
+
+
+def _paren(waarde: str) -> Dict[str, str]:
+    uit: Dict[str, str] = {}
+    for deel in (waarde or "").split(","):
+        if ":" in deel:
+            naam, rest = deel.split(":", 1)
+            if naam.strip() and rest.strip():
+                uit[naam.strip()] = rest.strip()
+    return uit
+
+
+def beheerders() -> Dict[str, str]:
+    """naam -> sleutel."""
+    uit = _paren(os.getenv("ADMIN_USERS") or "")
+    gedeeld = (os.getenv("ADMIN_KEY") or "").strip()
+    if gedeeld:
+        uit.setdefault("beheerder", gedeeld)
+    return uit
+
+
+def totp_geheimen() -> Dict[str, str]:
+    """naam -> base32-geheim voor de authenticator-app."""
+    return _paren(os.getenv("ADMIN_TOTP") or "")
+
+
+def totp_code(geheim: str, moment: float) -> str:
+    """De code van RFC 6238 (HMAC-SHA1, 30 seconden, 6 cijfers)."""
+    sleutel = base64.b32decode(geheim.replace(" ", "").upper() + "=" * (-len(geheim.replace(" ", "")) % 8))
+    teller = struct.pack(">Q", int(moment // 30))
+    h = hmac.new(sleutel, teller, hashlib.sha1).digest()
+    o = h[-1] & 0x0F
+    getal = (struct.unpack(">I", h[o:o + 4])[0] & 0x7FFFFFFF) % 1_000_000
+    return f"{getal:06d}"
+
+
+def totp_klopt(geheim: str, code: str, moment: Optional[float] = None) -> bool:
+    """Klopt de code, met een half venster speling voor een klok die iets afwijkt?"""
+    code = (code or "").strip().replace(" ", "")
+    if len(code) != 6 or not code.isdigit():
+        return False
+    nu = time.time() if moment is None else moment
+    try:
+        return any(hmac.compare_digest(totp_code(geheim, nu + stap * 30), code) for stap in (-1, 0, 1))
+    except (ValueError, base64.binascii.Error):
+        logger.error("beheer.totp_geheim_ongeldig")
+        return False
+
+
+def _sessie_uren() -> float:
+    try:
+        return max(float(os.getenv("BEHEER_SESSIE_UREN") or 8), 0.25)
+    except ValueError:
+        return 8.0
+
+
+def _naam_bij_sleutel(sleutel: Optional[str]) -> Optional[str]:
+    if not sleutel:
+        return None
+    for naam, verwacht in beheerders().items():
+        if hmac.compare_digest(sleutel.strip(), verwacht):
+            return naam
+    return None
+
+
+def _controleer_poort(request: Request) -> Tuple[str, List[float]]:
+    if not beheerders():
+        raise HTTPException(status_code=503, detail="Beheer staat uit: ADMIN_USERS of ADMIN_KEY ontbreekt op de server.")
     if not register.actief():
         raise HTTPException(status_code=503, detail="Beheer staat uit: er is geen database gekoppeld (DATABASE_URL).")
     adres = _adres(request)
@@ -83,10 +166,59 @@ async def vereis_beheerder(request: Request, sleutel: Optional[str] = Header(def
     alle = [t for lijst in _mislukt.values() for t in lijst]
     if len(pogingen) >= 10 or len(alle) >= 50:
         raise HTTPException(status_code=429, detail="Te veel foute pogingen. Probeer het over een kwartier opnieuw.")
-    if not sleutel or not hmac.compare_digest(sleutel.strip(), verwacht):
+    return adres, pogingen
+
+
+async def vereis_beheerder(
+    request: Request,
+    sleutel: Optional[str] = Header(default=None, alias="X-Beheer-Sleutel"),
+    sessie: Optional[str] = Header(default=None, alias="X-Beheer-Sessie"),
+) -> str:
+    _, pogingen = _controleer_poort(request)
+    nu = time.time()
+    if sessie:
+        gevonden = _sessies.get(sessie.strip())
+        if gevonden and gevonden[1] > nu and gevonden[0] in beheerders():
+            return gevonden[0]
+        _sessies.pop(sessie.strip(), None)
+        raise HTTPException(status_code=401, detail="De sessie is verlopen. Log opnieuw in.")
+    naam = _naam_bij_sleutel(sleutel)
+    if naam is None:
         pogingen.append(nu)
         raise HTTPException(status_code=403, detail="Onjuiste beheersleutel.")
-    return "beheerder"
+    if naam in totp_geheimen():
+        raise HTTPException(status_code=401, detail="Log in met je sleutel en de code uit je authenticator-app.")
+    return naam
+
+
+class Inloggen(BaseModel):
+    sleutel: str = Field(..., max_length=200)
+    code: str = Field("", max_length=10)
+
+
+@router.post("/api/v1/beheer/inloggen")
+async def inloggen(invoer: Inloggen, request: Request):
+    _, pogingen = _controleer_poort(request)
+    nu = time.time()
+    naam = _naam_bij_sleutel(invoer.sleutel)
+    geheim = totp_geheimen().get(naam or "")
+    if naam is None or (geheim and not totp_klopt(geheim, invoer.code, nu)):
+        pogingen.append(nu)
+        raise HTTPException(status_code=403, detail="Onjuiste beheersleutel of code.")
+    for token in [t for t, (_, tot) in _sessies.items() if tot <= nu]:
+        _sessies.pop(token, None)
+    token = secrets.token_urlsafe(32)
+    tot = nu + _sessie_uren() * 3600
+    _sessies[token] = (naam, tot)
+    await register.log(naam, "beheer.ingelogd", tweestaps=bool(geheim))
+    return {"sessie": token, "naam": naam, "tweestaps": bool(geheim), "geldig_seconden": int(tot - nu)}
+
+
+@router.post("/api/v1/beheer/uitloggen")
+async def uitloggen(sessie: Optional[str] = Header(default=None, alias="X-Beheer-Sessie")):
+    if sessie:
+        _sessies.pop(sessie.strip(), None)
+    return {"ok": True}
 
 
 def _pagina(naam: str) -> FileResponse:
@@ -112,7 +244,7 @@ async def beheerscript():
 
 PRAKTIJKVELDEN = ("naam", "plaats", "praktijknummers", "agb", "contact_naam", "contact_email", "telefoon",
                   "fte", "werkplekken", "licentietype", "status", "geldig_tot", "serienummer",
-                  "eigen_sleutels_verplicht", "notities")
+                  "eigen_sleutels_verplicht", "brieven_in_eu", "notities")
 
 
 def _json(rij) -> dict:
@@ -145,6 +277,7 @@ class PraktijkInvoer(BaseModel):
     geldig_tot_leeg: bool = False          # true = onbeperkt (alleen 'intern')
     serienummer: Optional[str] = Field(None, max_length=40)
     eigen_sleutels_verplicht: Optional[bool] = None
+    brieven_in_eu: Optional[bool] = None
     notities: Optional[str] = Field(None, max_length=4000)
 
 
@@ -376,6 +509,23 @@ async def beheerlog(_: str = Depends(vereis_beheerder)):
         d["details"] = json.loads(d["details"]) if isinstance(d["details"], str) else d["details"]
         uit.append(d)
     return {"log": uit}
+
+
+@router.get("/api/v1/beheer/auditlog")
+async def auditlog(gebruiker: str = "", dagen: int = 30, _: str = Depends(vereis_beheerder)):
+    """Het gebruikslog (NEN 7513) om na te lopen: de laatste dagen, eventueel van
+    één gebruiker. Hoogstens duizend regels per keer."""
+    dagen = min(max(dagen, 1), 3660)
+    rijen = await register.fetch(
+        "SELECT op, gebruiker, handeling, details FROM vs_auditlog "
+        "WHERE op >= now() - make_interval(days => $1) AND ($2 = '' OR gebruiker = $2) "
+        "ORDER BY op DESC LIMIT 1000", dagen, gebruiker.strip())
+    uit = []
+    for r in rijen:
+        d = _json(r)
+        d["details"] = json.loads(d["details"]) if isinstance(d["details"], str) else d["details"]
+        uit.append(d)
+    return {"log": uit, "bewaardagen": audit.retention_days()}
 
 
 @router.get("/api/v1/beheer/export")
