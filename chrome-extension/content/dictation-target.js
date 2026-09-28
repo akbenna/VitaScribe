@@ -580,7 +580,10 @@
     if (!pill) buildPill();
     clearTimeout(hideTimer);
     pill.__host.style.display = '';
-    pill.className = 'p' + ({ error: ' err', listening: '', calibrate: ' cal', info: ' ok' }[state] || ' busy');
+    // hasOwnProperty, not ||: "listening" maps to '' (red dot, Stop visible),
+    // and '' || ' busy' used to hide Stop while dictating.
+    var looks = { error: ' err', listening: '', calibrate: ' cal', info: ' ok' };
+    pill.className = 'p' + (Object.prototype.hasOwnProperty.call(looks, state) ? looks[state] : ' busy');
     pillLabel.textContent = {
       connecting: 'VitaScribe verbindt…',
       listening: 'VitaScribe luistert',

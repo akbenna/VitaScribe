@@ -69,6 +69,8 @@ function setState(next) {
     stopping: 'afronden…',
   }[next];
   var busy = next !== 'idle';
+  // The page shows the same small pill as with Alt+Shift+D, with Stop.
+  chrome.runtime.sendMessage({ action: 'SV_PANEL_DICTATION', state: next }).catch(function () {});
   els.clean.disabled = busy;
   els.soepBtn.disabled = busy;
 }
@@ -374,6 +376,7 @@ async function processText(mode) {
     } else {
       renderSoep(data.soep);
       document.getElementById('soep-decisief').classList.add('hidden');
+      if (window.SVConsultUI) window.SVConsultUI.losgekoppeld();   // this SOEP is not the consult report
       setStatus('SOEP klaar. Klik in Bricks in een veld en gebruik "invoegen".');
     }
   } catch (err) {
@@ -473,6 +476,7 @@ async function insertSoepPerField() {
     } else {
       setStatus('SOEP ingevuld: ' + where + '.');
     }
+    if (window.SVConsultUI) window.SVConsultUI.ingevoegd();   // pill and ✓ on the icon go away
     return;
   }
   // Nothing clicked yet (or fields not found): everything into one field.
@@ -625,6 +629,7 @@ els.clear.addEventListener('click', function () {
   els.interim.textContent = '';
   els.soep.classList.add('hidden');
   document.getElementById('soep-decisief').classList.add('hidden');
+  if (window.SVConsultUI) window.SVConsultUI.losgekoppeld();
   lastSoep = null;
   setStatus('');
 });
@@ -661,6 +666,22 @@ document.getElementById('open-settings').addEventListener('click', function (e) 
 chrome.storage.local.get('svLiveInsert').then(function (r) { els.live.checked = !!r.svLiveInsert; });
 els.live.addEventListener('change', function () {
   chrome.storage.local.set({ svLiveInsert: els.live.checked });
+});
+
+// Dictating without the panel (Alt+Shift+D, "Dicteer in veld"): the text goes
+// into the field, and also shows here, so both ways end in the same place.
+chrome.runtime.onMessage.addListener(function (msg) {
+  if (msg.action !== 'SV_QUICK_EVENT' || state !== 'idle') return false;
+  if (msg.type === 'interim') {
+    els.interim.textContent = msg.text || '';
+  } else if (msg.type === 'final') {
+    els.interim.textContent = '';
+    els.text.value = joinText(els.text.value, msg.text || '');
+  } else if (msg.type === 'stopped') {
+    els.interim.textContent = '';
+    if (msg.text) setStatus('Gedicteerd in het veld; de tekst staat ook hierboven.');
+  }
+  return false;
 });
 
 // Keyboard shortcut (Alt+Shift+D) arrives via the service worker. The port

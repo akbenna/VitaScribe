@@ -132,6 +132,38 @@ async function clickPill(page, cmd) {
   await page.mouse.click((q[0] + q[4]) / 2, (q[1] + q[5]) / 2);
 }
 
+// The quick-dictation pill (also shown while the side panel dictates).
+async function listenPill(page, clickStop) {
+  const cdp = await page.context().newCDPSession(page);
+  try {
+    const { root } = await cdp.send('DOM.getDocument', { depth: -1, pierce: true });
+    let shadow = null;
+    (function walk(n) {
+      if (shadow || !n) return;
+      (n.shadowRoots || []).forEach((sr) => { if (!shadow && JSON.stringify(sr).includes('Sluiten (Esc)')) shadow = { sr, host: n }; });
+      (n.children || []).forEach(walk);
+    })(root);
+    if (!shadow) return { visible: false, text: '' };
+    const text = [];
+    let stop = null;
+    (function walk(n) {
+      if (n.nodeName === 'STYLE') return;
+      if (n.nodeType === 3 && n.nodeValue.trim()) text.push(n.nodeValue.trim());
+      if (n.nodeName === 'BUTTON' && (n.attributes || []).includes('a')) stop = n;
+      (n.children || []).forEach(walk);
+    })(shadow.sr);
+    const visible = !/display:\s*none/.test((shadow.host.attributes || []).join(' '));
+    if (clickStop && stop) {
+      const { model } = await cdp.send('DOM.getBoxModel', { backendNodeId: stop.backendNodeId });
+      const q = model.content;
+      await page.mouse.click((q[0] + q[4]) / 2, (q[1] + q[5]) / 2);
+    }
+    return { visible, text: text.join(' ') };
+  } finally {
+    await cdp.detach().catch(() => {});
+  }
+}
+
 (async () => {
   await new Promise((r) => server.listen(0, '127.0.0.1', r));
   const port = server.address().port;
@@ -257,7 +289,30 @@ async function clickPill(page, cmd) {
   const up = uploads[uploads.length - 1] || {};
   check('hele opname met sleutel, toestemming en nadictaat verstuurd', up.bytes > 10000 && up.key === 'goed' && up.consent && up.nadictaat, up);
 
-  console.log('G. Invoegen in de velden');
+  console.log('G. Zijpaneel en bolletje tonen hetzelfde verslag');
+  const side = await ctx.newPage();
+  side.on('pageerror', (e) => errs.push('panel: ' + e.message));
+  await side.goto(`chrome-extension://${id}/sidepanel/sidepanel.html`);
+  await sleep(700);
+  // In this test the panel is itself a tab; let "active tab" mean the consult tab.
+  await side.evaluate((b) => {
+    const q = chrome.tabs.query.bind(chrome.tabs);
+    chrome.tabs.query = async (o) => (o && o.active ? q({ url: b + '/consult' }) : q(o));
+  }, base);
+  check('zijpaneel toont hetzelfde verslag met decisief',
+    (await side.$eval('.soep-text[data-key="s"]', (e) => e.textContent)) === REPORT.soep.s &&
+    (await side.textContent('#soep-decisief')).includes('R74'));
+  await side.evaluate(() => {
+    const s = document.querySelector('.soep-text[data-key="s"]');
+    s.textContent = 'Sinds 3 dagen keelpijn, aangepast in het zijpaneel.';
+    s.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await sleep(900);
+  const edited = await sw.evaluate(() => chrome.storage.session.get('svConsult').then((r) => r.svConsult.result.soep.s));
+  check('aanpassing in het zijpaneel gaat mee naar het verslag', edited.includes('aangepast in het zijpaneel'), edited);
+  await tab.bringToFront();
+
+  console.log('H. Invoegen in de velden via het bolletje');
   await clickPill(tab, 'insert');
   await sleep(700);
   p = await pill(tab);
@@ -267,7 +322,7 @@ async function clickPill(page, cmd) {
   await clickPill(tab, 'insert');
   await sleep(900);
   const fields = await tab.evaluate(() => ['S', 'O', 'E', 'ICPC', 'P'].map((f) => document.getElementById(f).value));
-  check('S, O, E, ICPC en P ingevuld', fields[0].includes('keelpijn') && fields[1].includes('Keel rood') &&
+  check('S, O, E, ICPC en P ingevuld, met de aangepaste S', fields[0].includes('aangepast in het zijpaneel') && fields[1].includes('Keel rood') &&
     fields[2].includes('faryngitis') && fields[3] === 'R74' && fields[4].includes('Paracetamol'), fields);
   p = await pill(tab);
   check('bolletje weg en icoon leeg na invoegen', !p.visible && (await badge()) === '', p && p.text);
@@ -276,7 +331,7 @@ async function clickPill(page, cmd) {
     await pop.isVisible('#btn-start') && await pop.isVisible('#btn-last'));
   await pop.close();
 
-  console.log('H. Server onbereikbaar tijdens verwerken');
+  console.log('I. Server onbereikbaar tijdens verwerken');
   failUploads = true;
   pop = await openPopup();
   const closed2 = pop.waitForEvent('close', { timeout: 5000 }).then(() => true, () => false);
@@ -297,9 +352,39 @@ async function clickPill(page, cmd) {
   check('dezelfde opname opnieuw verstuurd', uploads.length >= 3 && uploads[uploads.length - 1].bytes === uploads[uploads.length - 2].bytes);
   pop = await openPopup();
   check('popup toont het verslag', (await pop.textContent('#soep-e')).includes('faryngitis') && (await pop.textContent('#decisief-text')).includes('R74'));
-  await pop.click('#btn-new-consult');
+  await pop.close();
+
+  console.log('J. Invoegen via het zijpaneel ruimt het bolletje ook op');
+  for (const f of ['S', 'O', 'E', 'ICPC', 'P']) await tab.fill('#' + f, '');
+  await tab.click('#S');
+  await sleep(300);
+  await side.bringToFront();
+  check('zijpaneel toont het nieuwe verslag', (await side.$eval('.soep-text[data-key="s"]', (e) => e.textContent)) === REPORT.soep.s);
+  await side.click('#btn-soep-insert');
+  await sleep(1000);
+  check('ingevoegd vanuit het zijpaneel', (await tab.inputValue('#E')).includes('faryngitis'));
+  check('bolletje en icoon opgeruimd', !(await pill(tab)).visible && (await badge()) === '');
+
+  console.log('K. Dicteren: paneel en pagina lopen gelijk');
+  await tab.bringToFront();
+  await side.evaluate(() => {
+    window.__gestopt = false;
+    window.toggleDictation = function () { window.__gestopt = true; setState('idle'); };
+    setState('recording');
+  });
+  await sleep(700);
+  let lp = await listenPill(tab);
+  check('dicteren in het zijpaneel toont het opnameteken op de pagina', lp.visible && lp.text.includes('luistert'), lp);
+  await listenPill(tab, true);
+  await sleep(700);
+  check('Stop op de pagina stopt het dicteren in het zijpaneel', await side.evaluate(() => window.__gestopt));
+  lp = await listenPill(tab);
+  check('opnameteken weg na stoppen', !lp.visible, lp);
+  pop = await openPopup();
+  await pop.evaluate(() => chrome.runtime.sendMessage({ action: 'SV_QUICK_EVENT', type: 'final', text: 'Snel gedicteerd met Alt+Shift+D.' }));
   await sleep(500);
-  check('"Klaar" ruimt bolletje en icoon op', !(await pill(tab)).visible && (await badge()) === '');
+  await pop.close();
+  check('snel dicteren (Alt+Shift+D) verschijnt ook in het zijpaneel', (await side.inputValue('#text')).includes('Snel gedicteerd'));
 
   check('geen JS-fouten', errs.length === 0, errs);
   console.log(`\n${ok} geslaagd, ${fail} mislukt`);

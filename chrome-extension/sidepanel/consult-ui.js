@@ -18,6 +18,8 @@ window.SVConsultUI = (function () {
   var huidig = {};        // laatst bekende svConsult
   var klok = null;
   var getoondOp = null;   // "at" van het verslag of de fout die al getoond is
+  var gekoppeld = false;  // staat het consultverslag nu in het SOEP-blok?
+  var bewerkTimer = null;
 
   function bezig() {
     return huidig.state === 'recording' || huidig.state === 'processing';
@@ -66,6 +68,7 @@ window.SVConsultUI = (function () {
       getoondOp = huidig.at;
       var data = huidig.result;
       renderSoep(data.soep || {});
+      gekoppeld = true;
       var dec = $('soep-decisief');
       dec.textContent = data.decisief || '';
       dec.classList.toggle('hidden', !data.decisief);
@@ -128,5 +131,27 @@ window.SVConsultUI = (function () {
     controleer();
   });
 
-  return { bezig: bezig };
+  // Aanpassingen in het SOEP-blok gaan terug naar het verslag, zodat
+  // "Invoegen" in het bolletje en de popup dezelfde tekst gebruiken.
+  function stuurAanpassing() {
+    if (!gekoppeld || huidig.state !== 'results') return;
+    var soep = {};
+    document.querySelectorAll('#soep-rows .soep-text').forEach(function (n) { soep[n.dataset.key] = n.innerText.trim(); });
+    soep.icpc_code = $('icpc-code').innerText.trim();
+    chrome.runtime.sendMessage({ action: 'SV_CONSULT_CMD', cmd: 'edit', soep: soep }).catch(function () {});
+  }
+  function bijBewerken(e) {
+    if (!gekoppeld || !e.target.closest || !e.target.closest('.soep-text, #icpc-code')) return;
+    clearTimeout(bewerkTimer);
+    bewerkTimer = setTimeout(stuurAanpassing, 400);
+  }
+  document.getElementById('soep').addEventListener('input', bijBewerken);
+
+  return {
+    bezig: bezig,
+    /** Het SOEP-blok toont nu iets anders dan het consultverslag. */
+    losgekoppeld: function () { gekoppeld = false; },
+    /** Het consultverslag is via het zijpaneel ingevoegd: bolletje en ✓ weg. */
+    ingevoegd: function () { if (gekoppeld && huidig.state === 'results') opdracht('dismiss'); },
+  };
 })();

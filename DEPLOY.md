@@ -190,6 +190,12 @@ S-regel van het consult en kies **Invoegen** (S, O, E, ICPC en P worden gevuld),
 zijpaneel met Thuisarts en patiëntinstructie. Mislukt het versturen, dan blijft de opname bewaard tot
 **Opnieuw versturen**. Na een browserherstart of een update van de extensie is een lopende opname wel weg.
 
+**Popup, bolletje en zijpaneel zijn één geheel.** Ze tonen hetzelfde consult en hetzelfde verslag.
+Pas je het verslag in het zijpaneel aan, dan voegt "Invoegen" in het bolletje of de popup die aangepaste
+tekst in. Voeg je in via het zijpaneel, dan verdwijnen bolletje en ✓ ook. Dicteer je in het zijpaneel,
+dan staat op de pagina hetzelfde opnameteken met Stop als bij Alt+Shift+D; en wat je met Alt+Shift+D
+dicteert, verschijnt ook in het zijpaneel.
+
 **Dicteren zonder zijpaneel:** klik in het Bricks-veld en druk **Alt+Shift+D** (of klik op het
 extensie-icoon en dan "Dicteer in veld"). Een label rechtsonder toont dat VitaScribe luistert; nogmaals
 Alt+Shift+D of "Stop" beëindigt het. Lukt invoegen niet, dan staat het dictaat op het klembord.

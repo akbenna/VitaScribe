@@ -235,7 +235,11 @@ const sidePanelPorts = new Set();
 chrome.runtime.onConnect.addListener((port) => {
   if (port.name !== 'sv-sidepanel') return;
   sidePanelPorts.add(port);
-  port.onDisconnect.addListener(() => sidePanelPorts.delete(port));
+  port.onDisconnect.addListener(() => {
+    sidePanelPorts.delete(port);
+    // Panel closed while dictating: its microphone is gone, so is the pill.
+    if (sidePanelPorts.size === 0) panelDictationState('idle');
+  });
 });
 
 // Alt+Shift+D: with the side panel open it toggles the panel's dictation;
@@ -248,6 +252,35 @@ chrome.commands.onCommand.addListener((command, tab) => {
   }
   if (tab && tab.id !== undefined) quickToggle(tab.id);
 });
+
+// ── Dictating in the side panel shows the same pill on the page ──
+// So the page always shows when the microphone is on, whichever way the
+// doctor dictates, and Stop on the page stops the panel too.
+
+async function panelDictationTab() {
+  const { svPanelDictation } = await chrome.storage.session.get('svPanelDictation');
+  return svPanelDictation && svPanelDictation.tabId !== undefined ? svPanelDictation.tabId : null;
+}
+
+async function panelDictationState(state) {
+  let tabId = await panelDictationTab();
+  if (tabId === null && state !== 'idle') {
+    const { svTarget } = await chrome.storage.session.get('svTarget');
+    if (svTarget) tabId = svTarget.tabId;
+    else {
+      const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+      tabId = tab ? tab.id : null;
+    }
+  }
+  if (tabId === null) return;
+  if (state === 'idle') {
+    await chrome.storage.session.remove('svPanelDictation');
+    pill(tabId, 'idle');
+    return;
+  }
+  await chrome.storage.session.set({ svPanelDictation: { tabId } });
+  pill(tabId, state === 'recording' ? 'listening' : state === 'stopping' ? 'stopping' : 'connecting', 'via zijpaneel');
+}
 
 // ── Quick dictation: no panel, text goes straight into the clicked field ──
 
@@ -374,9 +407,18 @@ chrome.runtime.onMessage.addListener((msg, sender) => {
   if (msg.action === 'SV_QUICK_EVENT') {
     handleQuickEvent(msg);
   } else if (msg.action === 'SV_QUICK_TOGGLE') {
-    // From the status pill (sender.tab) or the popup (msg.tabId).
+    // From the status pill (sender.tab) or the popup (msg.tabId). While the
+    // side panel dictates, the pill's Stop stops the panel.
     const tabId = msg.tabId !== undefined ? msg.tabId : sender.tab && sender.tab.id;
-    if (tabId !== undefined) quickToggle(tabId);
+    panelDictationTab().then((panelTab) => {
+      if (panelTab !== null && sidePanelPorts.size > 0) {
+        sidePanelPorts.forEach((port) => port.postMessage({ action: 'SV_TOGGLE_DICTATION' }));
+      } else if (tabId !== undefined) {
+        quickToggle(tabId);
+      }
+    });
+  } else if (msg.action === 'SV_PANEL_DICTATION') {
+    panelDictationState(msg.state);
   }
   return false;
 });
@@ -563,6 +605,15 @@ async function consultCommand(cmd, sender, msg) {
     return { ok: true };
   }
   if (cmd === 'pill') return consultPillState(await consultGet());
+  if (cmd === 'edit') {
+    // The doctor changed the report in the side panel: "Invoegen" on the pill
+    // and in the popup must use that version, not the original.
+    const c = await consultGet();
+    if (c.state !== 'results' || !c.result || !msg.soep) return { ok: false };
+    const result = Object.assign({}, c.result, { soep: Object.assign({}, c.result.soep, msg.soep) });
+    await consultUpdate({ result });
+    return { ok: true };
+  }
   if (cmd === 'options') { chrome.runtime.openOptionsPage(); return { ok: true }; }
   const action = { stop: 'SV_CONSULT_STOP', nadictaat: 'SV_CONSULT_NADICTAAT', status: 'SV_CONSULT_STATUS', retry: 'SV_CONSULT_RETRY' }[cmd];
   if (!action) return { ok: false };
