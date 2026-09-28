@@ -25,10 +25,14 @@
 
   <section id="consult" class="consult">
     <div id="consult-idle" class="consult-idle">
-      <label class="consult-consent"><input type="checkbox" id="consult-consent"> Patiënt geeft toestemming voor opname en AI-verslag</label>
-      <button id="btn-consult" class="btn consult-start" title="Het hele consult opnemen; loopt door als je naar een andere pagina gaat">
+      <button id="btn-consult" class="btn consult-start" title="Het hele consult opnemen (Alt+Shift+C); loopt door op andere pagina's" aria-describedby="consult-consent-note">
         <span class="rec-dot" aria-hidden="true"></span> Consult opnemen
       </button>
+      <p id="consult-consent-note" class="consult-consent">Starten = de patiënt geeft toestemming voor opname en AI-verslag.</p>
+      <div id="consult-err" class="consult-err hidden">
+        <button id="btn-consult-resend" class="btn small primary hidden">Opnieuw versturen</button>
+        <button id="btn-consult-settings" class="btn small hidden">Instellingen</button>
+      </div>
     </div>
     <div id="consult-rec" class="consult-rec hidden" role="status">
       <span class="rec-dot live" aria-hidden="true"></span>

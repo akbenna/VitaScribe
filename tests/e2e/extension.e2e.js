@@ -148,10 +148,8 @@ function check(name, cond, extra) {
   pop.on('pageerror', (e) => errs.push(e.message));
   await pop.goto(`chrome-extension://${id}/popup/popup.html`);
   await sleep(500);
-  check('toestemmingsvinkje bij consultopname', await pop.isVisible('#consent-recording'));
-  await pop.click('#btn-start');
-  await sleep(400);
-  check('opname start niet zonder toestemming', (await pop.textContent('#status-text')).includes('toestemming'));
+  check('startknop bevestigt toestemming (tekst bij de knop)', (await pop.textContent('#consent-note')).includes('toestemming'));
+  check('consult-flow getest in tests/e2e/consult.e2e.js', fs.existsSync(path.join(HERE, 'consult.e2e.js')));
   check('knop "Brief schrijven"', await pop.isVisible('#btn-letters'));
 
   check('geen JS-fouten', errs.length === 0, errs);

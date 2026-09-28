@@ -164,13 +164,17 @@ PERMISSIONS
     "Uit schermafdruk (klembord)" (from screenshot on clipboard) to read an
     image of a referral letter they copied themselves.
 
-CONSULT RECORDING (side panel)
-  The side panel records a consultation only after the doctor ticks that the
-  patient consents. The recording runs in the offscreen document, so it keeps
-  going when the doctor opens another page or closes the panel; the toolbar
-  badge shows REC meanwhile. Audio is streamed in small chunks over a
-  WebSocket to the practice's server, which transcribes it and returns a
-  draft note. It can be tested on any page with a microphone.
+CONSULT RECORDING
+  Click the toolbar icon and the record button (or press Alt+Shift+C). The
+  button text states that starting confirms the patient's consent. The key
+  is checked first. The recording runs in the offscreen document, so it
+  keeps going when the doctor opens another page; the toolbar badge shows
+  REC and a small draggable pill on the page shows the time and Stop. After
+  Stop the pill offers "Invoegen" (fill the note into the clicked field and
+  the ones after it) and "Bekijk" (side panel). Audio is streamed in small
+  chunks over a WebSocket to the practice's server, which transcribes it and
+  returns a draft note. The pill receives only its state, never patient text.
+  It can be tested on any page with a microphone.
 
 DATA
   Audio and text go only to the server configured by the practice. Speech

@@ -227,3 +227,16 @@ body {
 /* Empty state */
 .empty-state { text-align: center; padding: 24px 0; }
 .empty-state p { margin-bottom: 12px; color: var(--text-secondary); }
+
+/* Consult: one start button that also confirms consent */
+.consent-note { font-size: 11px; color: #6b4a00; background: #fff7e6; border: 1px solid #f0d9a8;
+  border-radius: 8px; padding: 5px 8px; margin: 6px 0; text-align: left; }
+.no-key { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px;
+  padding: 6px 8px; font-size: 12px; text-align: left; color: #92400e; background: #fffbeb;
+  border: 1px solid #fcd34d; border-radius: 8px; }
+.no-key.hidden, .btn-link.hidden, #btn-resend.hidden, #btn-error-settings.hidden { display: none; }
+.btn-small { padding: 4px 10px; font-size: 12px; }
+.btn-link { background: none; border: 0; color: var(--primary); text-decoration: underline; font-size: 12px;
+  cursor: pointer; margin-top: 6px; }
+.result-actions { flex-wrap: wrap; }
+.error-area .btn { margin: 4px 2px; }

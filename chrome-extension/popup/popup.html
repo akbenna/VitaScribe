@@ -30,16 +30,20 @@
     <!-- State: Idle (ready to record) -->
     <section id="state-idle" class="state">
       <div class="record-area">
-        <label class="consent" style="display:flex;gap:6px;align-items:flex-start;font-size:12px;margin-bottom:10px;text-align:left;background:#fff7e6;border:1px solid #f0d9a8;border-radius:8px;padding:6px 8px;color:#6b4a00">
-          <input type="checkbox" id="consent-recording"> Patiënt is geïnformeerd en geeft toestemming voor opname en AI-verslag
-        </label>
-        <button id="btn-start" class="btn-record" title="Start opname">
+        <div id="no-key" class="no-key hidden">
+          Nog geen VitaScribe-sleutel ingesteld.
+          <button id="btn-no-key" class="btn btn-secondary btn-small">Instellingen</button>
+        </div>
+        <button id="btn-start" class="btn-record" title="Consult opnemen (Alt+Shift+C)" aria-describedby="consent-note">
           <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor">
             <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
             <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
           </svg>
         </button>
-        <p class="hint">Klik om consult op te nemen</p>
+        <p class="hint"><strong>Consult opnemen</strong> · Alt+Shift+C</p>
+        <p id="consent-note" class="consent-note">Door te starten bevestig je dat de patiënt toestemming geeft voor opname en AI-verslag.</p>
+        <p class="hint">De opname loopt door als je naar een andere pagina gaat. Stoppen kan met het bolletje op de pagina, hier of met Alt+Shift+C.</p>
+        <button id="btn-last" class="btn-link hidden">Laatste verslag tonen</button>
         <button id="btn-quick-dictate" class="btn btn-primary" style="margin-top:12px">Dicteer in veld (Alt+Shift+D)</button>
         <p class="hint" style="margin-top:4px">Klik eerst in het Bricks-veld</p>
         <button id="btn-dictate" class="btn btn-secondary" style="margin-top:8px">Zijpaneel openen</button>
@@ -48,20 +52,22 @@
       </div>
     </section>
 
-    <!-- State: Recording -->
+    <!-- State: Recording (runs in the background; this only shows it) -->
     <section id="state-recording" class="state hidden">
       <div class="recording-area">
         <div class="recording-indicator">
           <span class="pulse-dot"></span>
           <span id="timer">00:00</span>
         </div>
-        <canvas id="waveform" width="340" height="48"></canvas>
+        <p id="rec-label" class="hint">Opname loopt</p>
         <div class="recording-actions">
+          <button id="btn-nadicteer" class="btn btn-secondary" title="De patiënt is weg: dicteer nog onderzoek en beleid">Nadicteren</button>
           <button id="btn-stop" class="btn btn-danger">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>
             Stop &amp; verwerk
           </button>
         </div>
+        <p class="hint">Je kunt dit venster gewoon sluiten; de opname loopt door.</p>
       </div>
     </section>
 
@@ -69,10 +75,7 @@
     <section id="state-processing" class="state hidden">
       <div class="processing-area">
         <div class="spinner"></div>
-        <p id="processing-step">Audio wordt verwerkt...</p>
-        <div class="progress-bar">
-          <div id="progress-fill" class="progress-fill"></div>
-        </div>
+        <p id="processing-step">Verslag wordt gemaakt…</p>
       </div>
     </section>
 
@@ -109,11 +112,12 @@
       </div>
 
       <div class="result-actions">
-        <button id="btn-push-bricks" class="btn btn-primary">
+        <button id="btn-push-bricks" class="btn btn-primary" title="Klik eerst in de S-regel van het consult in Bricks">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12l7-7 7 7"/></svg>
-          Push naar Bricks
+          Invoegen in Bricks
         </button>
-        <button id="btn-new-consult" class="btn btn-secondary">Nieuw consult</button>
+        <button id="btn-open-panel" class="btn btn-secondary" title="Aanpassen, Thuisarts, patiëntinstructie">Openen in zijpaneel</button>
+        <button id="btn-new-consult" class="btn btn-secondary">Klaar</button>
       </div>
     </section>
 
@@ -121,7 +125,9 @@
     <section id="state-error" class="state hidden">
       <div class="error-area">
         <p id="error-message"></p>
-        <button id="btn-retry" class="btn btn-secondary">Opnieuw proberen</button>
+        <button id="btn-resend" class="btn btn-primary hidden">Opnieuw versturen</button>
+        <button id="btn-error-settings" class="btn btn-secondary hidden">Instellingen</button>
+        <button id="btn-retry" class="btn btn-secondary">Sluiten</button>
       </div>
     </section>
   </div>

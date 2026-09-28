@@ -383,42 +383,120 @@ chrome.runtime.onMessage.addListener((msg, sender) => {
 
 // ── Consult recording ──
 // The consult is recorded in the offscreen document, so it keeps running when
-// the doctor opens another page, switches tabs or closes the side panel. The
-// state lives in chrome.storage.session (memory only, gone when the browser
-// closes); the side panel and popup show it from there. The toolbar badge
-// shows REC on every page while the microphone is on.
+// the doctor opens another page, switches tabs, closes the popup or never
+// opens the side panel at all. Start: popup, side panel or Alt+Shift+C.
+//
+// Where the doctor sees it:
+//  - the toolbar icon: REC while recording, ✓ when the report is ready, ! on
+//    an error;
+//  - a small pill on the page (content/dictation-target.js) with the time and
+//    Stop, and afterwards Invoegen / Bekijk. It follows the doctor to every
+//    page in every tab. The pill gets only its state, never patient text;
+//  - popup and side panel read the full state from chrome.storage.session
+//    (memory only; gone when the browser closes).
 
+const CONSULT_PREFLIGHT_MS = 4000;
 let consultWrites = Promise.resolve();
 
+async function consultGet() {
+  return (await chrome.storage.session.get('svConsult')).svConsult || {};
+}
+
+// What the page pill may know: state and wording, no patient data.
+function consultPillState(c) {
+  if (!c || !c.state || c.dismissed) return { state: 'idle' };
+  return {
+    state: c.state, startedAt: c.startedAt || null, label: c.label || '', step: c.step || '',
+    message: c.state === 'error' ? (c.message || '') : '', code: c.code || '', retry: !!c.retry,
+  };
+}
+
+async function consultBroadcast(c) {
+  const pillState = consultPillState(c);
+  const tabs = await chrome.tabs.query({}).catch(() => []);
+  for (const tab of tabs) {
+    if (!tab.id || !/^https?:/.test(tab.url || '')) continue;
+    chrome.tabs.sendMessage(tab.id, { action: 'SV_CONSULT_PILL', pill: pillState }, { frameId: 0 }).catch(() => {});
+  }
+}
+
+function consultBadge(c) {
+  const st = c && !c.dismissed ? c.state : 'idle';
+  const look = {
+    recording: ['REC', '#dc2626'],
+    processing: ['…', '#64748b'],
+    results: ['✓', '#059669'],
+    error: ['!', '#d97706'],
+  }[st];
+  chrome.action.setBadgeText({ text: look ? look[0] : '' }).catch(() => {});
+  if (look) chrome.action.setBadgeBackgroundColor({ color: look[1] }).catch(() => {});
+}
+
+// All state changes go through here, one after the other.
 function consultUpdate(patch, replace) {
   consultWrites = consultWrites.then(async () => {
-    const cur = replace ? {} : ((await chrome.storage.session.get('svConsult')).svConsult || {});
-    await chrome.storage.session.set({ svConsult: Object.assign(cur, patch) });
+    const next = Object.assign(replace ? {} : await consultGet(), patch);
+    await chrome.storage.session.set({ svConsult: next });
+    consultBadge(next);
+    await consultBroadcast(next);
   }).catch(() => {});
   return consultWrites;
 }
 
-function consultBadge(recording) {
-  chrome.action.setBadgeText({ text: recording ? 'REC' : '' }).catch(() => {});
-  if (recording) chrome.action.setBadgeBackgroundColor({ color: '#dc2626' }).catch(() => {});
+async function consultConfig() {
+  const cfg = await SVInstellingen.lees(['apiUrl', 'apiKey', 'micDevice', 'llmProvider', 'sttProvider', 'consultLive']);
+  return {
+    apiUrl: (cfg.apiUrl || 'http://localhost:8002').replace(/\/$/, ''),
+    apiKey: (cfg.apiKey || '').trim(),
+    micDevice: cfg.micDevice || '',
+    llmProvider: cfg.llmProvider || '',
+    sttProvider: cfg.sttProvider || '',
+    consultLive: cfg.consultLive || '',
+    praktijk: await SVPraktijk.nummers(),
+  };
+}
+
+// Is the key accepted? Checked before the microphone opens, so a doctor never
+// records a whole consult that the server then refuses. Without network the
+// recording still starts: it is kept and can be sent again afterwards.
+async function consultPreflight(config) {
+  const headers = { 'X-API-Key': config.apiKey };
+  if (config.praktijk.length) headers['X-Bricks-Praktijk'] = config.praktijk.join(',');
+  let resp;
+  try {
+    resp = await fetch(config.apiUrl + '/api/v1/providers', { headers, signal: AbortSignal.timeout(CONSULT_PREFLIGHT_MS) });
+  } catch (e) {
+    return { ok: true, offline: true };
+  }
+  if (resp.status === 401 || resp.status === 403) {
+    const detail = await resp.json().then((j) => j && j.detail).catch(() => '');
+    const specific = typeof detail === 'string' && detail && !/ongeldige|ontbre/i.test(detail);
+    return {
+      ok: false, code: 'key',
+      message: specific ? detail : 'De server accepteert de VitaScribe-sleutel niet. Controleer hem in Instellingen.',
+    };
+  }
+  return { ok: true };
 }
 
 async function consultStart() {
+  const cur = await consultGet();
+  if (cur.state === 'recording' || cur.state === 'processing') {
+    return { ok: false, message: 'Er loopt al een consultopname.' };
+  }
+  const config = await consultConfig();
+  if (!config.apiKey) {
+    return { ok: false, code: 'key', message: 'Er is nog geen VitaScribe-sleutel ingesteld. Vul hem in bij Instellingen.' };
+  }
+  const check = await consultPreflight(config);
+  if (!check.ok) return check;
   await ensureOffscreen();
-  const cfg = await SVInstellingen.lees(['apiUrl', 'apiKey', 'micDevice', 'llmProvider', 'sttProvider', 'consultLive']);
-  const res = await toOffscreen('SV_CONSULT_START', {
-    config: {
-      apiUrl: (cfg.apiUrl || 'http://localhost:8002').replace(/\/$/, ''),
-      apiKey: (cfg.apiKey || '').trim(),
-      micDevice: cfg.micDevice || '',
-      llmProvider: cfg.llmProvider || '',
-      sttProvider: cfg.sttProvider || '',
-      consultLive: cfg.consultLive || '',
-      praktijk: await SVPraktijk.nummers(),
-    },
-  });
+  const res = await toOffscreen('SV_CONSULT_START', { config });
   if (res && res.code === 'mic-permission') {
     chrome.tabs.create({ url: chrome.runtime.getURL('sidepanel/mic-permission.html') });
+  }
+  if (res && res.ok) {
+    await consultUpdate({ state: 'recording', startedAt: res.startedAt, label: 'Opname loopt', nadictaat: false }, true);
   }
   return res || { ok: false, message: 'De opname kon niet starten. Probeer het opnieuw.' };
 }
@@ -426,51 +504,111 @@ async function consultStart() {
 function handleConsultEvent(msg) {
   switch (msg.type) {
     case 'recording':
-      consultBadge(true);
-      consultUpdate({ state: 'recording', startedAt: msg.startedAt, label: msg.label, nadictaat: false }, true);
-      break;
+      return consultUpdate({ state: 'recording', startedAt: msg.startedAt, label: msg.label, nadictaat: false }, true);
     case 'label':
-      consultUpdate(msg.nadictaat ? { label: msg.label, nadictaat: true } : { label: msg.label });
-      break;
+      return consultUpdate(msg.nadictaat ? { label: msg.label, nadictaat: true } : { label: msg.label });
     case 'processing':
-      consultBadge(false);
-      consultUpdate({ state: 'processing', step: msg.step });
-      break;
+      return consultUpdate({ state: 'processing', step: msg.step, startedAt: null });
     case 'result':
-      consultBadge(false);
-      consultUpdate({ state: 'results', result: msg.data, at: Date.now() }, true);
-      break;
+      return consultUpdate({ state: 'results', result: msg.data, at: Date.now() }, true);
     case 'error':
-      consultBadge(false);
-      consultUpdate({ state: 'error', message: msg.message, at: Date.now() }, true);
-      break;
+      return consultUpdate({ state: 'error', message: msg.message, code: msg.code || '', retry: !!msg.retry, at: Date.now() }, true);
   }
+  return null;
 }
 
-chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+function consultValues(result) {
+  const soep = (result && result.soep) || {};
+  const values = { s: soep.s, o: soep.o, e: soep.e, p: soep.p };
+  if (soep.icpc_code && values.e && values.e.indexOf(soep.icpc_code) === -1) values.e += ' (' + soep.icpc_code + ')';
+  return { values, icpc: soep.icpc_code || '' };
+}
+
+// Invoegen: into the fields the doctor mapped, else from the clicked S line on.
+async function consultInsert(tabId) {
+  const c = await consultGet();
+  if (c.state !== 'results' || !c.result) return { ok: false, message: 'Er is geen verslag om in te voegen.' };
+  if (tabId === undefined || tabId === null) return { ok: false, message: 'Open het consult in Bricks.' };
+  const { values, icpc } = consultValues(c.result);
+  const res = await fillSoep(tabId, values, icpc);
+  if (!res.filled.length) {
+    return { ok: false, message: 'Klik eerst in de S-regel van het consult en kies dan opnieuw Invoegen.' };
+  }
+  await consultUpdate({ dismissed: true });
+  return {
+    ok: true,
+    message: res.missing.length ? 'Ingevoegd; niet gevonden: ' + res.missing.join(', ').toUpperCase() + '.' : 'Verslag ingevoegd.',
+  };
+}
+
+// "Bekijk": the side panel when Chrome allows it from here, otherwise the popup.
+async function consultShow(sender) {
+  const tab = sender && sender.tab;
+  try {
+    if (tab) { await chrome.sidePanel.open({ tabId: tab.id }); return { ok: true, where: 'panel' }; }
+  } catch (e) { /* no user gesture reached us */ }
+  try { await chrome.action.openPopup(); return { ok: true, where: 'popup' }; } catch (e) { /* not supported */ }
+  return { ok: false, message: 'Klik op het VitaScribe-icoon rechtsboven om het verslag te zien.' };
+}
+
+async function consultCommand(cmd, sender, msg) {
+  if (cmd === 'start') return consultStart();
+  if (cmd === 'insert') return consultInsert(msg.tabId !== undefined ? msg.tabId : sender.tab && sender.tab.id);
+  if (cmd === 'show') return consultShow(sender);
+  if (cmd === 'dismiss') {
+    const c = await consultGet();
+    // Never dismiss a running recording from a pill's ×.
+    if (c.state === 'recording' || c.state === 'processing') return { ok: false };
+    await consultUpdate({ dismissed: true });
+    return { ok: true };
+  }
+  if (cmd === 'pill') return consultPillState(await consultGet());
+  if (cmd === 'options') { chrome.runtime.openOptionsPage(); return { ok: true }; }
+  const action = { stop: 'SV_CONSULT_STOP', nadictaat: 'SV_CONSULT_NADICTAAT', status: 'SV_CONSULT_STATUS', retry: 'SV_CONSULT_RETRY' }[cmd];
+  if (!action) return { ok: false };
+  if (!(await chrome.offscreen.hasDocument())) {
+    if (cmd === 'status') return { active: false };
+    // Browser restarted or the extension was updated mid-consult.
+    await consultUpdate({ state: 'error', message: 'De opname was al gestopt (browser of extensie opnieuw gestart).', at: Date.now() }, true);
+    return { ok: false };
+  }
+  if (cmd === 'stop') await consultUpdate({ state: 'processing', step: 'Opname wordt afgerond…', startedAt: null });
+  return (await toOffscreen(action)) || { ok: false };
+}
+
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.action === 'SV_CONSULT_EVENT') {
     handleConsultEvent(msg);
     return false;
   }
   if (msg.action !== 'SV_CONSULT_CMD') return false;
-  if (msg.cmd === 'start') {
-    consultStart().then(sendResponse);
-    return true;
-  }
-  const action = { stop: 'SV_CONSULT_STOP', nadictaat: 'SV_CONSULT_NADICTAAT', status: 'SV_CONSULT_STATUS' }[msg.cmd];
-  if (!action) return false;
-  chrome.offscreen.hasDocument().then((has) => {
-    if (!has) {
-      if (msg.cmd === 'status') { sendResponse({ active: false }); return; }
-      // Browser restarted or the extension reloaded mid-consult: nothing left to stop.
-      consultBadge(false);
-      consultUpdate({ state: 'error', message: 'De opname was al gestopt (browser of extensie herstart).', at: Date.now() }, true);
-      sendResponse({ ok: false });
-      return;
-    }
-    toOffscreen(action).then(sendResponse);
-  });
+  consultCommand(msg.cmd, sender, msg).then(sendResponse, (e) => sendResponse({ ok: false, message: String(e && e.message || e) }));
   return true;
+});
+
+// Alt+Shift+C: start or stop the consult from any page. Starting with the
+// shortcut confirms the patient's consent, as the start button does.
+chrome.commands.onCommand.addListener(async (command) => {
+  if (command !== 'toggle-consult') return;
+  const c = await consultGet();
+  if (c.state === 'recording') { consultCommand('stop', {}, {}); return; }
+  if (c.state === 'processing') return;
+  const res = await consultStart();
+  if (!res.ok) {
+    if (res.code === 'key') chrome.runtime.openOptionsPage();
+    await consultUpdate({ state: 'error', message: res.message || 'De opname kon niet starten.', code: res.code || '', at: Date.now() }, true);
+  }
+});
+
+// After an update the offscreen recorder is gone: never show a "running"
+// recording that no longer exists.
+chrome.runtime.onInstalled.addListener(async () => {
+  const c = await consultGet();
+  if (c.state === 'recording' || c.state === 'processing') {
+    await consultUpdate({ state: 'error', message: 'De opname is gestopt door een update van VitaScribe.', at: Date.now() }, true);
+  } else {
+    consultBadge(c);
+  }
 });
 
 // ── S/O/E/P field mapping ──

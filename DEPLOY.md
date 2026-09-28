@@ -179,11 +179,16 @@ Kies bij Railway een EU-regio voor de service, zodat audio de EU niet verlaat en
 **Eerste gebruik:** bij de eerste start opent een tabblad dat eenmalig om microfoontoestemming vraagt
 (Chrome kan dat niet vanuit het zijpaneel zelf). Na een update van de extensie: ververs het Bricks-tabblad.
 
-**Consult opnemen:** in het zijpaneel (of de popup) vink je de toestemming van de patiënt aan en kies
-je "Consult opnemen". De opname loopt in de achtergrond van de extensie: hij gaat door als je naar een
-andere pagina gaat, van tabblad wisselt of het zijpaneel sluit. Het extensie-icoon toont dan **REC**, en
-het zijpaneel alleen een klein balkje met tijd, "Nadicteren" en "Stop". Na stop verschijnt het verslag in
-het SOEP-blok met alle knoppen. De zwevende knop op de Bricks-pagina bestaat niet meer.
+**Consult opnemen:** klik op het VitaScribe-icoon en op de opnameknop, of druk **Alt+Shift+C**. Starten
+bevestigt dat de patiënt toestemming geeft (dat staat bij de knop). Vooraf controleert VitaScribe de
+sleutel; klopt die niet, dan start er geen opname. De popup gaat dicht en het zijpaneel blijft dicht.
+Tijdens de opname staat **REC** op het icoon en een klein bolletje met de tijd, "Nadicteren" en "Stop" op
+de pagina. Het bolletje gaat mee naar elke pagina en elk tabblad en kun je wegslepen; het onthoudt zijn
+plek. De opname loopt in de achtergrond van de extensie door, ook als je wegklikt.
+Na "Stop" (bolletje, popup, zijpaneel of Alt+Shift+C) toont het bolletje **Verslag klaar**: klik in de
+S-regel van het consult en kies **Invoegen** (S, O, E, ICPC en P worden gevuld), of **Bekijk** voor het
+zijpaneel met Thuisarts en patiëntinstructie. Mislukt het versturen, dan blijft de opname bewaard tot
+**Opnieuw versturen**. Na een browserherstart of een update van de extensie is een lopende opname wel weg.
 
 **Dicteren zonder zijpaneel:** klik in het Bricks-veld en druk **Alt+Shift+D** (of klik op het
 extensie-icoon en dan "Dicteer in veld"). Een label rechtsonder toont dat VitaScribe luistert; nogmaals

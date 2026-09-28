@@ -22,6 +22,9 @@ var CONSULT_CHUNK_MS = 250;
 var CONSULT_LIVE_WAIT_MS = 90000;
 
 var consult = null;   // { config, stream, recorder, chunks, live, startedAt, nadictaatVanaf, afgebroken }
+// A recording whose report could not be made (server unreachable). Kept in
+// memory only, so the doctor can send it again; gone with the next consult.
+var consultPending = null;   // { config, blob, mime, nadictaatVanaf }
 
 function consultEmit(type, extra) {
   var msg = { action: 'SV_CONSULT_EVENT', type: type };
@@ -39,6 +42,7 @@ function consultHeaders(config) {
 async function consultStart(config) {
   if (consult) return { ok: false, message: 'Er loopt al een consultopname.' };
   if (typeof session !== 'undefined' && session) return { ok: false, message: 'Stop eerst het dicteren (Alt+Shift+D).' };
+  consultPending = null;
 
   var constraints = { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true };
   if (config.micDevice) constraints.deviceId = { exact: config.micDevice };
@@ -96,7 +100,10 @@ function consultStartLive(c) {
           // De opname loopt gewoon door; na stop gaat hij in zijn geheel naar de server.
           consultEmit('label', { label: 'Opname loopt (live verbinding weg)' });
         } else {
+          // The server refuses this consult (key, licence, consent): stop now,
+          // not after the whole consult.
           c.afgebroken = melding;
+          c.afgebrokenCode = /sleutel|licentie/i.test(melding || '') ? 'key' : '';
           consultStop();
         }
       },
@@ -127,7 +134,7 @@ async function consultRondAf(c, blob, mime) {
   try {
     if (c.afgebroken) {
       if (verbinding) verbinding.sluit();
-      consultEmit('error', { message: c.afgebroken });
+      consultEmit('error', { message: c.afgebroken, code: c.afgebrokenCode || '' });
       return;
     }
     if (blob.size < 1000) {
@@ -146,7 +153,7 @@ async function consultRondAf(c, blob, mime) {
     } else {
       consultEmit('processing', { step: 'Opname wordt verwerkt…' });
     }
-    consultEmit('result', { data: await consultUpload(c, blob, mime) });
+    await consultSend({ config: c.config, blob: blob, mime: mime, nadictaatVanaf: c.nadictaatVanaf });
   } catch (err) {
     consultEmit('error', { message: (err && err.message) || 'Onbekende fout bij het verwerken.' });
   } finally {
@@ -155,11 +162,35 @@ async function consultRondAf(c, blob, mime) {
   }
 }
 
+// Upload the whole recording. When that fails the recording is kept, and
+// "Opnieuw versturen" (SV_CONSULT_RETRY) tries again.
+async function consultSend(job) {
+  try {
+    var data = await consultUpload(job, job.blob, job.mime);
+    consultPending = null;
+    consultEmit('result', { data: data });
+  } catch (err) {
+    consultPending = err.permanent ? null : job;
+    consultEmit('error', {
+      message: ((err && err.message) || 'Verwerken mislukt.') + (consultPending ? ' De opname is bewaard.' : ''),
+      code: err.code || '',
+      retry: !!consultPending,
+    });
+  }
+}
+
+async function consultRetry() {
+  if (!consultPending || consult) return { ok: false, message: 'Er is geen opname om opnieuw te versturen.' };
+  consultEmit('processing', { step: 'Opname wordt opnieuw verstuurd…' });
+  consultSend(consultPending);
+  return { ok: true };
+}
+
 async function consultUpload(c, blob, mime) {
   var form = new FormData();
   form.append('audio', blob, 'consult.' + (mime.indexOf('webm') !== -1 ? 'webm' : 'wav'));
   form.append('consent', 'true');
-  if (c.nadictaatVanaf !== null) form.append('nadictaat_vanaf', String(c.nadictaatVanaf));
+  if (c.nadictaatVanaf !== null && c.nadictaatVanaf !== undefined) form.append('nadictaat_vanaf', String(c.nadictaatVanaf));
   if (c.config.sttProvider) form.append('stt_provider', c.config.sttProvider);
   if (c.config.llmProvider) form.append('llm_provider', c.config.llmProvider);
   var resp;
@@ -172,8 +203,14 @@ async function consultUpload(c, blob, mime) {
   }
   if (!resp.ok) {
     var detail = await resp.json().then(function (j) { return j.detail; }).catch(function () { return ''; });
-    if (resp.status === 403 || resp.status === 401) throw new Error('Serversleutel klopt niet. Controleer de sleutel in Instellingen.');
-    throw new Error('Server gaf fout ' + resp.status + (detail ? ': ' + detail : ''));
+    var fout;
+    if (resp.status === 403 || resp.status === 401) {
+      fout = new Error('De server accepteert de VitaScribe-sleutel niet. Controleer hem in Instellingen.');
+      fout.code = 'key';
+    } else {
+      fout = new Error('Server gaf fout ' + resp.status + (typeof detail === 'string' && detail ? ': ' + detail : '') + '.');
+    }
+    throw fout;
   }
   return resp.json();
 }
@@ -196,6 +233,9 @@ chrome.runtime.onMessage.addListener(function (msg, _sender, sendResponse) {
   } else if (msg.action === 'SV_CONSULT_NADICTAAT') {
     consultNadictaat();
     sendResponse({ ok: true });
+  } else if (msg.action === 'SV_CONSULT_RETRY') {
+    consultRetry().then(sendResponse);
+    return true;
   } else if (msg.action === 'SV_CONSULT_STATUS') {
     sendResponse(consultStatus());
   }

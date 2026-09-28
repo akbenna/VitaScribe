@@ -617,4 +617,183 @@
     else showPill(msg.state, msg.text, msg.button);
     return false;
   });
+
+  // ── Consult recording: small pill on every page ──
+  // The recording itself runs in the offscreen document; this pill only shows
+  // it and sends Stop / Nadicteren / Invoegen. It follows the doctor to every
+  // page (each page asks for the state when it loads) and can be dragged
+  // aside. The service worker sends state and wording only, no patient text.
+
+  var cPill = null;          // { host, root, dot, time, text, buttons }
+  var cState = { state: 'idle' };
+  var cTimer = null;
+  var cNote = '';            // short feedback after Invoegen
+
+  function consultCmd(cmd) {
+    try {
+      return chrome.runtime.sendMessage({ action: 'SV_CONSULT_CMD', cmd: cmd }).catch(function () { return null; });
+    } catch (e) {
+      hideConsultPill();     // extension reloaded: nothing left to talk to
+      return Promise.resolve(null);
+    }
+  }
+
+  function clock(ms) {
+    var s = Math.max(0, Math.floor(ms / 1000));
+    return String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
+  }
+
+  function buildConsultPill() {
+    var host = document.createElement('div');
+    host.style.cssText = 'position:fixed;right:16px;bottom:72px;z-index:2147483646;';
+    var shadow = host.attachShadow({ mode: 'closed' });
+    shadow.innerHTML =
+      '<style>' +
+      '.c{display:flex;align-items:center;gap:6px;max-width:360px;padding:5px 6px 5px 10px;background:#0f172a;color:#fff;' +
+      'border-radius:999px;box-shadow:0 3px 12px rgba(0,0,0,.28);font:12px/1.3 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;' +
+      'cursor:grab;user-select:none;opacity:.94}.c:hover{opacity:1}.c.drag{cursor:grabbing}' +
+      '.d{width:9px;height:9px;border-radius:50%;background:#dc2626;flex-shrink:0;animation:b 1.2s infinite}' +
+      '@keyframes b{50%{opacity:.3}}' +
+      '.c.busy .d{background:#94a3b8;animation:b .8s infinite}.c.ok .d{background:#10b981;animation:none}' +
+      '.c.err .d{background:#f59e0b;animation:none}' +
+      '.t{font-weight:700;font-variant-numeric:tabular-nums}.m{color:#cbd5e1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}' +
+      '.c.err,.c.note{border-radius:12px;flex-wrap:wrap}.c.err .m,.c.note .m{white-space:normal;color:#fff;flex-basis:100%;order:5;padding:2px 2px 0 0}' +
+      'button{border:0;border-radius:999px;padding:3px 9px;background:#334155;color:#fff;font:inherit;font-weight:600;cursor:pointer}' +
+      'button:hover{background:#475569}button.stop{background:#dc2626}button.stop:hover{background:#b91c1c}' +
+      'button.go{background:#059669}button.go:hover{background:#047857}' +
+      'button.x{background:transparent;color:#94a3b8;padding:2px 5px;font-size:15px;line-height:1}button.x:hover{color:#fff}' +
+      '[hidden]{display:none!important}' +
+      '</style>' +
+      '<div class="c" title="VitaScribe-consultopname; sleep om te verplaatsen">' +
+      '<span class="d"></span><span class="t"></span><span class="m"></span>' +
+      '<button type="button" data-cmd="nadictaat" title="De patiënt is weg: dicteer nog onderzoek en beleid">Nadicteren</button>' +
+      '<button type="button" data-cmd="stop" class="stop" title="Opname stoppen en verslag maken (Alt+Shift+C)">Stop</button>' +
+      '<button type="button" data-cmd="insert" class="go" title="Klik eerst in de S-regel van het consult">Invoegen</button>' +
+      '<button type="button" data-cmd="show" title="Verslag bekijken en aanpassen">Bekijk</button>' +
+      '<button type="button" data-cmd="retry" class="go">Opnieuw versturen</button>' +
+      '<button type="button" data-cmd="options">Instellingen</button>' +
+      '<button type="button" data-cmd="dismiss" class="x" title="Sluiten" aria-label="Sluiten">×</button>' +
+      '</div>';
+    var root = shadow.querySelector('.c');
+    var buttons = {};
+    Array.prototype.forEach.call(shadow.querySelectorAll('button'), function (b) {
+      buttons[b.dataset.cmd] = b;
+      b.addEventListener('click', function (e) {
+        e.stopPropagation();
+        onConsultButton(b.dataset.cmd);
+      });
+    });
+    cPill = { host: host, root: root, dot: shadow.querySelector('.d'), time: shadow.querySelector('.t'),
+              text: shadow.querySelector('.m'), buttons: buttons };
+    makeDraggable(host, root);
+    try {
+      chrome.storage.local.get('svConsultPillPos').then(function (r) {
+        var pos = r.svConsultPillPos;
+        if (pos && typeof pos.right === 'number' && typeof pos.bottom === 'number') placePill(pos.right, pos.bottom);
+      }).catch(function () {});
+    } catch (e) { /* extension reloaded */ }
+    document.documentElement.appendChild(host);
+  }
+
+  function placePill(right, bottom) {
+    right = Math.min(Math.max(0, right), Math.max(0, window.innerWidth - 60));
+    bottom = Math.min(Math.max(0, bottom), Math.max(0, window.innerHeight - 30));
+    cPill.host.style.right = right + 'px';
+    cPill.host.style.bottom = bottom + 'px';
+  }
+
+  function makeDraggable(host, root) {
+    root.addEventListener('mousedown', function (e) {
+      if (e.button !== 0 || e.target.closest && e.target.closest('button')) return;
+      var startX = e.clientX, startY = e.clientY;
+      var right0 = parseFloat(host.style.right) || 0, bottom0 = parseFloat(host.style.bottom) || 0;
+      root.classList.add('drag');
+      function move(ev) { placePill(right0 - (ev.clientX - startX), bottom0 - (ev.clientY - startY)); }
+      function up() {
+        root.classList.remove('drag');
+        document.removeEventListener('mousemove', move, true);
+        document.removeEventListener('mouseup', up, true);
+        try {
+          chrome.storage.local.set({ svConsultPillPos: { right: parseFloat(host.style.right) || 0, bottom: parseFloat(host.style.bottom) || 0 } });
+        } catch (err) { /* extension reloaded */ }
+      }
+      document.addEventListener('mousemove', move, true);
+      document.addEventListener('mouseup', up, true);
+      e.preventDefault();
+    });
+  }
+
+  function hideConsultPill() {
+    clearInterval(cTimer);
+    cTimer = null;
+    if (cPill) cPill.host.style.display = 'none';
+  }
+
+  function show(buttons) {
+    Object.keys(cPill.buttons).forEach(function (k) { cPill.buttons[k].hidden = buttons.indexOf(k) === -1; });
+  }
+
+  function renderConsultPill() {
+    var st = cState.state;
+    if (!st || st === 'idle') { hideConsultPill(); return; }
+    if (!cPill) buildConsultPill();
+    cPill.host.style.display = '';
+    clearInterval(cTimer);
+    cTimer = null;
+    cPill.time.textContent = '';
+    cPill.text.textContent = '';
+    cPill.root.className = 'c';
+    if (st === 'recording') {
+      var tick = function () { cPill.time.textContent = clock(Date.now() - (cState.startedAt || Date.now())); };
+      tick();
+      cTimer = setInterval(tick, 1000);
+      var nad = /nadicteren/i.test(cState.label || '');
+      cPill.text.textContent = nad ? 'nadicteren' : '';
+      show(nad ? ['stop'] : ['nadictaat', 'stop']);
+    } else if (st === 'processing') {
+      cPill.root.className = 'c busy';
+      cPill.text.textContent = 'Verslag maken…';
+      show([]);
+    } else if (st === 'results') {
+      cPill.root.className = 'c ok' + (cNote ? ' note' : '');
+      cPill.time.textContent = 'Verslag klaar';
+      cPill.text.textContent = cNote;
+      show(['insert', 'show', 'dismiss']);
+    } else if (st === 'error') {
+      cPill.root.className = 'c err';
+      cPill.time.textContent = 'Opname';
+      cPill.text.textContent = cState.message || 'Er ging iets mis.';
+      var b = ['dismiss'];
+      if (cState.retry) b.unshift('retry');
+      if (cState.code === 'key') b.unshift('options');
+      show(b);
+    }
+  }
+
+  function onConsultButton(cmd) {
+    if (cmd === 'stop') {
+      cState = { state: 'processing' };
+      renderConsultPill();
+    }
+    consultCmd(cmd).then(function (res) {
+      if (cmd === 'insert' || cmd === 'show') {
+        cNote = res && res.message && !(cmd === 'insert' && res.ok) ? res.message : '';
+        if (cmd === 'insert' && res && res.ok) cNote = '';
+        renderConsultPill();
+      }
+    });
+  }
+
+  chrome.runtime.onMessage.addListener(function (msg) {
+    if (msg.action !== 'SV_CONSULT_PILL') return false;
+    if (msg.pill.state !== 'results') cNote = '';
+    cState = msg.pill || { state: 'idle' };
+    renderConsultPill();
+    return false;
+  });
+
+  // A new page: ask whether a consult is running or has a report waiting.
+  consultCmd('pill').then(function (p) {
+    if (p && p.state) { cState = p; renderConsultPill(); }
+  });
 })();

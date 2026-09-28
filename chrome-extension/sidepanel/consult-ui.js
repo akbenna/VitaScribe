@@ -74,29 +74,29 @@ window.SVConsultUI = (function () {
       getoondOp = huidig.at;
       setStatus(huidig.message || 'De consultopname is mislukt.', true);
     }
+    var fout = st === 'error' && !huidig.dismissed;
+    $('consult-err').classList.toggle('hidden', !fout);
+    $('btn-consult-resend').classList.toggle('hidden', !(fout && huidig.retry));
+    $('btn-consult-settings').classList.toggle('hidden', !(fout && huidig.code === 'key'));
   }
 
   async function start() {
-    if (!$('consult-consent').checked) {
-      setStatus('Vink eerst aan dat de patiënt toestemming geeft voor de opname.', true);
-      return;
-    }
     if (state !== 'idle') {
       setStatus('Stop eerst het dicteren.', true);
       return;
     }
     var knop = $('btn-consult');
     knop.disabled = true;
-    setStatus('');
+    setStatus('Opname starten…');
     var res = await chrome.runtime.sendMessage({ action: 'SV_CONSULT_CMD', cmd: 'start' }).catch(function () { return null; });
     knop.disabled = false;
     if (!res || !res.ok) {
       setStatus((res && res.message) || 'De opname kon niet starten.', true);
+      $('consult-err').classList.toggle('hidden', !(res && res.code === 'key'));
+      $('btn-consult-settings').classList.toggle('hidden', !(res && res.code === 'key'));
       return;
     }
-    $('consult-consent').checked = false;   // toestemming geldt per consult
-    // Toon direct de opnamebalk; de service worker bevestigt zo meteen.
-    toon({ state: 'recording', startedAt: res.startedAt, label: 'Luistert mee' });
+    setStatus('');
   }
 
   function opdracht(cmd) {
@@ -114,11 +114,10 @@ window.SVConsultUI = (function () {
   }
 
   $('btn-consult').addEventListener('click', start);
-  $('btn-consult-stop').addEventListener('click', function () {
-    toon(Object.assign({}, huidig, { state: 'processing', step: 'Opname wordt afgerond…' }));
-    opdracht('stop');
-  });
+  $('btn-consult-stop').addEventListener('click', function () { opdracht('stop'); });
   $('btn-nadicteer').addEventListener('click', function () { opdracht('nadictaat'); });
+  $('btn-consult-resend').addEventListener('click', function () { opdracht('retry'); });
+  $('btn-consult-settings').addEventListener('click', function () { chrome.runtime.openOptionsPage(); });
 
   chrome.storage.onChanged.addListener(function (changes, area) {
     if (area === 'session' && changes.svConsult) toon(changes.svConsult.newValue);
