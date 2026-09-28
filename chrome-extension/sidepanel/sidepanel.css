@@ -186,6 +186,16 @@ body.consult-running .footer,
 body.consult-running #view-dictate > :not(#consult):not(#status) { display: none !important; }
 body.consult-running .consult { border-color: var(--rec); }
 
+/* Question suggestions during the consult (clinical support, opt-in) */
+.consult-vragen { display: flex; flex-direction: column; gap: 4px; border-top: 1px dashed var(--border); padding-top: 6px; }
+.cv-kop { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.cv-klacht { text-transform: none; letter-spacing: 0; }
+.cv-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.cv-chip { border: 1px solid #c7d2fe; background: #eef2ff; color: #3730a3; border-radius: 999px;
+  padding: 2px 9px; font: inherit; font-size: 12px; cursor: pointer; }
+.cv-chip.alarm { border-color: #fecaca; background: #fef2f2; color: #b91c1c; font-weight: 600; }
+.cv-chip.gedaan { text-decoration: line-through; opacity: .5; }
+
 /* Several problems in one consult: one SOEP part per problem */
 .soep-delen { display: flex; gap: 4px; flex-wrap: wrap; }
 .soep-deel { border: 1px solid var(--border); background: var(--panel); border-radius: 999px; padding: 3px 10px;

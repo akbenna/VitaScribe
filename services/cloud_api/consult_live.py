@@ -21,7 +21,8 @@ tekst is vaak nog fout en leidt af van de patiënt.
 
 Protocol (WebSocket /api/v1/consult/stream):
   client -> server  {"type": "auth", "api_key": "...", "praktijk": "...",
-                     "consent": true, "keyterms": [...], "llm_provider": ...}
+                     "consent": true, "keyterms": [...], "llm_provider": ...,
+                     "vraagsuggesties": bool}
   client -> server  <binaire audio, webm/opus>
   client -> server  {"type": "nadictaat", "vanaf": 312.4}
                                                           de patiënt is weg; vanaf deze
@@ -29,6 +30,9 @@ Protocol (WebSocket /api/v1/consult/stream):
   client -> server  {"type": "stop"}
   server -> client  {"type": "ready"}
   server -> client  {"type": "voortgang", "seconden": 12.3, "sprekers": 2}
+  server -> client  {"type": "suggesties", "klacht": "...", "vragen": [{"tekst": "koorts?", "alarm": false}]}
+                                                          alleen met CLINICAL_DECISION_SUPPORT en
+                                                          "vraagsuggesties": true in auth
   server -> client  {"type": "verwerken"}
   server -> client  {"type": "result", "data": {...}, "leeg": bool}
   server -> client  {"type": "error", "message": "...", "terugval": bool}
@@ -50,7 +54,7 @@ from urllib.parse import urlencode
 import structlog
 from fastapi import WebSocket, WebSocketDisconnect
 
-from . import audit, pipeline
+from . import audit, pipeline, vraagsuggesties
 from .config import AppConfig, get_config
 from .dictation import (
     KEYTERM_RETRY_BUDGETS,
@@ -221,6 +225,10 @@ async def volg_consult(
 
     gesprek = Gesprek()
     gestopt = asyncio.Event()   # de arts klikte op stop (of de tijd is om)
+    # Vraagsuggesties: alleen als server en arts het allebei aanzetten.
+    meedenker = (vraagsuggesties.Meedenker(lambda payload: _send_json(ws, payload), ident.label,
+                                           auth.get("llm_provider"))
+                 if vraagsuggesties.toegestaan(auth) else None)
 
     async def client_naar_deepgram() -> None:
         try:
@@ -253,6 +261,8 @@ async def volg_consult(
                 if gesprek.verwerk(raw):
                     await _send_json(ws, {"type": "voortgang", "seconden": round(gesprek.seconden, 1),
                                           "sprekers": len(gesprek.sprekers)})
+                    if meedenker is not None and not gestopt.is_set():
+                        meedenker.misschien(gesprek)
         except Exception as exc:
             logger.warning("consult_live.upstream_closed", error=str(exc))
 
@@ -298,6 +308,8 @@ async def volg_consult(
         await _send_json(ws, {"type": "error", "terugval": True,
                               "message": "Het verslag kon niet worden gemaakt."})
     finally:
+        if meedenker is not None:
+            meedenker.stop()
         for taak in (zender, ontvanger):
             if not taak.done():
                 taak.cancel()

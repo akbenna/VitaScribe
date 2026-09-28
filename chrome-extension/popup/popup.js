@@ -70,6 +70,17 @@ function render(c) {
     clockTimer = setInterval(tick, 500);
     $('rec-label').textContent = consult.label || 'Opname loopt';
     $('btn-nadicteer').classList.toggle('hidden', !!consult.nadictaat);
+    // Question suggestions (clinical support, when switched on): same as the side panel.
+    var vragen = !consult.nadictaat && consult.suggesties && Array.isArray(consult.suggesties.vragen) ? consult.suggesties.vragen : [];
+    var box = $('rec-vragen');
+    box.textContent = '';
+    vragen.forEach(function (v) {
+      var chip = document.createElement('span');
+      chip.className = 'rec-vraag' + (v.alarm ? ' alarm' : '');
+      chip.textContent = v.tekst;
+      box.appendChild(chip);
+    });
+    box.classList.toggle('hidden', vragen.length === 0);
     setState('recording');
   } else if (st === 'processing') {
     $('processing-step').textContent = consult.step || 'Verslag wordt gemaakt…';

@@ -495,7 +495,7 @@ function consultUpdate(patch, replace) {
 }
 
 async function consultConfig() {
-  const cfg = await SVInstellingen.lees(['apiUrl', 'apiKey', 'micDevice', 'llmProvider', 'sttProvider', 'consultLive']);
+  const cfg = await SVInstellingen.lees(['apiUrl', 'apiKey', 'micDevice', 'llmProvider', 'sttProvider', 'consultLive', 'vraagsuggesties']);
   return {
     apiUrl: (cfg.apiUrl || 'http://localhost:8002').replace(/\/$/, ''),
     apiKey: (cfg.apiKey || '').trim(),
@@ -503,6 +503,8 @@ async function consultConfig() {
     llmProvider: cfg.llmProvider || '',
     sttProvider: cfg.sttProvider || '',
     consultLive: cfg.consultLive || '',
+    // Question suggestions during the consult (Instellingen); the server must allow them too.
+    vraagsuggesties: cfg.vraagsuggesties === true,
     praktijk: await SVPraktijk.nummers(),
   };
 }
@@ -556,6 +558,9 @@ function handleConsultEvent(msg) {
   switch (msg.type) {
     case 'recording':
       return consultUpdate({ state: 'recording', startedAt: msg.startedAt, label: msg.label, nadictaat: false }, true);
+    case 'suggesties':
+      // Shown in the side panel and popup only; never on the page pill.
+      return consultUpdate({ suggesties: { klacht: msg.klacht || '', vragen: msg.vragen || [], at: Date.now() } });
     case 'label':
       return consultUpdate(msg.nadictaat ? { label: msg.label, nadictaat: true } : { label: msg.label });
     case 'processing':

@@ -21,7 +21,11 @@ Settings (environment):
   PHI_LLM_PROVIDER        default "anthropic"
   LETTERS_LLM_PROVIDER    default "anthropic"
   ALLOWED_STT_PROVIDERS   default "deepgram"
-  CLINICAL_DECISION_SUPPORT  default "false": no clinical suggestions (MDR)
+  CLINICAL_DECISION_SUPPORT  default "false": no clinical suggestions (MDR).
+                          "true" on the practice's own server: red flags in the
+                          report and question suggestions during the live
+                          consult, the latter only for doctors who switch them
+                          on in the extension (vraagsuggesties.py).
 """
 
 from __future__ import annotations

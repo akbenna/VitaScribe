@@ -204,6 +204,13 @@ blijven één deel. Bij psychische klachten volgt de SOEP een eigen opbouw (klac
 slaap, middelen, suïcidegedachten alleen zoals besproken; O = psychisch onderzoek zoals beschreven; E met
 P-code; P met POH-GGZ en afspraken).
 
+**Vraagsuggesties tijdens het consult (klinische ondersteuning).** Aan te zetten in Instellingen
+("Vraagsuggesties tijdens het consult"); werkt alleen met "Live volgen" en als de server
+`CLINICAL_DECISION_SUPPORT=true` heeft. Tijdens de opname zet VitaScribe hooguit eens per halve minuut 2-4
+korte vragen onder het opnamebalkje (zijpaneel en popup) die bij de klacht horen en nog niet gesteld zijn;
+alarmsymptomen in rood. Aantikken = gevraagd. Niet op de pagina zelf, niet na "Nadicteren". Dit valt onder de
+MDR (klinische beslissingsondersteuning): bedoeld voor de eigen praktijk; bij verkoop eerst regelen.
+
 **Dicteren zonder zijpaneel:** klik in het Bricks-veld en druk **Alt+Shift+D** (of klik op het
 extensie-icoon en dan "Dicteer in veld"). Een label rechtsonder toont dat VitaScribe luistert; nogmaals
 Alt+Shift+D of "Stop" beëindigt het. Lukt invoegen niet, dan staat het dictaat op het klembord.

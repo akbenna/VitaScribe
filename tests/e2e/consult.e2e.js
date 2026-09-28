@@ -286,6 +286,19 @@ async function listenPill(page, clickStop) {
   const visible = await panel.evaluate(() => [...document.querySelectorAll('#view-dictate > *, .views, .footer')]
     .filter((e) => e.offsetParent !== null && e.id !== 'status').map((e) => e.id || e.className));
   check('zijpaneel toont alleen het opnamebalkje', visible.length === 1 && visible[0] === 'consult', visible);
+  // Question suggestions as the server sends them (live consult, switched on).
+  await sw.evaluate(() => handleConsultEvent({ type: 'suggesties', klacht: 'keelpijn',
+    vragen: [{ tekst: 'koorts?', alarm: false }, { tekst: 'stridor?', alarm: true }] }));
+  await sleep(500);
+  const chips = await panel.$$eval('#cv-chips .cv-chip', (b) => b.map((x) => x.textContent + (x.classList.contains('alarm') ? '!' : '')));
+  check('vraagsuggesties als chips onder het opnamebalkje, alarm apart', chips.join(',') === 'koorts?,stridor?!', chips);
+  await panel.click('#cv-chips .cv-chip');
+  check('chip aantikken = gevraagd (doorgestreept)', await panel.$eval('#cv-chips .cv-chip', (b) => b.classList.contains('gedaan')));
+  const pillNu = await pill(tab);
+  check('bolletje op de pagina toont geen suggesties (geen patiënttekst)', !/koorts|stridor/.test(pillNu.text), pillNu.text);
+  const popV = await openPopup();
+  check('popup toont dezelfde suggesties', (await popV.textContent('#rec-vragen')).includes('stridor?'));
+  await popV.close();
   await panel.close();
 
   console.log('F. Nadicteren en Stop via het bolletje');
@@ -448,6 +461,21 @@ async function listenPill(page, clickStop) {
   check('deel 2 in de nieuwe regel, met de aanpassing', f2[0].includes('Somber') && f2[3] === 'P03' && f2[4].includes('eerder contact'), f2);
   p = await pill(tab);
   check('na het laatste deel: bolletje en icoon leeg', !p.visible && (await badge()) === '');
+
+  console.log('M. Schakelaar vraagsuggesties in Instellingen');
+  const opt = await ctx.newPage();
+  opt.on('pageerror', (e) => errs.push('options: ' + e.message));
+  await opt.goto(`chrome-extension://${id}/options/options.html`);
+  await sleep(600);
+  check('schakelaar staat standaard uit', !(await opt.isChecked('#vraagsuggesties')));
+  await opt.check('#vraagsuggesties');
+  await sleep(400);
+  const cfg = await sw.evaluate(() => consultConfig());
+  check('aan = meegestuurd naar de opname', cfg.vraagsuggesties === true, cfg.vraagsuggesties);
+  await opt.uncheck('#vraagsuggesties');
+  await sleep(400);
+  check('uit = niet meer meegestuurd', (await sw.evaluate(() => consultConfig())).vraagsuggesties === false);
+  await opt.close();
 
   check('geen JS-fouten', errs.length === 0, errs);
   console.log(`\n${ok} geslaagd, ${fail} mislukt`);

@@ -91,6 +91,10 @@ function consultStartLive(c) {
       apiKey: c.config.apiKey,
       praktijk: c.config.praktijk || [],
       llmProvider: c.config.llmProvider,
+      vraagsuggesties: c.config.vraagsuggesties === true,
+      onSuggesties: function (s) {
+        if (c.nadictaatVanaf === null) consultEmit('suggesties', { klacht: s.klacht, vragen: s.vragen });
+      },
       onVoortgang: function (seconden, sprekers) {
         if (c.nadictaatVanaf !== null) return;   // het label zegt dan "Nadicteren"
         consultEmit('label', { label: sprekers > 1 ? 'Luistert mee · ' + sprekers + ' stemmen' : 'Luistert mee' });

@@ -241,6 +241,10 @@ body {
 .result-actions { flex-wrap: wrap; }
 .error-area .btn { margin: 4px 2px; }
 
+.rec-vragen { display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; margin: 6px 0; }
+.rec-vragen.hidden { display: none; }
+.rec-vraag { border: 1px solid #c7d2fe; background: #eef2ff; color: #3730a3; border-radius: 999px; padding: 2px 8px; font-size: 11px; }
+.rec-vraag.alarm { border-color: #fecaca; background: #fef2f2; color: #b91c1c; font-weight: 600; }
 .deel-info { margin: 0 0 8px; padding: 6px 8px; font-size: 12px; color: #065f46; background: var(--primary-light);
   border-radius: 8px; }
 .deel-info.hidden { display: none; }

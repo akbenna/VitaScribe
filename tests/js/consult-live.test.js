@@ -123,6 +123,19 @@ test('te lang geen verslag: terugval', async () => {
   assert.equal(ws.readyState, 3);
 });
 
+test('vraagsuggesties: alleen gevraagd als de arts ze aanzette, en doorgegeven', () => {
+  let { ws } = start();
+  ws.open();
+  assert.equal(JSON.parse(ws.verstuurd[0]).vraagsuggesties, false);
+  const ontvangen = [];
+  ({ ws } = start({ vraagsuggesties: true, onSuggesties: (s) => ontvangen.push(s) }));
+  ws.open();
+  assert.equal(JSON.parse(ws.verstuurd[0]).vraagsuggesties, true);
+  ws.ontvang({ type: 'ready' });
+  ws.ontvang({ type: 'suggesties', klacht: 'keelpijn', vragen: [{ tekst: 'koorts?', alarm: false }] });
+  assert.deepEqual(ontvangen, [{ klacht: 'keelpijn', vragen: [{ tekst: 'koorts?', alarm: false }] }]);
+});
+
 test('nadictaat gaat als markering mee, ook voor ready', () => {
   const { live, ws } = start();
   ws.open();

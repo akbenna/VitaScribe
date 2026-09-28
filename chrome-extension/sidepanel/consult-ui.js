@@ -39,6 +39,36 @@ window.SVConsultUI = (function () {
     klok = setInterval(tik, 500);
   }
 
+  // Vraagsuggesties (klinische ondersteuning, aan te zetten in Instellingen):
+  // korte chips onder het opnamebalkje. Een chip aantikken = gevraagd; die
+  // blijft doorgestreept, ook als de volgende ronde hem opnieuw noemt.
+  var gevraagd = {};
+  var vragenVan = null;   // startedAt van het consult waar "gevraagd" bij hoort
+
+  function toonVragen(s) {
+    var blok = $('consult-vragen');
+    if (vragenVan !== huidig.startedAt) { gevraagd = {}; vragenVan = huidig.startedAt; }
+    var vragen = s && Array.isArray(s.vragen) ? s.vragen : [];
+    blok.classList.toggle('hidden', vragen.length === 0);
+    if (!vragen.length) return;
+    $('cv-klacht').textContent = s.klacht ? ' · ' + s.klacht : '';
+    var chips = $('cv-chips');
+    chips.textContent = '';
+    vragen.forEach(function (v) {
+      var sleutel = String(v.tekst || '').toLowerCase();
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'cv-chip' + (v.alarm ? ' alarm' : '') + (gevraagd[sleutel] ? ' gedaan' : '');
+      b.textContent = v.tekst;
+      b.title = (v.alarm ? 'Alarmsymptoom. ' : '') + 'Aantikken als gevraagd';
+      b.addEventListener('click', function () {
+        gevraagd[sleutel] = !gevraagd[sleutel];
+        b.classList.toggle('gedaan', gevraagd[sleutel]);
+      });
+      chips.appendChild(b);
+    });
+  }
+
   function toon(c) {
     huidig = c || {};
     var st = huidig.state || 'idle';
@@ -49,6 +79,7 @@ window.SVConsultUI = (function () {
     $('consult-busy').classList.toggle('hidden', !verwerken);
     document.body.classList.toggle('consult-running', opname || verwerken);
     zetKlok(opname ? huidig.startedAt : null);
+    toonVragen(opname && !huidig.nadictaat ? huidig.suggesties : null);
 
     if (opname) {
       $('consult-label').textContent = huidig.label || 'Opname loopt';
