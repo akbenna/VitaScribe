@@ -17,7 +17,7 @@ var SVConsultLive = (function () {
   var OPEN = 1;
 
   /**
-   * opties: { apiUrl, apiKey, praktijk, llmProvider, WebSocket, vraagsuggesties,
+   * opties: { apiUrl, apiKey, praktijk, llmProvider, WebSocket, vraagsuggesties, taal,
    *           onVoortgang(seconden, sprekers), onFout(melding, terugval),
    *           onSuggesties({ klacht, vragen: [{ tekst, alarm }] }) }
    */
@@ -58,7 +58,8 @@ var SVConsultLive = (function () {
     ws.onopen = function () {
       ws.send(JSON.stringify({ type: 'auth', api_key: opties.apiKey || '', praktijk: opties.praktijk || '',
                                consent: true, llm_provider: opties.llmProvider || null,
-                               vraagsuggesties: opties.vraagsuggesties === true }));
+                               vraagsuggesties: opties.vraagsuggesties === true,
+                               taal: opties.taal || 'nl' }));
     };
     ws.onmessage = function (bericht) {
       var e;

@@ -68,7 +68,7 @@ function render(c) {
     var tick = function () { $('timer').textContent = clock(Date.now() - (consult.startedAt || Date.now())); };
     tick();
     clockTimer = setInterval(tick, 500);
-    $('rec-label').textContent = consult.label || 'Opname loopt';
+    $('rec-label').textContent = (consult.label || 'Opname loopt') + (consult.taal ? ' · ' + consult.taal : '');
     $('btn-nadicteer').classList.toggle('hidden', !!consult.nadictaat);
     // Question suggestions (clinical support, when switched on): same as the side panel.
     var vragen = !consult.nadictaat && consult.suggesties && Array.isArray(consult.suggesties.vragen) ? consult.suggesties.vragen : [];
@@ -114,7 +114,7 @@ async function startConsult() {
   var btn = $('btn-start');
   btn.disabled = true;
   showStatus('Opname starten…', false);
-  var res = await cmd('start');
+  var res = await cmd('start', { taal: $('consult-taal').value });
   btn.disabled = false;
   if (res && res.ok) {
     window.close();   // the recording runs on; REC on the icon, pill on the page

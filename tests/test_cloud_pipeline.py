@@ -262,3 +262,22 @@ async def test_pipeline_keeps_parts_and_decisief_covers_all():
     nazorg_prompt = complete_mock.await_args_list[1].kwargs["user_prompt"]
     assert "(1) virale faryngitis" in nazorg_prompt and "(2) depressieve klachten" in nazorg_prompt
     assert "R74, P03" in nazorg_prompt
+
+
+# ── Taal van het consult (upload) ──
+
+@pytest.mark.asyncio
+async def test_opname_in_andere_taal():
+    transcript = MagicMock(raw_text="Dzień dobry, boli mnie gardło.", duration_secs=30.0, provider="deepgram")
+    soep_json = json.dumps({"s": "Keelpijn. Consult in het Pools.", "o": "", "e": "", "p": "", "icpc_code": "", "icpc_titel": ""})
+    nazorg_json = json.dumps({"decisief": "Keelpijn", "rode_vlaggen": [], "ontbrekende_info": []})
+    transcribe = AsyncMock(return_value=transcript)
+    complete = AsyncMock(side_effect=[soep_json, nazorg_json])
+    with patch.object(pipeline.stt_service, "transcribe", new=transcribe), \
+         patch.object(pipeline.stt_service, "met_sprekers", return_value=transcript.raw_text), \
+         patch.object(pipeline.llm_service, "complete", new=complete), \
+         patch.object(pipeline, "correct_transcript_full", return_value=(transcript.raw_text, MagicMock(total_corrections=0))):
+        await pipeline.process_consultation(Path("/fake/audio.webm"), taal="pl")
+    assert transcribe.await_args.kwargs["language"] == "pl"
+    assert "TAAL VAN HET GESPREK" in complete.await_args_list[0].kwargs["user_prompt"]
+    assert "Pools" in complete.await_args_list[0].kwargs["user_prompt"]

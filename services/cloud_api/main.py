@@ -243,6 +243,7 @@ async def process_consult(
     llm_provider: str = Form(default=None, description="LLM provider override"),
     consent: bool = Form(default=False, description="Patiënt gaf toestemming voor opname"),
     nadictaat_vanaf: Optional[float] = Form(default=None, description="Seconde waarop het nadictaat van de arts begint"),
+    taal: Optional[str] = Form(default=None, description="Taal van het gesprek (nl, multi, en, tr, pl, uk)"),
     ident=Depends(huidige_identiteit),
 ):
     """Process a consultation audio recording through the full pipeline."""
@@ -307,6 +308,7 @@ async def process_consult(
             llm_provider=llm_provider,
             deepgram_key=await kies_spraak(ident),
             nadictaat_vanaf=nadictaat_vanaf,
+            taal=taal,
         )
 
         processing_time = time.time() - start_time

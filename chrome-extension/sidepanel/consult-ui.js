@@ -82,7 +82,7 @@ window.SVConsultUI = (function () {
     toonVragen(opname && !huidig.nadictaat ? huidig.suggesties : null);
 
     if (opname) {
-      $('consult-label').textContent = huidig.label || 'Opname loopt';
+      $('consult-label').textContent = (huidig.label || 'Opname loopt') + (huidig.taal ? ' · ' + huidig.taal : '');
       $('btn-nadicteer').classList.toggle('hidden', !!huidig.nadictaat);
       els.conn.className = 'conn live';
       els.conn.textContent = '● consult';
@@ -134,7 +134,7 @@ window.SVConsultUI = (function () {
     var knop = $('btn-consult');
     knop.disabled = true;
     setStatus('Opname starten…');
-    var res = await chrome.runtime.sendMessage({ action: 'SV_CONSULT_CMD', cmd: 'start' }).catch(function () { return null; });
+    var res = await chrome.runtime.sendMessage({ action: 'SV_CONSULT_CMD', cmd: 'start', taal: $('consult-taal').value }).catch(function () { return null; });
     knop.disabled = false;
     if (!res || !res.ok) {
       setStatus((res && res.message) || 'De opname kon niet starten.', true);
@@ -142,6 +142,7 @@ window.SVConsultUI = (function () {
       $('btn-consult-settings').classList.toggle('hidden', !(res && res.code === 'key'));
       return;
     }
+    $('consult-taal').value = 'nl';   // taal geldt per consult; daarna weer Nederlands
     setStatus('');
   }
 

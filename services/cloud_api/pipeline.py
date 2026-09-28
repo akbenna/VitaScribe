@@ -15,7 +15,7 @@ from typing import Dict, List, Optional
 
 import structlog
 
-from . import data_policy, llm_service, stt_service
+from . import data_policy, llm_service, stt_service, talen
 from .medical_vocabulary import correct_transcript_full, CorrectionStats
 from .prompts import (
     NAZORG_SYSTEM_PROMPT,
@@ -136,6 +136,7 @@ async def process_consultation(
     llm_provider: str = None,
     deepgram_key: str = None,
     nadictaat_vanaf: Optional[float] = None,
+    taal: Optional[str] = None,
 ) -> PipelineResult:
     """
     Process a consultation audio file through the full pipeline.
@@ -153,19 +154,23 @@ async def process_consultation(
 
     # ── Step 1: Transcription ──
     logger.info("pipeline.step", step="transcription")
-    transcript = await stt_service.transcribe(audio_path, provider=stt_provider, deepgram_key=deepgram_key)
+    gekozen = talen.kies(taal)
+    transcript = await stt_service.transcribe(audio_path, provider=stt_provider, deepgram_key=deepgram_key,
+                                              language=gekozen.deepgram)
     stt_service.markeer_nadictaat(transcript, nadictaat_vanaf)
     try:
         grootte = f"{audio_path.stat().st_size / 1024:.1f} KB"
     except OSError:
         grootte = "onbekend"
-    return await verwerk_transcript(transcript, llm_provider=llm_provider, bestandsgrootte=grootte)
+    return await verwerk_transcript(transcript, llm_provider=llm_provider, bestandsgrootte=grootte,
+                                    taal=gekozen.code)
 
 
 async def verwerk_transcript(
     transcript: "stt_service.TranscriptResult",
     llm_provider: str = None,
     bestandsgrootte: str = "",
+    taal: Optional[str] = None,
 ) -> PipelineResult:
     """Van transcript naar SOEP, decisief en aandachtspunten.
 
@@ -218,7 +223,7 @@ async def verwerk_transcript(
     try:
         soep_response = await llm_service.complete(
             system_prompt=SOEP_SYSTEM_PROMPT,
-            user_prompt=SOEP_USER_TEMPLATE.format(transcript=result.transcript),
+            user_prompt=talen.prompt_regel(talen.kies(taal)) + SOEP_USER_TEMPLATE.format(transcript=result.transcript),
             provider=llm_provider,
             json_mode=True,
             max_tokens=SOEP_MAX_TOKENS,

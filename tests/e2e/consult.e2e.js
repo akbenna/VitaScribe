@@ -94,7 +94,8 @@ const server = http.createServer((req, res) => {
     req.on('end', () => {
       const body = Buffer.concat(parts).toString('latin1');
       uploads.push({ bytes: body.length, key: req.headers['x-api-key'], consent: /name="consent"\r\n\r\ntrue/.test(body),
-                     nadictaat: /name="nadictaat_vanaf"/.test(body) });
+                     nadictaat: /name="nadictaat_vanaf"/.test(body),
+                     taal: (/name="taal"\r\n\r\n(\w+)/.exec(body) || [])[1] });
       if (failUploads) { res.writeHead(503, { 'Content-Type': 'application/json' }); res.end('{"detail":"Server tijdelijk niet beschikbaar"}'); return; }
       res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(noSpeech
         ? { soep: { s: '', o: '', e: '', p: '' }, decisief: 'Geen spraak gedetecteerd.', transcript_raw: '', duration_secs: 4.2 }
@@ -502,6 +503,29 @@ async function listenPill(page, clickStop) {
   await pp2.close();
   await side.evaluate(() => setState('idle'));
   await sleep(300);
+
+  console.log('P. Taal van het gesprek');
+  const popT = await openPopup();
+  check('taalkeuze staat op Nederlands', (await popT.inputValue('#consult-taal')) === 'nl');
+  check('standaard consult ging als Nederlands', uploads.slice(0, -1).every((u) => u.taal === 'nl'), uploads.map((u) => u.taal));
+  await popT.selectOption('#consult-taal', 'tr');
+  const dichtT = popT.waitForEvent('close', { timeout: 5000 }).then(() => true, () => false);
+  await popT.click('#btn-start');
+  await dichtT;
+  await sleep(1500);
+  const popT2 = await openPopup();
+  check('tijdens de opname staat de taal erbij', (await popT2.textContent('#rec-label')).includes('Turks'), await popT2.textContent('#rec-label'));
+  await popT2.close();
+  await sleep(2200);
+  await tab.bringToFront();
+  await clickPill(tab, 'stop');
+  await sleep(1500);
+  check('opname verstuurd met taal=tr', uploads[uploads.length - 1].taal === 'tr', uploads[uploads.length - 1]);
+  const popT3 = await openPopup();
+  await popT3.click('#btn-new-consult').catch(() => {});
+  await sleep(300);
+  check('volgende consult weer Nederlands', (await popT3.inputValue('#consult-taal')) === 'nl');
+  await popT3.close();
 
   console.log('M. Schakelaar vraagsuggesties in Instellingen');
   const opt = await ctx.newPage();

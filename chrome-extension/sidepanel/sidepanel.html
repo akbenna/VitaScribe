@@ -28,6 +28,16 @@
       <button id="btn-consult" class="btn consult-start" title="Het hele consult opnemen (Alt+Shift+C); loopt door op andere pagina's" aria-describedby="consult-consent-note">
         <span class="rec-dot" aria-hidden="true"></span> Consult opnemen
       </button>
+      <label class="consult-taal">Taal gesprek
+        <select id="consult-taal" title="Alleen voor dit consult; daarna weer Nederlands">
+          <option value="nl">Nederlands</option>
+          <option value="multi">Meertalig (NL + EN/FR/DE/ES/IT/PT/…)</option>
+          <option value="en">Engels</option>
+          <option value="tr">Turks</option>
+          <option value="pl">Pools</option>
+          <option value="uk">Oekraïens</option>
+        </select>
+      </label>
       <p id="consult-consent-note" class="consult-consent">Starten = de patiënt geeft toestemming voor opname en AI-verslag.</p>
       <div id="consult-err" class="consult-err hidden">
         <button id="btn-consult-resend" class="btn small primary hidden">Opnieuw versturen</button>

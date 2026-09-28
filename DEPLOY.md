@@ -211,6 +211,15 @@ korte vragen onder het opnamebalkje (zijpaneel en popup) die bij de klacht horen
 alarmsymptomen in rood. Aantikken = gevraagd. Niet op de pagina zelf, niet na "Nadicteren". Dit valt onder de
 MDR (klinische beslissingsondersteuning): bedoeld voor de eigen praktijk; bij verkoop eerst regelen.
 
+**Taal van het gesprek.** In de popup en het zijpaneel staat onder de opnameknop "Taal gesprek":
+Nederlands (standaard), Meertalig (Deepgram Nova-3 `multi`: Nederlands, Engels, Frans, Duits, Spaans,
+Italiaans, Portugees, Russisch, Hindi en Japans door elkaar), Engels, Turks, Pools of Oekraïens. Turks, Pools
+en Oekraïens verstaan alleen die taal: kies ze als (vrijwel) het hele gesprek in die taal gaat. De keuze
+geldt voor één consult en springt daarna terug naar Nederlands; Alt+Shift+C start altijd in het Nederlands.
+De SOEP is altijd Nederlands, met in S de taal van het consult. Kosten: spraakherkenning in dezelfde orde
+(fractie van een cent per minuut); het taalmodel gebruikt voor een anderstalig transcript meer tokens,
+hooguit rond een cent extra per consult.
+
 **Dicteren zonder zijpaneel:** klik in het Bricks-veld en druk **Alt+Shift+D** (of klik op het
 extensie-icoon en dan "Dicteer in veld"). Een label rechtsonder toont dat VitaScribe luistert; nogmaals
 Alt+Shift+D of "Stop" beëindigt het. Lukt invoegen niet, dan staat het dictaat op het klembord.

@@ -105,6 +105,7 @@ function consultStartLive(c) {
       praktijk: c.config.praktijk || [],
       llmProvider: c.config.llmProvider,
       vraagsuggesties: c.config.vraagsuggesties === true,
+      taal: c.config.taal || 'nl',
       onSuggesties: function (s) {
         if (c.nadictaatVanaf === null) consultEmit('suggesties', { klacht: s.klacht, vragen: s.vragen });
       },
@@ -276,6 +277,7 @@ async function consultUpload(c, blob, mime) {
   var form = new FormData();
   form.append('audio', blob, 'consult.' + (mime.indexOf('webm') !== -1 ? 'webm' : 'wav'));
   form.append('consent', 'true');
+  form.append('taal', (c.config && c.config.taal) || 'nl');
   if (c.nadictaatVanaf !== null && c.nadictaatVanaf !== undefined) form.append('nadictaat_vanaf', String(c.nadictaatVanaf));
   if (c.config.sttProvider) form.append('stt_provider', c.config.sttProvider);
   if (c.config.llmProvider) form.append('llm_provider', c.config.llmProvider);

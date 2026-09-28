@@ -136,6 +136,15 @@ test('vraagsuggesties: alleen gevraagd als de arts ze aanzette, en doorgegeven',
   assert.deepEqual(ontvangen, [{ klacht: 'keelpijn', vragen: [{ tekst: 'koorts?', alarm: false }] }]);
 });
 
+test('taal van het gesprek gaat mee, standaard Nederlands', () => {
+  let { ws } = start();
+  ws.open();
+  assert.equal(JSON.parse(ws.verstuurd[0]).taal, 'nl');
+  ({ ws } = start({ taal: 'tr' }));
+  ws.open();
+  assert.equal(JSON.parse(ws.verstuurd[0]).taal, 'tr');
+});
+
 test('nadictaat gaat als markering mee, ook voor ready', () => {
   const { live, ws } = start();
   ws.open();

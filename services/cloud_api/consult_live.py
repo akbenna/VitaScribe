@@ -54,7 +54,7 @@ from urllib.parse import urlencode
 import structlog
 from fastapi import WebSocket, WebSocketDisconnect
 
-from . import audit, pipeline, vraagsuggesties
+from . import audit, pipeline, talen, vraagsuggesties
 from .config import AppConfig, get_config
 from .dictation import (
     KEYTERM_RETRY_BUDGETS,
@@ -81,12 +81,16 @@ def max_seconden() -> int:
 
 
 def build_consult_url(cfg: AppConfig, user_terms: Optional[List[str]] = None,
-                      token_budget: int = MAX_KEYTERM_TOKENS) -> str:
-    """Streaming-adres voor een gesprek: stemmen scheiden, geen tussentekst."""
+                      token_budget: int = MAX_KEYTERM_TOKENS,
+                      taal: Optional[talen.Taal] = None) -> str:
+    """Streaming-adres voor een gesprek: stemmen scheiden, geen tussentekst.
+
+    taal: de taal die de arts voor dit consult koos; zonder keuze de
+    serverinstelling (Nederlands)."""
     model = cfg.stt.deepgram_model
     params: List[tuple] = [
         ("model", model),
-        ("language", cfg.stt.deepgram_language),
+        ("language", taal.deepgram if taal else cfg.stt.deepgram_language),
         ("punctuate", "true"),
         ("smart_format", "true"),
         ("diarize", "true"),
@@ -94,7 +98,8 @@ def build_consult_url(cfg: AppConfig, user_terms: Optional[List[str]] = None,
         # AVG: niet bewaard en niet gebruikt voor training.
         ("mip_opt_out", "true"),
     ]
-    if token_budget > 0 and cfg.dictation.keyterms_enabled and model.startswith("nova-3"):
+    if (token_budget > 0 and cfg.dictation.keyterms_enabled and model.startswith("nova-3")
+            and (taal is None or taal.keyterms)):
         params.extend(("keyterm", term) for term in build_keyterms(user_terms, token_budget))
     return f"{cfg.dictation.deepgram_url}?{urlencode(params)}"
 
@@ -202,11 +207,12 @@ async def volg_consult(
         return
 
     user_terms = sanitize_user_keyterms(auth.get("keyterms"))
+    taal = talen.kies(auth.get("taal"))
     upstream = None
     last_exc: Optional[Exception] = None
     for budget in KEYTERM_RETRY_BUDGETS:
         try:
-            upstream = await connect(build_consult_url(cfg, user_terms, budget), deepgram_key)
+            upstream = await connect(build_consult_url(cfg, user_terms, budget, taal), deepgram_key)
             break
         except Exception as exc:
             last_exc = exc
@@ -220,7 +226,7 @@ async def volg_consult(
         return
 
     audit.log_event(ident.label, "consult.stream", consent=True)
-    logger.info("consult_live.start", model=cfg.stt.deepgram_model)
+    logger.info("consult_live.start", model=cfg.stt.deepgram_model, taal=taal.code)
     await _send_json(ws, {"type": "ready"})
 
     gesprek = Gesprek()
@@ -297,7 +303,7 @@ async def volg_consult(
 
         await _send_json(ws, {"type": "verwerken"})
         transcript = gesprek.transcript()
-        result = await verwerk(transcript, llm_provider=auth.get("llm_provider"))
+        result = await verwerk(transcript, llm_provider=auth.get("llm_provider"), taal=taal.code)
         data = result.to_dict()
         data["processing_time_secs"] = round(time.time() - start, 2)
         await _send_json(ws, {"type": "result", "data": data, "leeg": not transcript.raw_text.strip()})

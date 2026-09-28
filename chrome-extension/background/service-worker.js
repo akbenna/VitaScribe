@@ -533,7 +533,12 @@ async function consultPreflight(config) {
   return { ok: true };
 }
 
-async function consultStart() {
+// Language of the conversation, chosen per consult (popup, side panel).
+// Anything else, and the keyboard shortcut, means Dutch.
+const CONSULT_TALEN = { nl: 'Nederlands', multi: 'Meertalig', en: 'Engels', tr: 'Turks', pl: 'Pools', uk: 'Oekraïens' };
+
+async function consultStart(taal) {
+  taal = Object.prototype.hasOwnProperty.call(CONSULT_TALEN, taal) ? taal : 'nl';
   const cur = await consultGet();
   if (cur.state === 'recording' || cur.state === 'processing') {
     return { ok: false, message: 'Er loopt al een consultopname.' };
@@ -543,6 +548,7 @@ async function consultStart() {
     return { ok: false, message: 'Stop eerst het dicteren in het zijpaneel; daarna kun je het consult opnemen.' };
   }
   const config = await consultConfig();
+  config.taal = taal;
   if (!config.apiKey) {
     return { ok: false, code: 'key', message: 'Er is nog geen VitaScribe-sleutel ingesteld. Vul hem in bij Instellingen.' };
   }
@@ -554,7 +560,8 @@ async function consultStart() {
     chrome.tabs.create({ url: chrome.runtime.getURL('sidepanel/mic-permission.html') });
   }
   if (res && res.ok) {
-    await consultUpdate({ state: 'recording', startedAt: res.startedAt, label: 'Opname loopt', nadictaat: false }, true);
+    await consultUpdate({ state: 'recording', startedAt: res.startedAt, label: 'Opname loopt', nadictaat: false,
+      taal: taal === 'nl' ? '' : CONSULT_TALEN[taal] }, true);
   }
   return res || { ok: false, message: 'De opname kon niet starten. Probeer het opnieuw.' };
 }
@@ -562,7 +569,8 @@ async function consultStart() {
 function handleConsultEvent(msg) {
   switch (msg.type) {
     case 'recording':
-      return consultUpdate({ state: 'recording', startedAt: msg.startedAt, label: msg.label, nadictaat: false }, true);
+      // Keep the chosen language: consultStart already stored it.
+      return consultUpdate({ state: 'recording', startedAt: msg.startedAt, label: msg.label, nadictaat: false });
     case 'suggesties':
       // Shown in the side panel and popup only; never on the page pill.
       return consultUpdate({ suggesties: { klacht: msg.klacht || '', vragen: msg.vragen || [], at: Date.now() } });
@@ -633,7 +641,7 @@ async function consultShow(sender) {
 }
 
 async function consultCommand(cmd, sender, msg) {
-  if (cmd === 'start') return consultStart();
+  if (cmd === 'start') return consultStart(msg.taal);
   if (cmd === 'insert') return consultInsert(msg.tabId !== undefined ? msg.tabId : sender.tab && sender.tab.id);
   if (cmd === 'show') return consultShow(sender);
   if (cmd === 'dismiss') {

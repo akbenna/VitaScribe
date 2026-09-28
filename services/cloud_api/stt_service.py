@@ -115,10 +115,12 @@ def met_sprekers(transcript: TranscriptResult) -> str:
 
 
 async def transcribe(audio_path: Path, provider: str = None,
-                     deepgram_key: Optional[str] = None) -> TranscriptResult:
+                     deepgram_key: Optional[str] = None,
+                     language: Optional[str] = None) -> TranscriptResult:
     """Transcribe audio file using the specified or default provider.
 
-    deepgram_key: the practice's own Deepgram key, if it has one."""
+    deepgram_key: the practice's own Deepgram key, if it has one.
+    language: Deepgram language for this consult (talen.py); default nl."""
     config = get_config()
     provider = provider or config.stt.default_provider
 
@@ -127,7 +129,7 @@ async def transcribe(audio_path: Path, provider: str = None,
     if provider == "groq":
         return await _transcribe_groq(audio_path)
     elif provider == "deepgram":
-        return await _transcribe_deepgram(audio_path, deepgram_key)
+        return await _transcribe_deepgram(audio_path, deepgram_key, language)
     elif provider == "openai":
         return await _transcribe_openai(audio_path)
     else:
@@ -175,9 +177,11 @@ async def _transcribe_groq(audio_path: Path) -> TranscriptResult:
     )
 
 
-async def _transcribe_deepgram(audio_path: Path, api_key: Optional[str] = None) -> TranscriptResult:
+async def _transcribe_deepgram(audio_path: Path, api_key: Optional[str] = None,
+                               language: Optional[str] = None) -> TranscriptResult:
     """Transcribe using Deepgram (best Dutch accuracy), with speaker diarization."""
     config = get_config()
+    language = language or config.stt.deepgram_language
     api_key = api_key or config.stt.deepgram_api_key
     if not api_key:
         raise ValueError("DEEPGRAM_API_KEY niet geconfigureerd.")
@@ -204,7 +208,7 @@ async def _transcribe_deepgram(audio_path: Path, api_key: Optional[str] = None) 
             content_type=content_type,
             file_ext=ext,
             model=config.stt.deepgram_model,
-            language=config.stt.deepgram_language,
+            language=language,
         )
 
         response = await client.post(
@@ -216,7 +220,7 @@ async def _transcribe_deepgram(audio_path: Path, api_key: Optional[str] = None) 
             },
             params={
                 "model": config.stt.deepgram_model,
-                "language": config.stt.deepgram_language,
+                "language": language,
                 "punctuate": "true",
                 "diarize": "true",
                 "smart_format": "true",
