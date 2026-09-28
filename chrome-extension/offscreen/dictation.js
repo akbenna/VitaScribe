@@ -32,6 +32,10 @@ function copyToClipboard(text) {
 // passes settings and text rules along with the start message.
 async function start(config, rules) {
   if (session) return;
+  if (typeof consult !== 'undefined' && consult) {
+    emit('error', { message: 'Er loopt een consultopname. Dicteren kan weer na het consult.' });
+    return;
+  }
   rules = SVTextRules.normalize(rules);
 
   // Open the server connection while the microphone starts: both take a few

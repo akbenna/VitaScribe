@@ -179,6 +179,12 @@ Kies bij Railway een EU-regio voor de service, zodat audio de EU niet verlaat en
 **Eerste gebruik:** bij de eerste start opent een tabblad dat eenmalig om microfoontoestemming vraagt
 (Chrome kan dat niet vanuit het zijpaneel zelf). Na een update van de extensie: ververs het Bricks-tabblad.
 
+**Consult opnemen:** in het zijpaneel (of de popup) vink je de toestemming van de patiënt aan en kies
+je "Consult opnemen". De opname loopt in de achtergrond van de extensie: hij gaat door als je naar een
+andere pagina gaat, van tabblad wisselt of het zijpaneel sluit. Het extensie-icoon toont dan **REC**, en
+het zijpaneel alleen een klein balkje met tijd, "Nadicteren" en "Stop". Na stop verschijnt het verslag in
+het SOEP-blok met alle knoppen. De zwevende knop op de Bricks-pagina bestaat niet meer.
+
 **Dicteren zonder zijpaneel:** klik in het Bricks-veld en druk **Alt+Shift+D** (of klik op het
 extensie-icoon en dan "Dicteer in veld"). Een label rechtsonder toont dat VitaScribe luistert; nogmaals
 Alt+Shift+D of "Stop" beëindigt het. Lukt invoegen niet, dan staat het dictaat op het klembord.

@@ -23,6 +23,26 @@
 
   <div id="view-dictate" class="view">
 
+  <section id="consult" class="consult">
+    <div id="consult-idle" class="consult-idle">
+      <label class="consult-consent"><input type="checkbox" id="consult-consent"> Patiënt geeft toestemming voor opname en AI-verslag</label>
+      <button id="btn-consult" class="btn consult-start" title="Het hele consult opnemen; loopt door als je naar een andere pagina gaat">
+        <span class="rec-dot" aria-hidden="true"></span> Consult opnemen
+      </button>
+    </div>
+    <div id="consult-rec" class="consult-rec hidden" role="status">
+      <span class="rec-dot live" aria-hidden="true"></span>
+      <span id="consult-timer" class="consult-timer">00:00</span>
+      <span id="consult-label" class="consult-label">Luistert mee</span>
+      <button id="btn-nadicteer" class="btn small" title="De patiënt is weg: dicteer nog kort onderzoek en beleid">Nadicteren</button>
+      <button id="btn-consult-stop" class="btn small consult-stop">Stop</button>
+    </div>
+    <div id="consult-busy" class="consult-busy hidden" role="status">
+      <span class="spinner" aria-hidden="true"></span>
+      <span id="consult-step">Verslag wordt gemaakt…</span>
+    </div>
+  </section>
+
   <section class="target" id="target">
     <span class="target-label">Doelveld</span>
     <span id="target-name" class="target-name muted">Klik in Bricks in een veld</span>
@@ -88,6 +108,7 @@
       <span id="icpc" class="icpc"><span id="icpc-code" class="icpc-code" contenteditable="true" spellcheck="false"
               role="textbox" aria-label="ICPC-code, aan te passen"></span><span id="icpc-titel"></span></span>
     </div>
+    <p id="soep-decisief" class="soep-decisief hidden"></p>
     <div class="soep-rows" id="soep-rows"></div>
     <div id="ta" class="ta hidden"></div>
     <div id="bt" class="bt hidden"></div>
@@ -270,5 +291,6 @@
   <script src="thuisarts-ui.js"></script>
   <script src="beslistools-ui.js"></script>
   <script src="patient-ui.js"></script>
+  <script src="consult-ui.js"></script>
 </body>
 </html>

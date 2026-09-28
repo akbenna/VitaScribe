@@ -330,6 +330,10 @@ function teardown() {
 }
 
 function toggleDictation() {
+  if (window.SVConsultUI && window.SVConsultUI.bezig()) {
+    setStatus('Er loopt een consultopname. Dicteren kan weer na het consult.', true);
+    return;
+  }
   if (state === 'idle') startDictation();
   else if (state === 'recording') stopDictation();
 }
@@ -369,6 +373,7 @@ async function processText(mode) {
       });
     } else {
       renderSoep(data.soep);
+      document.getElementById('soep-decisief').classList.add('hidden');
       setStatus('SOEP klaar. Klik in Bricks in een veld en gebruik "invoegen".');
     }
   } catch (err) {
@@ -619,6 +624,7 @@ els.clear.addEventListener('click', function () {
   els.text.value = '';
   els.interim.textContent = '';
   els.soep.classList.add('hidden');
+  document.getElementById('soep-decisief').classList.add('hidden');
   lastSoep = null;
   setStatus('');
 });

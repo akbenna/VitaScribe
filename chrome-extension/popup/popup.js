@@ -1,10 +1,9 @@
 /**
  * VitaScribe - Popup Controller
  *
- * Standalone recorder that works everywhere (not just Bricks).
- * Records audio → sends to Cloud API → shows SOEP results.
- * On Bricks pages, the content script widget is the primary UI.
- * This popup is the fallback for non-Bricks contexts.
+ * "Start opname" hands the consult to the offscreen recorder and opens the
+ * side panel (see the btn-start handler). The popup also shows a result the
+ * service worker left in chrome.storage.local, and starts quick dictation.
  */
 
 var STATES = ['idle', 'recording', 'processing', 'results', 'error'];
@@ -323,8 +322,23 @@ document.getElementById('btn-settings').addEventListener('click', function() {
   chrome.runtime.openOptionsPage();
 });
 
+// The consult is recorded in the offscreen document, not in this popup: a
+// popup closes (and would stop the recording) as soon as the doctor clicks
+// the page. The side panel shows the small recording bar and the report.
 document.getElementById('btn-start').addEventListener('click', function() {
-  startRecording();
+  var consent = document.getElementById('consent-recording');
+  if (consent && !consent.checked) {
+    showStatus('Vink eerst aan dat de patiënt toestemming geeft voor de opname.', true);
+    return;
+  }
+  if (currentWindowId !== null) chrome.sidePanel.open({ windowId: currentWindowId });
+  chrome.storage.session.set({ svOpenView: 'dictate' });
+  chrome.runtime.sendMessage({ action: 'SV_CONSULT_CMD', cmd: 'start' }).then(function(res) {
+    if (res && res.ok) { window.close(); return; }
+    showStatus((res && res.message) || 'De opname kon niet starten.', true);
+  }).catch(function() {
+    showStatus('De opname kon niet starten.', true);
+  });
 });
 
 document.getElementById('btn-stop').addEventListener('click', function() {

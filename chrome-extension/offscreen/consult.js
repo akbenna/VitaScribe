@@ -1,0 +1,203 @@
+/**
+ * VitaScribe - Consultopname in het offscreen-document
+ *
+ * Het consult werd eerst opgenomen in de zwevende knop op de Bricks-pagina.
+ * Klikte de arts naar een andere pagina, dan verdween die knop en daarmee de
+ * opname. Hier loopt de opname in het offscreen-document van de extensie: dat
+ * blijft bestaan zolang de browser open is, wat er ook met tabbladen of het
+ * zijpaneel gebeurt.
+ *
+ * Het gesprek gaat live naar de server (SVConsultLive). De stukjes geluid
+ * blijven hier ook bewaard als reservekopie: lukt live niet, dan gaat de hele
+ * opname na "stop" alsnog in één keer naar /api/v1/consult/process.
+ *
+ * Alleen chrome.runtime is hier beschikbaar. Instellingen en het
+ * praktijknummer komen mee met het startbericht van de service worker; de
+ * voortgang gaat als SV_CONSULT_EVENT terug naar de service worker.
+ */
+
+// Kleine stukjes, zodat het gesprek live mee kan. Samen vormen ze ook de
+// reservekopie: dezelfde stukjes achter elkaar zijn een geldig webm-bestand.
+var CONSULT_CHUNK_MS = 250;
+var CONSULT_LIVE_WAIT_MS = 90000;
+
+var consult = null;   // { config, stream, recorder, chunks, live, startedAt, nadictaatVanaf, afgebroken }
+
+function consultEmit(type, extra) {
+  var msg = { action: 'SV_CONSULT_EVENT', type: type };
+  for (var k in extra || {}) msg[k] = extra[k];
+  chrome.runtime.sendMessage(msg).catch(function () {});
+}
+
+function consultHeaders(config) {
+  var headers = {};
+  if (config.apiKey) headers['X-API-Key'] = config.apiKey;
+  if (config.praktijk && config.praktijk.length) headers['X-Bricks-Praktijk'] = config.praktijk.join(',');
+  return headers;
+}
+
+async function consultStart(config) {
+  if (consult) return { ok: false, message: 'Er loopt al een consultopname.' };
+  if (typeof session !== 'undefined' && session) return { ok: false, message: 'Stop eerst het dicteren (Alt+Shift+D).' };
+
+  var constraints = { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true };
+  if (config.micDevice) constraints.deviceId = { exact: config.micDevice };
+  var stream;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ audio: constraints });
+  } catch (err) {
+    if (err && err.name === 'NotAllowedError') {
+      return { ok: false, code: 'mic-permission', message: 'VitaScribe heeft nog geen toegang tot de microfoon. Geef toestemming in het tabblad dat nu opent.' };
+    }
+    return { ok: false, message: 'Microfoon niet beschikbaar: ' + ((err && err.message) || err) };
+  }
+
+  var c = consult = {
+    config: config, stream: stream, recorder: null, chunks: [], live: null,
+    startedAt: Date.now(), nadictaatVanaf: null, afgebroken: null,
+  };
+  c.live = consultStartLive(c);
+
+  var mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : 'audio/webm';
+  // 64 kbit/s opus is ruim voor spraak en houdt de stukjes klein.
+  c.recorder = new MediaRecorder(stream, { mimeType: mimeType, audioBitsPerSecond: 64000 });
+  c.recorder.ondataavailable = function (e) {
+    if (e.data && e.data.size > 0) {
+      c.chunks.push(e.data);   // reservekopie, blijft tot het verslag er is
+      if (c.live) c.live.stuur(e.data);
+    }
+  };
+  c.recorder.onstop = function () {
+    var mime = c.recorder.mimeType || 'audio/webm';
+    c.stream.getTracks().forEach(function (t) { t.stop(); });
+    consultRondAf(c, new Blob(c.chunks, { type: mime }), mime);
+  };
+  c.recorder.start(CONSULT_CHUNK_MS);
+  consultEmit('recording', { startedAt: c.startedAt, label: c.live ? 'Luistert mee' : 'Opname loopt' });
+  return { ok: true, startedAt: c.startedAt };
+}
+
+// Staat "consultLive" op "uit", dan wordt het consult zoals vroeger eerst
+// opgenomen en na stop in zijn geheel verstuurd.
+function consultStartLive(c) {
+  if (c.config.consultLive === 'uit' || typeof SVConsultLive === 'undefined') return null;
+  try {
+    return SVConsultLive.start({
+      apiUrl: c.config.apiUrl,
+      apiKey: c.config.apiKey,
+      praktijk: c.config.praktijk || [],
+      llmProvider: c.config.llmProvider,
+      onVoortgang: function (seconden, sprekers) {
+        if (c.nadictaatVanaf !== null) return;   // het label zegt dan "Nadicteren"
+        consultEmit('label', { label: sprekers > 1 ? 'Luistert mee · ' + sprekers + ' stemmen' : 'Luistert mee' });
+      },
+      onFout: function (melding, terugval) {
+        if (terugval) {
+          // De opname loopt gewoon door; na stop gaat hij in zijn geheel naar de server.
+          consultEmit('label', { label: 'Opname loopt (live verbinding weg)' });
+        } else {
+          c.afgebroken = melding;
+          consultStop();
+        }
+      },
+    });
+  } catch (e) {
+    return null;   // dan gewoon opnemen en achteraf versturen
+  }
+}
+
+// De patiënt is weg. De arts dicteert nog kort onderzoek en beleid; alles
+// vanaf dit moment is alleen de arts. De opname loopt gewoon door.
+function consultNadictaat() {
+  var c = consult;
+  if (!c || !c.recorder || c.recorder.state === 'inactive' || c.nadictaatVanaf !== null) return;
+  c.nadictaatVanaf = Math.round((Date.now() - c.startedAt) / 100) / 10;
+  if (c.live) c.live.nadictaat(c.nadictaatVanaf);
+  consultEmit('label', { label: 'Nadicteren: onderzoek en beleid', nadictaat: true });
+}
+
+function consultStop() {
+  var c = consult;
+  if (c && c.recorder && c.recorder.state !== 'inactive') c.recorder.stop();
+}
+
+async function consultRondAf(c, blob, mime) {
+  var verbinding = c.live;
+  c.live = null;
+  try {
+    if (c.afgebroken) {
+      if (verbinding) verbinding.sluit();
+      consultEmit('error', { message: c.afgebroken });
+      return;
+    }
+    if (blob.size < 1000) {
+      if (verbinding) verbinding.sluit();
+      consultEmit('error', { message: 'Opname te kort. Neem iets langer op.' });
+      return;
+    }
+    if (verbinding) {
+      consultEmit('processing', { step: 'Verslag wordt gemaakt…' });
+      var uit = await verbinding.stop(CONSULT_LIVE_WAIT_MS);
+      if (uit.ok) {
+        consultEmit('result', { data: uit.data });
+        return;
+      }
+      consultEmit('processing', { step: 'Live lukte niet; de opname wordt alsnog verwerkt…' });
+    } else {
+      consultEmit('processing', { step: 'Opname wordt verwerkt…' });
+    }
+    consultEmit('result', { data: await consultUpload(c, blob, mime) });
+  } catch (err) {
+    consultEmit('error', { message: (err && err.message) || 'Onbekende fout bij het verwerken.' });
+  } finally {
+    c.chunks = [];
+    if (consult === c) consult = null;
+  }
+}
+
+async function consultUpload(c, blob, mime) {
+  var form = new FormData();
+  form.append('audio', blob, 'consult.' + (mime.indexOf('webm') !== -1 ? 'webm' : 'wav'));
+  form.append('consent', 'true');
+  if (c.nadictaatVanaf !== null) form.append('nadictaat_vanaf', String(c.nadictaatVanaf));
+  if (c.config.sttProvider) form.append('stt_provider', c.config.sttProvider);
+  if (c.config.llmProvider) form.append('llm_provider', c.config.llmProvider);
+  var resp;
+  try {
+    resp = await fetch(c.config.apiUrl + '/api/v1/consult/process', {
+      method: 'POST', headers: consultHeaders(c.config), body: form,
+    });
+  } catch (e) {
+    throw new Error('Kan de server niet bereiken op ' + c.config.apiUrl + '. Controleer het adres in Instellingen.');
+  }
+  if (!resp.ok) {
+    var detail = await resp.json().then(function (j) { return j.detail; }).catch(function () { return ''; });
+    if (resp.status === 403 || resp.status === 401) throw new Error('Serversleutel klopt niet. Controleer de sleutel in Instellingen.');
+    throw new Error('Server gaf fout ' + resp.status + (detail ? ': ' + detail : ''));
+  }
+  return resp.json();
+}
+
+function consultStatus() {
+  if (!consult) return { active: false };
+  var recording = !!(consult.recorder && consult.recorder.state !== 'inactive');
+  return { active: true, recording: recording, startedAt: consult.startedAt, nadictaat: consult.nadictaatVanaf !== null };
+}
+
+chrome.runtime.onMessage.addListener(function (msg, _sender, sendResponse) {
+  if (msg.target !== 'sv-offscreen') return false;
+  if (msg.action === 'SV_CONSULT_START') {
+    consultStart(msg.config).then(sendResponse);
+    return true;
+  }
+  if (msg.action === 'SV_CONSULT_STOP') {
+    consultStop();
+    sendResponse({ ok: true });
+  } else if (msg.action === 'SV_CONSULT_NADICTAAT') {
+    consultNadictaat();
+    sendResponse({ ok: true });
+  } else if (msg.action === 'SV_CONSULT_STATUS') {
+    sendResponse(consultStatus());
+  }
+  return false;
+});

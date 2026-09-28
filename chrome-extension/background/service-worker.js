@@ -263,7 +263,7 @@ async function ensureOffscreen() {
   await chrome.offscreen.createDocument({
     url: OFFSCREEN_URL,
     reasons: ['USER_MEDIA', 'CLIPBOARD'],
-    justification: 'Microfoon voor dicteren zonder zijpaneel; dictaat naar klembord als terugval.',
+    justification: 'Microfoon voor dicteren en consultopname, los van tabbladen en zijpaneel; dictaat naar klembord als terugval.',
   });
 }
 
@@ -379,6 +379,98 @@ chrome.runtime.onMessage.addListener((msg, sender) => {
     if (tabId !== undefined) quickToggle(tabId);
   }
   return false;
+});
+
+// ── Consult recording ──
+// The consult is recorded in the offscreen document, so it keeps running when
+// the doctor opens another page, switches tabs or closes the side panel. The
+// state lives in chrome.storage.session (memory only, gone when the browser
+// closes); the side panel and popup show it from there. The toolbar badge
+// shows REC on every page while the microphone is on.
+
+let consultWrites = Promise.resolve();
+
+function consultUpdate(patch, replace) {
+  consultWrites = consultWrites.then(async () => {
+    const cur = replace ? {} : ((await chrome.storage.session.get('svConsult')).svConsult || {});
+    await chrome.storage.session.set({ svConsult: Object.assign(cur, patch) });
+  }).catch(() => {});
+  return consultWrites;
+}
+
+function consultBadge(recording) {
+  chrome.action.setBadgeText({ text: recording ? 'REC' : '' }).catch(() => {});
+  if (recording) chrome.action.setBadgeBackgroundColor({ color: '#dc2626' }).catch(() => {});
+}
+
+async function consultStart() {
+  await ensureOffscreen();
+  const cfg = await SVInstellingen.lees(['apiUrl', 'apiKey', 'micDevice', 'llmProvider', 'sttProvider', 'consultLive']);
+  const res = await toOffscreen('SV_CONSULT_START', {
+    config: {
+      apiUrl: (cfg.apiUrl || 'http://localhost:8002').replace(/\/$/, ''),
+      apiKey: (cfg.apiKey || '').trim(),
+      micDevice: cfg.micDevice || '',
+      llmProvider: cfg.llmProvider || '',
+      sttProvider: cfg.sttProvider || '',
+      consultLive: cfg.consultLive || '',
+      praktijk: await SVPraktijk.nummers(),
+    },
+  });
+  if (res && res.code === 'mic-permission') {
+    chrome.tabs.create({ url: chrome.runtime.getURL('sidepanel/mic-permission.html') });
+  }
+  return res || { ok: false, message: 'De opname kon niet starten. Probeer het opnieuw.' };
+}
+
+function handleConsultEvent(msg) {
+  switch (msg.type) {
+    case 'recording':
+      consultBadge(true);
+      consultUpdate({ state: 'recording', startedAt: msg.startedAt, label: msg.label, nadictaat: false }, true);
+      break;
+    case 'label':
+      consultUpdate(msg.nadictaat ? { label: msg.label, nadictaat: true } : { label: msg.label });
+      break;
+    case 'processing':
+      consultBadge(false);
+      consultUpdate({ state: 'processing', step: msg.step });
+      break;
+    case 'result':
+      consultBadge(false);
+      consultUpdate({ state: 'results', result: msg.data, at: Date.now() }, true);
+      break;
+    case 'error':
+      consultBadge(false);
+      consultUpdate({ state: 'error', message: msg.message, at: Date.now() }, true);
+      break;
+  }
+}
+
+chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+  if (msg.action === 'SV_CONSULT_EVENT') {
+    handleConsultEvent(msg);
+    return false;
+  }
+  if (msg.action !== 'SV_CONSULT_CMD') return false;
+  if (msg.cmd === 'start') {
+    consultStart().then(sendResponse);
+    return true;
+  }
+  const action = { stop: 'SV_CONSULT_STOP', nadictaat: 'SV_CONSULT_NADICTAAT', status: 'SV_CONSULT_STATUS' }[msg.cmd];
+  if (!action) return false;
+  chrome.offscreen.hasDocument().then((has) => {
+    if (!has) {
+      if (msg.cmd === 'status') { sendResponse({ active: false }); return; }
+      // Browser restarted or the extension reloaded mid-consult: nothing left to stop.
+      consultBadge(false);
+      consultUpdate({ state: 'error', message: 'De opname was al gestopt (browser of extensie herstart).', at: Date.now() }, true);
+      sendResponse({ ok: false });
+      return;
+    }
+    toOffscreen(action).then(sendResponse);
+  });
+  return true;
 });
 
 // ── S/O/E/P field mapping ──
