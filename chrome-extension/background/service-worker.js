@@ -445,10 +445,19 @@ async function consultGet() {
 }
 
 // What the page pill may know: state and wording, no patient data.
+// Several health problems give several SOEP parts; they go in one by one.
+// Takes the "soep" object of a result: its parts, or itself as the only part.
+function consultParts(soep) {
+  const parts = soep && Array.isArray(soep.problemen) ? soep.problemen : [];
+  return parts.length ? parts : [soep || {}];
+}
+
 function consultPillState(c) {
   if (!c || !c.state || c.dismissed) return { state: 'idle' };
+  const soepParts = c.result ? consultParts(c.result.soep) : [];
   return {
     state: c.state, startedAt: c.startedAt || null, label: c.label || '', step: c.step || '',
+    parts: soepParts.length, next: Math.min(c.inserted || 0, Math.max(0, soepParts.length - 1)),
     message: c.state === 'error' ? (c.message || '') : '', code: c.code || '', retry: !!c.retry,
   };
 }
@@ -552,15 +561,15 @@ function handleConsultEvent(msg) {
     case 'processing':
       return consultUpdate({ state: 'processing', step: msg.step, startedAt: null });
     case 'result':
-      return consultUpdate({ state: 'results', result: msg.data, at: Date.now() }, true);
+      return consultUpdate({ state: 'results', result: msg.data, inserted: 0, at: Date.now() }, true);
     case 'error':
       return consultUpdate({ state: 'error', message: msg.message, code: msg.code || '', retry: !!msg.retry, at: Date.now() }, true);
   }
   return null;
 }
 
-function consultValues(result) {
-  const soep = (result && result.soep) || {};
+function consultValues(result, index) {
+  const soep = consultParts(result && result.soep)[index || 0] || {};
   const values = { s: soep.s, o: soep.o, e: soep.e, p: soep.p };
   if (soep.icpc_code && values.e && values.e.indexOf(soep.icpc_code) === -1) values.e += ' (' + soep.icpc_code + ')';
   return { values, icpc: soep.icpc_code || '' };
@@ -571,15 +580,34 @@ async function consultInsert(tabId) {
   const c = await consultGet();
   if (c.state !== 'results' || !c.result) return { ok: false, message: 'Er is geen verslag om in te voegen.' };
   if (tabId === undefined || tabId === null) return { ok: false, message: 'Open het consult in Bricks.' };
-  const { values, icpc } = consultValues(c.result);
+  const total = consultParts(c.result.soep).length;
+  const index = Math.min(c.inserted || 0, total - 1);
+  const { values, icpc } = consultValues(c.result, index);
   const res = await fillSoep(tabId, values, icpc);
   if (!res.filled.length) {
-    return { ok: false, message: 'Klik eerst in de S-regel van het consult en kies dan opnieuw Invoegen.' };
+    return { ok: false, message: total > 1
+      ? 'Klik eerst in de S-regel voor deel ' + (index + 1) + ' en kies dan opnieuw Invoegen.'
+      : 'Klik eerst in de S-regel van het consult en kies dan opnieuw Invoegen.' };
   }
-  await consultUpdate({ dismissed: true });
+  const missing = res.missing.length ? ' Niet gevonden: ' + res.missing.join(', ').toUpperCase() + '.' : '';
+  return consultMarkInserted(index, missing);
+}
+
+// A part is in Bricks (from the pill, the popup or the side panel). The next
+// part waits for its own SOEP line; after the last one everything clears.
+async function consultMarkInserted(index, extra) {
+  const c = await consultGet();
+  if (c.state !== 'results' || !c.result) return { ok: false };
+  const total = consultParts(c.result.soep).length;
+  const inserted = Math.max(c.inserted || 0, index + 1);
+  if (inserted >= total) {
+    await consultUpdate({ inserted, dismissed: true });
+    return { ok: true, done: true, message: (total > 1 ? 'Alle ' + total + ' delen ingevoegd.' : 'Verslag ingevoegd.') + (extra || '') };
+  }
+  await consultUpdate({ inserted });
   return {
-    ok: true,
-    message: res.missing.length ? 'Ingevoegd; niet gevonden: ' + res.missing.join(', ').toUpperCase() + '.' : 'Verslag ingevoegd.',
+    ok: true, done: false, next: inserted,
+    message: 'Deel ' + inserted + ' ingevoegd.' + (extra || '') + ' Maak in Bricks een nieuwe SOEP-regel, klik in S en kies Invoegen voor deel ' + (inserted + 1) + '.',
   };
 }
 
@@ -610,10 +638,17 @@ async function consultCommand(cmd, sender, msg) {
     // and in the popup must use that version, not the original.
     const c = await consultGet();
     if (c.state !== 'results' || !c.result || !msg.soep) return { ok: false };
-    const result = Object.assign({}, c.result, { soep: Object.assign({}, c.result.soep, msg.soep) });
-    await consultUpdate({ result });
+    const index = msg.deel || 0;
+    const soep = Object.assign({}, c.result.soep);
+    const parts = consultParts(soep).map((d) => Object.assign({}, d));
+    if (!parts[index]) return { ok: false };
+    Object.assign(parts[index], msg.soep);
+    if (Array.isArray(soep.problemen) && soep.problemen.length) soep.problemen = parts;
+    if (index === 0) ['s', 'o', 'e', 'p', 'icpc_code'].forEach((k) => { if (k in msg.soep) soep[k] = msg.soep[k]; });
+    await consultUpdate({ result: Object.assign({}, c.result, { soep }) });
     return { ok: true };
   }
+  if (cmd === 'inserted') return consultMarkInserted(msg.deel || 0);
   if (cmd === 'options') { chrome.runtime.openOptionsPage(); return { ok: true }; }
   const action = { stop: 'SV_CONSULT_STOP', nadictaat: 'SV_CONSULT_NADICTAAT', status: 'SV_CONSULT_STATUS', retry: 'SV_CONSULT_RETRY' }[cmd];
   if (!action) return { ok: false };

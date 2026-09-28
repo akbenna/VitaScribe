@@ -759,7 +759,9 @@
       show([]);
     } else if (st === 'results') {
       cPill.root.className = 'c ok' + (cNote ? ' note' : '');
-      cPill.time.textContent = 'Verslag klaar';
+      var delen = cState.parts || 1;
+      cPill.time.textContent = delen > 1 ? 'Verslag klaar · deel ' + ((cState.next || 0) + 1) + '/' + delen : 'Verslag klaar';
+      cPill.buttons.insert.textContent = delen > 1 ? 'Invoegen deel ' + ((cState.next || 0) + 1) : 'Invoegen';
       cPill.text.textContent = cNote;
       show(['insert', 'show', 'dismiss']);
     } else if (st === 'error') {
@@ -780,8 +782,9 @@
     }
     consultCmd(cmd).then(function (res) {
       if (cmd === 'insert' || cmd === 'show') {
-        cNote = res && res.message && !(cmd === 'insert' && res.ok) ? res.message : '';
-        if (cmd === 'insert' && res && res.ok) cNote = '';
+        // Show why nothing happened, or where the next part goes; a finished
+        // insert needs no words (the pill disappears).
+        cNote = res && res.message && !(cmd === 'insert' && res.ok && res.done) ? res.message : '';
         renderConsultPill();
       }
     });
@@ -789,7 +792,7 @@
 
   chrome.runtime.onMessage.addListener(function (msg) {
     if (msg.action !== 'SV_CONSULT_PILL') return false;
-    if (msg.pill.state !== 'results') cNote = '';
+    if (msg.pill.state !== 'results' || (cState.next !== msg.pill.next && !/ingevoegd/.test(cNote))) cNote = '';
     cState = msg.pill || { state: 'idle' };
     renderConsultPill();
     return false;

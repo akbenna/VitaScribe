@@ -72,7 +72,19 @@ window.SVConsultUI = (function () {
       var dec = $('soep-decisief');
       dec.textContent = data.decisief || '';
       dec.classList.toggle('hidden', !data.decisief);
-      setStatus('Consultverslag klaar. Controleer het en voeg het in.');
+      var n = Array.isArray((data.soep || {}).problemen) ? data.soep.problemen.length : 1;
+      setStatus(n > 1
+        ? 'Consultverslag klaar: ' + n + ' problemen, elk een eigen deel. Controleer en voeg ze één voor één in.'
+        : 'Consultverslag klaar. Controleer het en voeg het in.');
+    }
+    // Parts inserted elsewhere (pill, popup) are ticked off here too.
+    if (st === 'results' && gekoppeld && soepDelen) {
+      var klaar = huidig.inserted || 0;
+      var veranderd = false;
+      soepDelen.forEach(function (d, i) {
+        if (i < klaar && !d.__ingevoegd) { d.__ingevoegd = true; veranderd = true; }
+      });
+      if (veranderd) toonDeel(Math.min(klaar, soepDelen.length - 1));
     } else if (st === 'error' && huidig.at !== getoondOp) {
       getoondOp = huidig.at;
       setStatus(huidig.message || 'De consultopname is mislukt.', true);
@@ -135,10 +147,8 @@ window.SVConsultUI = (function () {
   // "Invoegen" in het bolletje en de popup dezelfde tekst gebruiken.
   function stuurAanpassing() {
     if (!gekoppeld || huidig.state !== 'results') return;
-    var soep = {};
-    document.querySelectorAll('#soep-rows .soep-text').forEach(function (n) { soep[n.dataset.key] = n.innerText.trim(); });
-    soep.icpc_code = $('icpc-code').innerText.trim();
-    chrome.runtime.sendMessage({ action: 'SV_CONSULT_CMD', cmd: 'edit', soep: soep }).catch(function () {});
+    var deel = huidigDeel();   // sidepanel.js: the part on screen, with its edits
+    chrome.runtime.sendMessage({ action: 'SV_CONSULT_CMD', cmd: 'edit', soep: deel.soep, deel: deel.index }).catch(function () {});
   }
   function bijBewerken(e) {
     if (!gekoppeld || !e.target.closest || !e.target.closest('.soep-text, #icpc-code')) return;
@@ -151,7 +161,12 @@ window.SVConsultUI = (function () {
     bezig: bezig,
     /** Het SOEP-blok toont nu iets anders dan het consultverslag. */
     losgekoppeld: function () { gekoppeld = false; },
-    /** Het consultverslag is via het zijpaneel ingevoegd: bolletje en ✓ weg. */
-    ingevoegd: function () { if (gekoppeld && huidig.state === 'results') opdracht('dismiss'); },
+    /** Een deel van het consultverslag is via het zijpaneel ingevoegd; na het
+     *  laatste deel verdwijnen bolletje en ✓. */
+    ingevoegd: function (deel) {
+      if (gekoppeld && huidig.state === 'results') {
+        chrome.runtime.sendMessage({ action: 'SV_CONSULT_CMD', cmd: 'inserted', deel: deel || 0 }).catch(function () {});
+      }
+    },
   };
 })();

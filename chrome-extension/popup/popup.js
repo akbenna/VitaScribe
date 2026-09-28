@@ -115,10 +115,25 @@ async function startConsult() {
 
 // ── Display results ──
 
+// Several problems: the popup shows the part that goes in next.
+function currentPart(data) {
+  var top = data.soep || {};
+  var parts = Array.isArray(top.problemen) && top.problemen.length ? top.problemen : [top];
+  var index = Math.min(consult.inserted || 0, parts.length - 1);
+  return { soep: parts[index], index: index, total: parts.length };
+}
+
 function displayResults(data) {
   $('decisief-text').textContent = data.decisief || '-';
 
-  var soep = data.soep || {};
+  var part = currentPart(data);
+  var soep = part.soep || {};
+  $('deel-info').classList.toggle('hidden', part.total < 2);
+  $('deel-info').textContent = part.total > 1
+    ? 'Deel ' + (part.index + 1) + ' van ' + part.total + ': ' + (soep.titel || soep.icpc_titel || '') +
+      '. Elk deel hoort in een eigen SOEP-regel.'
+    : '';
+  $('push-label').textContent = part.total > 1 ? 'Deel ' + (part.index + 1) + ' invoegen in Bricks' : 'Invoegen in Bricks';
   $('soep-s').textContent = soep.s || '-';
   $('soep-o').textContent = soep.o || '-';
   $('soep-e').textContent = soep.e || '-';
@@ -198,7 +213,7 @@ $('btn-copy-decisief').addEventListener('click', function () {
   copyToClipboard(currentResult().decisief || '', this);
 });
 $('btn-copy-soep').addEventListener('click', function () {
-  copyToClipboard(formatSOEPText(currentResult().soep || {}), this);
+  copyToClipboard(formatSOEPText(currentPart(currentResult()).soep || {}), this);
 });
 
 $('btn-push-bricks').addEventListener('click', async function () {

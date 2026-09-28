@@ -389,7 +389,75 @@ async function processText(mode) {
 
 var SOEP_KEYS = [['s', 'S'], ['o', 'O'], ['e', 'E'], ['p', 'P']];
 
+// A consult about several problems comes back as several SOEP parts; the
+// doctor puts each in its own SOEP line in Bricks. One part: as before.
+var soepDelen = null;    // [{titel, s, o, e, p, icpc_code, icpc_titel}] or null
+var deelIdx = 0;
+var soepAlgemeen = {};   // aandachtspunten, shared by all parts
+
 function renderSoep(soep) {
+  var delen = Array.isArray(soep.problemen) ? soep.problemen : [];
+  soepAlgemeen = { aandachtspunten: soep.aandachtspunten };
+  var bar = document.getElementById('soep-delen');
+  bar.textContent = '';
+  if (delen.length > 1) {
+    soepDelen = delen.map(function (d) { return Object.assign({}, d); });
+    soepDelen.forEach(function (d, i) {
+      var b = document.createElement('button');
+      b.className = 'soep-deel';
+      b.setAttribute('role', 'tab');
+      b.textContent = (i + 1) + ' · ' + (d.titel || d.icpc_titel || 'Deel ' + (i + 1)) + (d.icpc_code ? ' (' + d.icpc_code + ')' : '');
+      b.addEventListener('click', function () { toonDeel(i); });
+      bar.appendChild(b);
+    });
+  } else {
+    soepDelen = null;
+  }
+  bar.classList.toggle('hidden', !soepDelen);
+  document.getElementById('soep-delen-hint').classList.toggle('hidden', !soepDelen);
+  deelIdx = 0;
+  renderSoepDeel(soepDelen ? soepDelen[0] : soep);
+  markeerDelen();
+}
+
+// Edits in the rows belong to the part on screen; keep them when switching.
+function bewaarDeel() {
+  if (!soepDelen) return;
+  var d = soepDelen[deelIdx];
+  els.soepRows.querySelectorAll('.soep-text').forEach(function (n) { d[n.dataset.key] = n.innerText.trim(); });
+  d.icpc_code = document.getElementById('icpc-code').innerText.trim();
+}
+
+function toonDeel(i) {
+  if (!soepDelen || !soepDelen[i]) return;
+  bewaarDeel();
+  deelIdx = i;
+  renderSoepDeel(soepDelen[i]);
+  markeerDelen();
+}
+
+function markeerDelen() {
+  var labels = soepDelen ? 'Deel ' + (deelIdx + 1) + ' invoegen' : 'Alles invoegen';
+  els.soepInsert.textContent = labels;
+  els.soepCopy.textContent = soepDelen ? 'Kopieer deel' : 'Kopieer alles';
+  document.querySelectorAll('#soep-delen .soep-deel').forEach(function (b, i) {
+    b.classList.toggle('active', i === deelIdx);
+    b.setAttribute('aria-selected', i === deelIdx ? 'true' : 'false');
+    b.classList.toggle('done', !!(soepDelen && soepDelen[i] && soepDelen[i].__ingevoegd));
+  });
+}
+
+/** For consult-ui.js: which part is on screen, and its current text. */
+function huidigDeel() {
+  bewaarDeel();
+  var soep = {};
+  els.soepRows.querySelectorAll('.soep-text').forEach(function (n) { soep[n.dataset.key] = n.innerText.trim(); });
+  soep.icpc_code = document.getElementById('icpc-code').innerText.trim();
+  return { index: soepDelen ? deelIdx : 0, soep: soep, delen: soepDelen ? soepDelen.length : 1 };
+}
+
+function renderSoepDeel(part) {
+  var soep = Object.assign({}, part, soepAlgemeen);
   lastSoep = soep;
   els.soepRows.textContent = '';
   SOEP_KEYS.forEach(function (pair) {
@@ -476,7 +544,17 @@ async function insertSoepPerField() {
     } else {
       setStatus('SOEP ingevuld: ' + where + '.');
     }
-    if (window.SVConsultUI) window.SVConsultUI.ingevoegd();   // pill and ✓ on the icon go away
+    if (window.SVConsultUI) window.SVConsultUI.ingevoegd(soepDelen ? deelIdx : 0);   // pill and ✓ follow
+    if (soepDelen) {
+      soepDelen[deelIdx].__ingevoegd = true;
+      var volgende = soepDelen.findIndex(function (d) { return !d.__ingevoegd; });
+      if (volgende !== -1) {
+        toonDeel(volgende);
+        setStatus(els.status.textContent + ' Maak in Bricks een nieuwe SOEP-regel, klik in S en kies "Deel ' + (volgende + 1) + ' invoegen".');
+      } else {
+        markeerDelen();
+      }
+    }
     return;
   }
   // Nothing clicked yet (or fields not found): everything into one field.

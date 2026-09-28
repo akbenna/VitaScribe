@@ -240,3 +240,7 @@ body {
   cursor: pointer; margin-top: 6px; }
 .result-actions { flex-wrap: wrap; }
 .error-area .btn { margin: 4px 2px; }
+
+.deel-info { margin: 0 0 8px; padding: 6px 8px; font-size: 12px; color: #065f46; background: var(--primary-light);
+  border-radius: 8px; }
+.deel-info.hidden { display: none; }

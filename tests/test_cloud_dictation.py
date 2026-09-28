@@ -295,7 +295,7 @@ def test_process_soep_returns_all_fields(api):
     assert body["o"] == ""
     assert body["icpc_titel"] == ""
     assert llm.await_args.kwargs["json_mode"] is True
-    # AVG: patient text goes to the EU model, whatever the browser asks for
+    # AVG: patient text goes to the configured model, whatever the browser asks for
     assert llm.await_args.kwargs["provider"] == "anthropic"
     assert body["aandachtspunten"] == []   # model gaf er geen: lege lijst
 
@@ -440,3 +440,48 @@ def test_deepgram_stream_opts_out_of_training():
 ])
 def test_spoken_punctuation(spoken, expected):
     assert dictation.apply_spoken_commands(spoken) == expected
+
+
+# === Meerdere problemen in één consult, en psychische klachten ===
+
+def test_process_soep_splits_separate_problems(api):
+    model = {
+        "s": "3d keelpijn", "o": "keel rood", "e": "virale faryngitis", "p": "paracetamol",
+        "icpc_code": "R74", "icpc_titel": "Acute infectie bovenste luchtwegen",
+        "problemen": [
+            {"titel": "Keelpijn", "s": "3d keelpijn", "o": "keel rood", "e": "virale faryngitis",
+             "p": "paracetamol", "icpc_code": "R74", "icpc_titel": "Acute infectie bovenste luchtwegen"},
+            {"titel": "Lage rugpijn", "s": "2w rugpijn zonder uitstraling", "o": "Lasègue neg",
+             "e": "aspecifieke lage rugpijn", "p": "blijven bewegen", "icpc_code": "L03", "icpc_titel": "Lage rugpijn"},
+            {"titel": "leeg", "s": "", "o": "", "e": "", "p": "", "icpc_code": "", "icpc_titel": ""},
+        ],
+        "aandachtspunten": [],
+    }
+    with patch.object(main.llm_service, "complete", AsyncMock(return_value=json.dumps(model))) as llm:
+        resp = api.post("/api/v1/dictation/process", headers={"X-API-Key": "geheim"},
+                        json={"text": "keelpijn en ook rugpijn", "mode": "soep"})
+    soep = resp.json()["soep"]
+    assert [d["titel"] for d in soep["problemen"]] == ["Keelpijn", "Lage rugpijn"]   # empty part dropped
+    assert soep["problemen"][1]["icpc_code"] == "L03"
+    assert soep["s"] == "3d keelpijn" and soep["icpc_code"] == "R74"               # top level = part 1
+    prompt = llm.await_args.kwargs["system_prompt"]
+    assert "MEERDERE PROBLEMEN" in prompt and "PSYCHISCHE KLACHTEN" in prompt
+    assert "problemen" in llm.await_args.kwargs["json_schema"]["required"]
+
+
+def test_process_soep_without_parts_gives_one_part(api):
+    model = {"s": "somber sinds 2 mnd", "o": "", "e": "depressieve klachten", "p": "POH-GGZ",
+             "icpc_code": "P03", "icpc_titel": "Depressief gevoel"}
+    with patch.object(main.llm_service, "complete", AsyncMock(return_value=json.dumps(model))):
+        soep = api.post("/api/v1/dictation/process", headers={"X-API-Key": "geheim"},
+                        json={"text": "somber", "mode": "soep"}).json()["soep"]
+    assert len(soep["problemen"]) == 1
+    assert soep["problemen"][0]["titel"] == "Depressief gevoel" and soep["problemen"][0]["e"] == "depressieve klachten"
+
+
+def test_psychological_rules_forbid_inventing_findings():
+    from services.cloud_api import prompts
+    for prompt in (prompts.SOEP_SYSTEM_PROMPT, prompts.DICTAAT_SOEP_SYSTEM_PROMPT):
+        assert "suïcidegedachten ALLEEN zoals besproken" in prompt
+        assert "Nooit een psychiatrisch onderzoek invullen" in prompt
+        assert "P76 depressie" in prompt

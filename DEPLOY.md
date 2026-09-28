@@ -196,6 +196,14 @@ tekst in. Voeg je in via het zijpaneel, dan verdwijnen bolletje en ✓ ook. Dict
 dan staat op de pagina hetzelfde opnameteken met Stop als bij Alt+Shift+D; en wat je met Alt+Shift+D
 dicteert, verschijnt ook in het zijpaneel.
 
+**Meerdere problemen in één consult.** Komen twee of meer afzonderlijke problemen aan bod (bijv. keelpijn
+én somberheid), dan maakt VitaScribe per probleem een eigen SOEP-deel met eigen ICPC-code. In het zijpaneel
+staan ze als tabs ("1 · Keelpijn (R74)", "2 · Somberheid (P03)"); het bolletje en de popup voegen ze één voor
+één in ("Invoegen deel 1", dan in een nieuwe SOEP-regel "Invoegen deel 2"). Klachten van één ziektebeeld
+blijven één deel. Bij psychische klachten volgt de SOEP een eigen opbouw (klachten, stressoren, functioneren,
+slaap, middelen, suïcidegedachten alleen zoals besproken; O = psychisch onderzoek zoals beschreven; E met
+P-code; P met POH-GGZ en afspraken).
+
 **Dicteren zonder zijpaneel:** klik in het Bricks-veld en druk **Alt+Shift+D** (of klik op het
 extensie-icoon en dan "Dicteer in veld"). Een label rechtsonder toont dat VitaScribe luistert; nogmaals
 Alt+Shift+D of "Stop" beëindigt het. Lukt invoegen niet, dan staat het dictaat op het klembord.

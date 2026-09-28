@@ -43,10 +43,23 @@ function check(name, cond, extra) {
 
 const uploads = [];
 let failUploads = false;
+let twoProblems = false;
 const REPORT = {
   soep: { s: 'Sinds 3 dagen keelpijn, geen koorts.', o: 'Keel rood, geen beslag.', e: 'Virale faryngitis.',
           p: 'Paracetamol zo nodig. Terug bij koorts > 3 dagen.', icpc_code: 'R74', icpc_titel: 'Acute infectie bovenste luchtwegen' },
   decisief: 'Keelpijn 3d, viraal (R74), expectatief',
+};
+// Two separate problems, one of them psychological: two SOEP parts.
+const REPORT2 = {
+  soep: {
+    s: '3d keelpijn.', o: 'Keel rood.', e: 'Virale faryngitis.', p: 'Paracetamol zn.', icpc_code: 'R74', icpc_titel: 'Acute infectie bovenste luchtwegen',
+    problemen: [
+      { titel: 'Keelpijn', s: '3d keelpijn.', o: 'Keel rood.', e: 'Virale faryngitis.', p: 'Paracetamol zn.', icpc_code: 'R74', icpc_titel: 'Acute infectie bovenste luchtwegen' },
+      { titel: 'Somberheid', s: 'Somber sinds 2 mnd na ontslag; slaapt slecht. Geen suïcidegedachten.', o: 'Vlak affect, goed contact.',
+        e: 'Depressieve klachten.', p: 'Afspraak POH-GGZ over 1 wk.', icpc_code: 'P03', icpc_titel: 'Depressief gevoel' },
+    ],
+  },
+  decisief: 'Keelpijn (R74) en somberheid (P03)',
 };
 const CONSULT_PAGE = `<!doctype html><html><head><meta charset="utf-8"><title>Consult</title></head><body>
 <h1>Consult</h1>
@@ -80,7 +93,7 @@ const server = http.createServer((req, res) => {
       uploads.push({ bytes: body.length, key: req.headers['x-api-key'], consent: /name="consent"\r\n\r\ntrue/.test(body),
                      nadictaat: /name="nadictaat_vanaf"/.test(body) });
       if (failUploads) { res.writeHead(503, { 'Content-Type': 'application/json' }); res.end('{"detail":"Server tijdelijk niet beschikbaar"}'); return; }
-      res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(REPORT));
+      res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(twoProblems ? REPORT2 : REPORT));
     });
     return;
   }
@@ -385,6 +398,56 @@ async function listenPill(page, clickStop) {
   await sleep(500);
   await pop.close();
   check('snel dicteren (Alt+Shift+D) verschijnt ook in het zijpaneel', (await side.inputValue('#text')).includes('Snel gedicteerd'));
+
+  console.log('L. Twee problemen: twee SOEP-delen, één voor één');
+  twoProblems = true;
+  for (const f of ['S', 'O', 'E', 'ICPC', 'P']) await tab.fill('#' + f, '');
+  pop = await openPopup();
+  const closed3 = pop.waitForEvent('close', { timeout: 5000 }).then(() => true, () => false);
+  await pop.click('#btn-start');
+  await closed3;
+  await sleep(2500);
+  await tab.bringToFront();
+  await clickPill(tab, 'stop');
+  await sleep(1800);
+  p = await pill(tab);
+  check('bolletje: verslag klaar, deel 1/2', p.text.includes('deel 1/2') && p.text.includes('Invoegen deel 1'), p.text);
+  await side.bringToFront();
+  await sleep(300);
+  const tabsText = await side.$$eval('#soep-delen .soep-deel', (b) => b.map((x) => x.textContent));
+  check('zijpaneel: twee tabs per probleem', tabsText.length === 2 && tabsText[0].includes('Keelpijn') && tabsText[1].includes('Somberheid (P03)'), tabsText);
+  check('knop heet "Deel 1 invoegen"', (await side.textContent('#btn-soep-insert')) === 'Deel 1 invoegen');
+  await side.click('#soep-delen .soep-deel:nth-child(2)');
+  await sleep(200);
+  await shot(side, '4-twee-delen');
+  check('tab 2 toont de psychische SOEP', (await side.$eval('.soep-text[data-key="o"]', (e) => e.textContent)).includes('Vlak affect') &&
+    (await side.textContent('#icpc-code')) === 'P03');
+  await side.evaluate(() => {
+    const n = document.querySelector('.soep-text[data-key="p"]');
+    n.textContent = 'Afspraak POH-GGZ over 1 wk; eerder contact bij verergering.';
+    n.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await sleep(900);
+  const part2 = await sw.evaluate(() => chrome.storage.session.get('svConsult').then((r) => r.svConsult.result.soep.problemen[1].p));
+  check('aanpassing in deel 2 gaat mee', part2.includes('eerder contact'), part2);
+  await tab.bringToFront();
+  await tab.click('#S');
+  await sleep(300);
+  await clickPill(tab, 'insert');
+  await sleep(900);
+  check('deel 1 in de S-regel', (await tab.inputValue('#S')).includes('keelpijn') && (await tab.inputValue('#ICPC')) === 'R74');
+  p = await pill(tab);
+  check('bolletje wijst naar deel 2 met uitleg', p.visible && p.text.includes('deel 2/2') && p.text.includes('nieuwe SOEP-regel'), p.text);
+  check('zijpaneel vinkt deel 1 af', await side.$eval('#soep-delen .soep-deel:nth-child(1)', (b) => b.classList.contains('done')));
+  for (const f of ['S', 'O', 'E', 'ICPC', 'P']) await tab.fill('#' + f, '');   // "new SOEP line"
+  await tab.click('#S');
+  await sleep(300);
+  await clickPill(tab, 'insert');
+  await sleep(900);
+  const f2 = await tab.evaluate(() => ['S', 'O', 'E', 'ICPC', 'P'].map((f) => document.getElementById(f).value));
+  check('deel 2 in de nieuwe regel, met de aanpassing', f2[0].includes('Somber') && f2[3] === 'P03' && f2[4].includes('eerder contact'), f2);
+  p = await pill(tab);
+  check('na het laatste deel: bolletje en icoon leeg', !p.visible && (await badge()) === '');
 
   check('geen JS-fouten', errs.length === 0, errs);
   console.log(`\n${ok} geslaagd, ${fail} mislukt`);

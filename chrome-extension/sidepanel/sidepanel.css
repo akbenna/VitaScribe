@@ -185,3 +185,10 @@ body.consult-running #view-letters,
 body.consult-running .footer,
 body.consult-running #view-dictate > :not(#consult):not(#status) { display: none !important; }
 body.consult-running .consult { border-color: var(--rec); }
+
+/* Several problems in one consult: one SOEP part per problem */
+.soep-delen { display: flex; gap: 4px; flex-wrap: wrap; }
+.soep-deel { border: 1px solid var(--border); background: var(--panel); border-radius: 999px; padding: 3px 10px;
+  font: inherit; font-size: 12px; cursor: pointer; color: var(--text); }
+.soep-deel.active { border-color: var(--brand); background: var(--brand); color: #fff; }
+.soep-deel.done::after { content: " ✓"; }
