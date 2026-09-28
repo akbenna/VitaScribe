@@ -659,6 +659,7 @@
       '@keyframes b{50%{opacity:.3}}' +
       '.c.busy .d{background:#94a3b8;animation:b .8s infinite}.c.ok .d{background:#10b981;animation:none}' +
       '.c.err .d{background:#f59e0b;animation:none}' +
+      '.c.warn .m{color:#fbbf24;font-weight:600}' +
       '.t{font-weight:700;font-variant-numeric:tabular-nums}.m{color:#cbd5e1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}' +
       '.c.err,.c.note{border-radius:12px;flex-wrap:wrap}.c.err .m,.c.note .m{white-space:normal;color:#fff;flex-basis:100%;order:5;padding:2px 2px 0 0}' +
       'button{border:0;border-radius:999px;padding:3px 9px;background:#334155;color:#fff;font:inherit;font-weight:600;cursor:pointer}' +
@@ -751,7 +752,8 @@
       tick();
       cTimer = setInterval(tick, 1000);
       var nad = /nadicteren/i.test(cState.label || '');
-      cPill.text.textContent = nad ? 'nadicteren' : '';
+      cPill.text.textContent = cState.stil ? 'geen geluid: microfoon?' : (nad ? 'nadicteren' : '');
+      if (cState.stil) cPill.root.className = 'c warn';
       show(nad ? ['stop'] : ['nadictaat', 'stop']);
     } else if (st === 'processing') {
       cPill.root.className = 'c busy';

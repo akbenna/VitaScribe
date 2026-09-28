@@ -459,6 +459,7 @@ function consultPillState(c) {
     state: c.state, startedAt: c.startedAt || null, label: c.label || '', step: c.step || '',
     parts: soepParts.length, next: Math.min(c.inserted || 0, Math.max(0, soepParts.length - 1)),
     message: c.state === 'error' ? (c.message || '') : '', code: c.code || '', retry: !!c.retry,
+    stil: c.state === 'recording' && !!c.stil,
   };
 }
 
@@ -537,6 +538,10 @@ async function consultStart() {
   if (cur.state === 'recording' || cur.state === 'processing') {
     return { ok: false, message: 'Er loopt al een consultopname.' };
   }
+  // Dictating in the side panel holds the microphone too: one at a time.
+  if ((await panelDictationTab()) !== null) {
+    return { ok: false, message: 'Stop eerst het dicteren in het zijpaneel; daarna kun je het consult opnemen.' };
+  }
   const config = await consultConfig();
   if (!config.apiKey) {
     return { ok: false, code: 'key', message: 'Er is nog geen VitaScribe-sleutel ingesteld. Vul hem in bij Instellingen.' };
@@ -562,6 +567,7 @@ function handleConsultEvent(msg) {
       // Shown in the side panel and popup only; never on the page pill.
       return consultUpdate({ suggesties: { klacht: msg.klacht || '', vragen: msg.vragen || [], at: Date.now() } });
     case 'label':
+      if ('stil' in msg) return consultUpdate({ label: msg.label, stil: !!msg.stil });
       return consultUpdate(msg.nadictaat ? { label: msg.label, nadictaat: true } : { label: msg.label });
     case 'processing':
       return consultUpdate({ state: 'processing', step: msg.step, startedAt: null });

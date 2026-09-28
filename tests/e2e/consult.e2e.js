@@ -44,10 +44,12 @@ function check(name, cond, extra) {
 const uploads = [];
 let failUploads = false;
 let twoProblems = false;
+let noSpeech = false;
 const REPORT = {
   soep: { s: 'Sinds 3 dagen keelpijn, geen koorts.', o: 'Keel rood, geen beslag.', e: 'Virale faryngitis.',
           p: 'Paracetamol zo nodig. Terug bij koorts > 3 dagen.', icpc_code: 'R74', icpc_titel: 'Acute infectie bovenste luchtwegen' },
   decisief: 'Keelpijn 3d, viraal (R74), expectatief',
+  transcript_raw: 'Ik heb sinds drie dagen keelpijn, geen koorts.',
 };
 // Two separate problems, one of them psychological: two SOEP parts.
 const REPORT2 = {
@@ -60,6 +62,7 @@ const REPORT2 = {
     ],
   },
   decisief: 'Keelpijn (R74) en somberheid (P03)',
+  transcript_raw: 'Keelpijn en ik voel me somber sinds mijn ontslag.',
 };
 const CONSULT_PAGE = `<!doctype html><html><head><meta charset="utf-8"><title>Consult</title></head><body>
 <h1>Consult</h1>
@@ -93,7 +96,9 @@ const server = http.createServer((req, res) => {
       uploads.push({ bytes: body.length, key: req.headers['x-api-key'], consent: /name="consent"\r\n\r\ntrue/.test(body),
                      nadictaat: /name="nadictaat_vanaf"/.test(body) });
       if (failUploads) { res.writeHead(503, { 'Content-Type': 'application/json' }); res.end('{"detail":"Server tijdelijk niet beschikbaar"}'); return; }
-      res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(twoProblems ? REPORT2 : REPORT));
+      res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(noSpeech
+        ? { soep: { s: '', o: '', e: '', p: '' }, decisief: 'Geen spraak gedetecteerd.', transcript_raw: '', duration_secs: 4.2 }
+        : twoProblems ? REPORT2 : REPORT));
     });
     return;
   }
@@ -363,7 +368,7 @@ async function listenPill(page, clickStop) {
   const closed2 = pop.waitForEvent('close', { timeout: 5000 }).then(() => true, () => false);
   await pop.click('#btn-start');
   await closed2;
-  await sleep(2500);
+  await sleep(3500);
   await clickPill(tab, 'stop');
   await sleep(1500);
   p = await pill(tab);
@@ -419,7 +424,7 @@ async function listenPill(page, clickStop) {
   const closed3 = pop.waitForEvent('close', { timeout: 5000 }).then(() => true, () => false);
   await pop.click('#btn-start');
   await closed3;
-  await sleep(2500);
+  await sleep(3500);
   await tab.bringToFront();
   await clickPill(tab, 'stop');
   await sleep(1800);
@@ -462,6 +467,42 @@ async function listenPill(page, clickStop) {
   p = await pill(tab);
   check('na het laatste deel: bolletje en icoon leeg', !p.visible && (await badge()) === '');
 
+  console.log('N. Te kort, geen spraak, en niet tegelijk met dicteren');
+  const startConsult = async () => {
+    const pp = await openPopup();
+    const dicht = pp.waitForEvent('close', { timeout: 5000 }).then(() => true, () => false);
+    await pp.click('#btn-start');
+    return dicht;
+  };
+  await startConsult();
+  await sleep(1200);
+  await tab.bringToFront();
+  await clickPill(tab, 'stop');
+  await sleep(1200);
+  p = await pill(tab);
+  const nUploads = uploads.length;
+  check('opname van 1 s: niet verwerkt, uitleg', p.text.includes('niet verwerkt') && /\d s/.test(p.text), p.text);
+  await clickPill(tab, 'dismiss');
+  noSpeech = true;
+  await startConsult();
+  await sleep(3500);
+  await clickPill(tab, 'stop');
+  await sleep(1500);
+  p = await pill(tab);
+  check('geen spraak: melding met microfoontip, geen leeg verslag', p.text.includes('geen spraak') && p.text.includes('microfoon') && (await badge()) === '!', p.text);
+  check('korte opname is nooit verstuurd', uploads.length === nUploads + 1);
+  noSpeech = false;
+  await clickPill(tab, 'dismiss');
+  await side.evaluate(() => { window.toggleDictation = function () {}; setState('recording'); });
+  await sleep(500);
+  const pp2 = await openPopup();
+  await pp2.click('#btn-start');
+  await sleep(700);
+  check('consult start niet terwijl het zijpaneel dicteert', (await pp2.textContent('#status-text')).includes('dicteren in het zijpaneel') && (await badge()) === '', await pp2.textContent('#status-text'));
+  await pp2.close();
+  await side.evaluate(() => setState('idle'));
+  await sleep(300);
+
   console.log('M. Schakelaar vraagsuggesties in Instellingen');
   const opt = await ctx.newPage();
   opt.on('pageerror', (e) => errs.push('options: ' + e.message));
@@ -477,9 +518,48 @@ async function listenPill(page, clickStop) {
   check('uit = niet meer meegestuurd', (await sw.evaluate(() => consultConfig())).vraagsuggesties === false);
   await opt.close();
 
+  console.log('O. Microfoon hoort niets');
+  await ctx.close();
+  // A second browser whose microphone only delivers silence (a WAV of zeros).
+  const wav = path.join(os.tmpdir(), 'sv-stil.wav');
+  const n = 16000 * 12;
+  const hdr = Buffer.alloc(44);
+  hdr.write('RIFF', 0); hdr.writeUInt32LE(36 + n * 2, 4); hdr.write('WAVE', 8); hdr.write('fmt ', 12);
+  hdr.writeUInt32LE(16, 16); hdr.writeUInt16LE(1, 20); hdr.writeUInt16LE(1, 22); hdr.writeUInt32LE(16000, 24);
+  hdr.writeUInt32LE(32000, 28); hdr.writeUInt16LE(2, 32); hdr.writeUInt16LE(16, 34); hdr.write('data', 36); hdr.writeUInt32LE(n * 2, 40);
+  fs.writeFileSync(wav, Buffer.concat([hdr, Buffer.alloc(n * 2)]));
+  const ctx2 = await chromium.launchPersistentContext(fs.mkdtempSync(path.join(os.tmpdir(), 'sv-stil-')), {
+    ...launchOpts, headless: false, viewport: { width: 1000, height: 700 },
+    args: [`--disable-extensions-except=${EXT}`, `--load-extension=${EXT}`, '--headless=new',
+           '--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream', `--use-file-for-fake-audio-capture=${wav}`],
+  });
+  const sw2 = ctx2.serviceWorkers().find(isExt) || await ctx2.waitForEvent('serviceworker', isExt);
+  for (let i = 0; i < 100; i++) {
+    if (await sw2.evaluate(() => !!(self.chrome && chrome.storage && chrome.storage.sync))) break;
+    await sleep(100);
+  }
+  const id2 = new URL(sw2.url()).host;
+  await sw2.evaluate(async (url) => {
+    await chrome.storage.sync.set({ apiUrl: url, consultLive: 'uit' });
+    await chrome.storage.local.set({ apiKey: 'goed' });
+  }, base);
+  const tab2 = await ctx2.newPage();
+  await tab2.goto(base + '/consult');
+  await sleep(600);
+  const pop2 = await ctx2.newPage();
+  await pop2.goto(`chrome-extension://${id2}/popup/popup.html`);
+  await sleep(400);
+  await pop2.click('#btn-start').catch(() => {});
+  await sleep(4000);
+  let p2 = await pill(tab2);
+  check('na 4 s stilte nog geen waarschuwing', p2 && p2.visible && !p2.text.includes('geen geluid'), p2 && p2.text);
+  await sleep(6000);
+  p2 = await pill(tab2);
+  check('na 8 s zonder enig geluid: "geen geluid: microfoon?" in het bolletje', p2 && p2.text.includes('geen geluid'), p2 && p2.text);
+  await ctx2.close();
+
   check('geen JS-fouten', errs.length === 0, errs);
   console.log(`\n${ok} geslaagd, ${fail} mislukt`);
-  await ctx.close();
   server.close();
   process.exit(fail ? 1 : 0);
 })().catch((e) => { console.error(e); server.close(); process.exit(1); });

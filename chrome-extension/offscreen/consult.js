@@ -73,9 +73,22 @@ async function consultStart(config) {
   };
   c.recorder.onstop = function () {
     var mime = c.recorder.mimeType || 'audio/webm';
+    stopGeluidsmeter(c);
     c.stream.getTracks().forEach(function (t) { t.stop(); });
     consultRondAf(c, new Blob(c.chunks, { type: mime }), mime);
   };
+  // The microphone can drop out on its own (another program takes it, a
+  // headset is unplugged). That must not look like "Stop": say what happened.
+  stream.getAudioTracks().forEach(function (t) {
+    t.addEventListener('ended', function () {
+      if (consult !== c || c.stopGevraagd) return;
+      c.afgebroken = 'De microfoon viel weg na ' + Math.round((Date.now() - c.startedAt) / 1000) +
+        ' s (headset los, of een ander programma nam hem over). Controleer de microfoon en start opnieuw.';
+      c.afgebrokenCode = 'mic';
+      consultStop();
+    });
+  });
+  startGeluidsmeter(c);
   c.recorder.start(CONSULT_CHUNK_MS);
   consultEmit('recording', { startedAt: c.startedAt, label: c.live ? 'Luistert mee' : 'Opname loopt' });
   return { ok: true, startedAt: c.startedAt };
@@ -129,7 +142,74 @@ function consultNadictaat() {
 
 function consultStop() {
   var c = consult;
-  if (c && c.recorder && c.recorder.state !== 'inactive') c.recorder.stop();
+  if (c && c.recorder && c.recorder.state !== 'inactive') {
+    c.stopGevraagd = true;
+    c.recorder.stop();
+  }
+}
+
+// ── Geluidsmeter: waarschuw als de microfoon niets hoort ──
+// Merkt de arts pas na het consult dat de verkeerde microfoon aanstond, dan is
+// het consult verloren. Heeft de microfoon STIL_MS na de start nog helemaal
+// niets gehoord, dan zegt het bolletje het meteen. Is er eenmaal geluid
+// geweest, dan geen waarschuwing meer: een stilte in het gesprek is normaal,
+// en een microfoon die wegvalt meldt zich zelf ("ended").
+var STIL_MS = 8000;
+var STIL_DREMPEL = 0.01;   // RMS; spraak op normale afstand ligt ruim hoger
+var METER_MS = 100;        // vaak meten: korte klanken mogen niet tussendoor vallen
+
+function startGeluidsmeter(c) {
+  try {
+    var ctx = new AudioContext();
+    var bron = ctx.createMediaStreamSource(c.stream);
+    var meter = ctx.createAnalyser();
+    meter.fftSize = 2048;
+    bron.connect(meter);
+    var buf = new Float32Array(meter.fftSize);
+    c.gehoord = false;
+    c.stil = false;
+    c.meter = { ctx: ctx, timer: setInterval(function () {
+      meter.getFloatTimeDomainData(buf);
+      var som = 0;
+      for (var i = 0; i < buf.length; i++) som += buf[i] * buf[i];
+      if (Math.sqrt(som / buf.length) > STIL_DREMPEL) {
+        c.gehoord = true;
+        if (c.stil) {
+          c.stil = false;
+          consultEmit('label', { label: 'Opname loopt', stil: false });
+        }
+        stopGeluidsmeter(c);   // de microfoon werkt; verder meten is niet nodig
+      } else if (!c.stil && Date.now() - c.startedAt > STIL_MS) {
+        c.stil = true;
+        consultEmit('label', { label: 'Geen geluid: controleer de microfoon', stil: true });
+      }
+    }, METER_MS) };
+  } catch (e) { /* geen Web Audio: dan zonder waarschuwing */ }
+}
+
+function stopGeluidsmeter(c) {
+  if (!c.meter) return;
+  clearInterval(c.meter.timer);
+  try { c.meter.ctx.close(); } catch (e) { /* al dicht */ }
+  c.meter = null;
+}
+
+// Hoe lang een opname minstens moet zijn om te verwerken; korter is bijna
+// altijd per ongeluk gestart of gestopt.
+var MIN_OPNAME_MS = 3000;
+
+// A report without any speech is not a report: say so, with the likely cause.
+function consultResultaat(data, c) {
+  if (!String((data && (data.transcript_raw || data.transcript)) || '').trim()) {
+    var sec = Math.round((data && data.duration_secs) || (Date.now() - c.startedAt) / 1000);
+    consultEmit('error', {
+      code: 'stil',
+      message: 'Er is geen spraak gehoord in de opname (' + sec + ' s). Staat de goede microfoon aan ' +
+        '(Instellingen) en is hij niet gedempt? Er is geen verslag gemaakt.',
+    });
+    return;
+  }
+  consultEmit('result', { data: data });
 }
 
 async function consultRondAf(c, blob, mime) {
@@ -141,23 +221,25 @@ async function consultRondAf(c, blob, mime) {
       consultEmit('error', { message: c.afgebroken, code: c.afgebrokenCode || '' });
       return;
     }
-    if (blob.size < 1000) {
+    var duur = Date.now() - c.startedAt;
+    if (blob.size < 1000 || duur < MIN_OPNAME_MS) {
       if (verbinding) verbinding.sluit();
-      consultEmit('error', { message: 'Opname te kort. Neem iets langer op.' });
+      consultEmit('error', { code: 'kort',
+        message: 'De opname duurde maar ' + Math.max(1, Math.round(duur / 1000)) + ' s en is niet verwerkt. Per ongeluk gestopt? Start opnieuw.' });
       return;
     }
     if (verbinding) {
       consultEmit('processing', { step: 'Verslag wordt gemaakt…' });
       var uit = await verbinding.stop(CONSULT_LIVE_WAIT_MS);
       if (uit.ok) {
-        consultEmit('result', { data: uit.data });
+        consultResultaat(uit.data, c);
         return;
       }
       consultEmit('processing', { step: 'Live lukte niet; de opname wordt alsnog verwerkt…' });
     } else {
       consultEmit('processing', { step: 'Opname wordt verwerkt…' });
     }
-    await consultSend({ config: c.config, blob: blob, mime: mime, nadictaatVanaf: c.nadictaatVanaf });
+    await consultSend({ config: c.config, blob: blob, mime: mime, nadictaatVanaf: c.nadictaatVanaf, startedAt: c.startedAt });
   } catch (err) {
     consultEmit('error', { message: (err && err.message) || 'Onbekende fout bij het verwerken.' });
   } finally {
@@ -172,7 +254,7 @@ async function consultSend(job) {
   try {
     var data = await consultUpload(job, job.blob, job.mime);
     consultPending = null;
-    consultEmit('result', { data: data });
+    consultResultaat(data, job);
   } catch (err) {
     consultPending = err.permanent ? null : job;
     consultEmit('error', {
