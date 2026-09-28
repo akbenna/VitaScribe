@@ -4,7 +4,7 @@ VitaScribe Cloud API - Patiëntinstructie (B1 en vertaling)
 Turns the doctor's E and P lines into a short explanation for the patient in
 plain Dutch (B1) and, optionally, a translation. Only what the doctor wrote
 is rephrased: no new advice, diagnoses or doses. Always a draft the doctor
-checks. Runs on the EU language model (patient data).
+checks. Runs on the patient-data language model (data_policy.phi_llm_provider).
 
   POST /api/v1/patient-instructions
 """

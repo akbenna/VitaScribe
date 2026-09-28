@@ -36,7 +36,7 @@ class STTConfig:
 class LLMConfig:
     """LLM provider configuration."""
 
-    default_provider: str = "mistral"
+    default_provider: str = "anthropic"
     mistral_api_key: str = ""
     mistral_model: str = "mistral-small-latest"
     # SOEP, letters and reading screenshots need the stronger (multimodal) model.
@@ -108,7 +108,7 @@ def get_config() -> AppConfig:
             openai_model=os.getenv("OPENAI_STT_MODEL", "whisper-1"),
         ),
         llm=LLMConfig(
-            default_provider=os.getenv("LLM_PROVIDER", "mistral"),
+            default_provider=os.getenv("LLM_PROVIDER", "anthropic"),
             mistral_api_key=os.getenv("MISTRAL_API_KEY", ""),
             mistral_model=os.getenv("MISTRAL_MODEL", "mistral-small-latest"),
             mistral_quality_model=os.getenv("MISTRAL_QUALITY_MODEL", "mistral-medium-latest"),

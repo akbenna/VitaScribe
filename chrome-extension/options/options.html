@@ -147,12 +147,12 @@
     <p class="hint" id="policy-info">Dit bepaalt de server, niet de extensie (AVG-afspraak van de praktijk). Klik op "Test verbinding" om de actuele instelling te zien.</p>
     <ul class="hint" style="margin:6px 0 0 16px;padding:0">
       <li>Spraak: Deepgram, EU-eindpunt, zonder opslag of training</li>
-      <li>Dictaat, SOEP, consultverslag, schermafdrukken, patiëntinstructie: Mistral (EU)</li>
+      <li>Dictaat, SOEP, consultverslag, schermafdrukken, patiëntinstructie: Claude (Anthropic, VS; niet gebruikt voor training)</li>
       <li id="policy-brieven">Brieven, na verwijdering van naam, BSN, adres en datums: Claude</li>
     </ul>
     <!-- Kept for compatibility; the server ignores these for patient data. -->
     <select id="sttProvider" hidden><option value="deepgram">Deepgram</option></select>
-    <select id="llmProvider" hidden><option value="mistral">Mistral</option></select>
+    <select id="llmProvider" hidden><option value="anthropic">Claude</option></select>
   </div>
   </div>
 

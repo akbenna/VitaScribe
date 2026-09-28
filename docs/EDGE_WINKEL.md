@@ -178,9 +178,10 @@ CONSULT RECORDING
 
 DATA
   Audio and text go only to the server configured by the practice. Speech
-  recognition uses an EU endpoint, and dictations and consultation notes use a
-  language model in the EU. Referral letters are pseudonymised first (name,
-  date of birth, BSN, address removed) and then sent to a language model in
-  the US, or to the practice's own AI provider. No analytics, no advertising,
+  recognition uses an EU endpoint. Dictations and consultation notes are
+  written by Claude (Anthropic, US) under commercial terms that exclude
+  training. Referral letters are pseudonymised first (name, date of birth,
+  BSN, address removed) and then sent to Claude, or to the practice's own AI
+  provider. No analytics, no advertising,
   no remote code. Privacy policy: https://www.provita-care.nl/vitascribe/privacy
 ```

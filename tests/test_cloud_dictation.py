@@ -296,7 +296,7 @@ def test_process_soep_returns_all_fields(api):
     assert body["icpc_titel"] == ""
     assert llm.await_args.kwargs["json_mode"] is True
     # AVG: patient text goes to the EU model, whatever the browser asks for
-    assert llm.await_args.kwargs["provider"] == "mistral"
+    assert llm.await_args.kwargs["provider"] == "anthropic"
     assert body["aandachtspunten"] == []   # model gaf er geen: lege lijst
 
 
@@ -419,7 +419,7 @@ def test_policy_defaults(monkeypatch):
     from services.cloud_api import data_policy
     for k in ("PHI_LLM_PROVIDER", "LETTERS_LLM_PROVIDER", "ALLOWED_STT_PROVIDERS", "CLINICAL_DECISION_SUPPORT"):
         monkeypatch.delenv(k, raising=False)
-    assert data_policy.phi_llm_provider("anthropic") == "mistral"
+    assert data_policy.phi_llm_provider("mistral") == "anthropic"
     assert data_policy.letters_llm_provider() == "anthropic"
     assert data_policy.stt_provider("openai") == "deepgram"
     assert data_policy.clinical_decision_support() is False
