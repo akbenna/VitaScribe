@@ -179,6 +179,47 @@ Kies bij Railway een EU-regio voor de service, zodat audio de EU niet verlaat en
 **Eerste gebruik:** bij de eerste start opent een tabblad dat eenmalig om microfoontoestemming vraagt
 (Chrome kan dat niet vanuit het zijpaneel zelf). Na een update van de extensie: ververs het Bricks-tabblad.
 
+**Consult opnemen:** klik op het VitaScribe-icoon en op de opnameknop, of druk **Alt+Shift+C**. Starten
+bevestigt dat de patiënt toestemming geeft (dat staat bij de knop). Vooraf controleert VitaScribe de
+sleutel; klopt die niet, dan start er geen opname. De popup gaat dicht en het zijpaneel blijft dicht.
+Tijdens de opname staat **REC** op het icoon en een klein bolletje met de tijd, "Nadicteren" en "Stop" op
+de pagina. Het bolletje gaat mee naar elke pagina en elk tabblad en kun je wegslepen; het onthoudt zijn
+plek. De opname loopt in de achtergrond van de extensie door, ook als je wegklikt.
+Na "Stop" (bolletje, popup, zijpaneel of Alt+Shift+C) toont het bolletje **Verslag klaar**: klik in de
+S-regel van het consult en kies **Invoegen** (S, O, E, ICPC en P worden gevuld), of **Bekijk** voor het
+zijpaneel met Thuisarts en patiëntinstructie. Mislukt het versturen, dan blijft de opname bewaard tot
+**Opnieuw versturen**. Na een browserherstart of een update van de extensie is een lopende opname wel weg.
+
+**Popup, bolletje en zijpaneel zijn één geheel.** Ze tonen hetzelfde consult en hetzelfde verslag.
+Pas je het verslag in het zijpaneel aan, dan voegt "Invoegen" in het bolletje of de popup die aangepaste
+tekst in. Voeg je in via het zijpaneel, dan verdwijnen bolletje en ✓ ook. Dicteer je in het zijpaneel,
+dan staat op de pagina hetzelfde opnameteken met Stop als bij Alt+Shift+D; en wat je met Alt+Shift+D
+dicteert, verschijnt ook in het zijpaneel.
+
+**Meerdere problemen in één consult.** Komen twee of meer afzonderlijke problemen aan bod (bijv. keelpijn
+én somberheid), dan maakt VitaScribe per probleem een eigen SOEP-deel met eigen ICPC-code. In het zijpaneel
+staan ze als tabs ("1 · Keelpijn (R74)", "2 · Somberheid (P03)"); het bolletje en de popup voegen ze één voor
+één in ("Invoegen deel 1", dan in een nieuwe SOEP-regel "Invoegen deel 2"). Klachten van één ziektebeeld
+blijven één deel. Bij psychische klachten volgt de SOEP een eigen opbouw (klachten, stressoren, functioneren,
+slaap, middelen, suïcidegedachten alleen zoals besproken; O = psychisch onderzoek zoals beschreven; E met
+P-code; P met POH-GGZ en afspraken).
+
+**Vraagsuggesties tijdens het consult (klinische ondersteuning).** Aan te zetten in Instellingen
+("Vraagsuggesties tijdens het consult"); werkt alleen met "Live volgen" en als de server
+`CLINICAL_DECISION_SUPPORT=true` heeft. Tijdens de opname zet VitaScribe hooguit eens per halve minuut 2-4
+korte vragen onder het opnamebalkje (zijpaneel en popup) die bij de klacht horen en nog niet gesteld zijn;
+alarmsymptomen in rood. Aantikken = gevraagd. Niet op de pagina zelf, niet na "Nadicteren". Dit valt onder de
+MDR (klinische beslissingsondersteuning): bedoeld voor de eigen praktijk; bij verkoop eerst regelen.
+
+**Taal van het gesprek.** In de popup en het zijpaneel staat onder de opnameknop "Taal gesprek":
+Nederlands (standaard), Meertalig (Deepgram Nova-3 `multi`: Nederlands, Engels, Frans, Duits, Spaans,
+Italiaans, Portugees, Russisch, Hindi en Japans door elkaar), Engels, Turks, Pools of Oekraïens. Turks, Pools
+en Oekraïens verstaan alleen die taal: kies ze als (vrijwel) het hele gesprek in die taal gaat. De keuze
+geldt voor één consult en springt daarna terug naar Nederlands; Alt+Shift+C start altijd in het Nederlands.
+De SOEP is altijd Nederlands, met in S de taal van het consult. Kosten: spraakherkenning in dezelfde orde
+(fractie van een cent per minuut); het taalmodel gebruikt voor een anderstalig transcript meer tokens,
+hooguit rond een cent extra per consult.
+
 **Dicteren zonder zijpaneel:** klik in het Bricks-veld en druk **Alt+Shift+D** (of klik op het
 extensie-icoon en dan "Dicteer in veld"). Een label rechtsonder toont dat VitaScribe luistert; nogmaals
 Alt+Shift+D of "Stop" beëindigt het. Lukt invoegen niet, dan staat het dictaat op het klembord.

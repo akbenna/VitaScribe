@@ -27,21 +27,20 @@
       <div class="stack">
         <p class="eyebrow">Privacy</p>
         <h1 id="titel">Alleen gepseudonimiseerde brieven verlaten de EU</h1>
-        <p class="lead">Audio en tekst gaan naar één plek: de VitaScribe-server. Van daar gaan ze naar drie verwerkers, elk voor één taak. De server bewaart geen audio, dictaten, verslagen of brieven.</p>
+        <p class="lead">Audio en tekst gaan naar één plek: de VitaScribe-server. Van daar gaan ze naar twee verwerkers: één voor spraak, één voor tekst. De server bewaart geen audio, dictaten, verslagen of brieven.</p>
       </div>
     </section>
 
     <section aria-labelledby="stroom">
       <h2 id="stroom">Waar je gegevens naartoe gaan</h2>
-      <div class="flow" role="img" aria-label="Werkplek naar VitaScribe-server, daarna naar Deepgram in de EU, Mistral in de EU en Anthropic in de VS">
+      <div class="flow" role="img" aria-label="Werkplek naar VitaScribe-server, daarna naar Deepgram in de EU en Anthropic in de VS">
         <div class="node"><b>Werkplek</b><small>Bricks en de extensie. Brieven worden hier al ontdaan van personalia.</small></div>
         <span class="arrow" aria-hidden="true">→</span>
         <div class="node"><b>VitaScribe-server</b><small>Sleutel per arts. Logt wie wat wanneer deed, zonder inhoud.</small></div>
         <span class="arrow" aria-hidden="true">→</span>
         <div class="targets">
           <div class="node"><b>Deepgram · EU</b><small>Spraak naar tekst. Niet bewaard, niet gebruikt voor training.</small></div>
-          <div class="node"><b>Mistral · EU</b><small>Dictaat, SOEP-regel en consultverslag.</small></div>
-          <div class="node warn"><b>Anthropic · VS</b><small>Alleen brieven, na verwijdering van naam, BSN, adres, geboortedatum en datums.</small></div>
+          <div class="node warn"><b>Anthropic · VS</b><small>Dictaat, SOEP-regel en consultverslag; brieven pas na verwijdering van naam, BSN, adres, geboortedatum en datums. Niet gebruikt voor training.</small></div>
         </div>
       </div>
       <p class="note">Wil de praktijk geen brieven naar de VS, dan kan ze een eigen AI-aanbieder instellen. De overeenkomst met die aanbieder sluit de praktijk zelf.</p>
@@ -63,7 +62,7 @@
           <h2 id="rollen">Wie is verantwoordelijk</h2>
         </div>
         <div class="stack prose">
-          <p>De praktijk is verwerkingsverantwoordelijke. De beheerder van de VitaScribe-server is verwerker, met Deepgram, Mistral, Anthropic en Railway als subverwerkers. Bij aanmelding krijgt de praktijk een verwerkersovereenkomst.</p>
+          <p>De praktijk is verwerkingsverantwoordelijke. De beheerder van de VitaScribe-server is verwerker, met Deepgram, Anthropic en Railway als subverwerkers. Bij aanmelding krijgt de praktijk een verwerkersovereenkomst.</p>
           <p>Een consult wordt alleen gevolgd nadat de arts heeft bevestigd dat de patiënt is geïnformeerd en toestemt. Een datalek meldt de beheerder zonder onnodige vertraging aan de praktijk.</p>
           <p><a href="https://www.provita-care.nl/vitascribe/privacy">Lees de volledige privacyverklaring</a></p>
         </div>

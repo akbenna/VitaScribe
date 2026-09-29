@@ -336,11 +336,11 @@ def test_letters_use_practice_key_and_dictation_data_never_does(api):
     assert r.status_code == 200, r.text
     assert gezien == [("openai", "sk-proj-" + "b" * 40)]
 
-    # Schermafdrukken kunnen personalia tonen: die gaan naar het EU-model, nooit op de praktijksleutel.
+    # Schermafdrukken kunnen personalia tonen: die gaan naar het patiëntmodel, nooit op de praktijksleutel.
     with patch.object(letters.llm_service, "stream_llm", nep):
         api.post("/api/v1/letters/extract", headers={"X-API-Key": beheerder},
                  json={"kind": "dossier", "media_type": "image/png", "data": "aGFsbG8gd2VyZWxk"})
-    assert gezien[-1] == ("mistral", None)
+    assert gezien[-1] == ("anthropic", None)
 
 
 def test_required_own_keys_block_server_keys(api):

@@ -17,8 +17,9 @@ var SVConsultLive = (function () {
   var OPEN = 1;
 
   /**
-   * opties: { apiUrl, apiKey, praktijk, llmProvider, WebSocket,
-   *           onVoortgang(seconden, sprekers), onFout(melding, terugval) }
+   * opties: { apiUrl, apiKey, praktijk, llmProvider, WebSocket, vraagsuggesties, taal,
+   *           onVoortgang(seconden, sprekers), onFout(melding, terugval),
+   *           onSuggesties({ klacht, vragen: [{ tekst, alarm }] }) }
    */
   function start(opties) {
     var WS = opties.WebSocket || (typeof WebSocket !== 'undefined' ? WebSocket : null);
@@ -56,7 +57,9 @@ var SVConsultLive = (function () {
 
     ws.onopen = function () {
       ws.send(JSON.stringify({ type: 'auth', api_key: opties.apiKey || '', praktijk: opties.praktijk || '',
-                               consent: true, llm_provider: opties.llmProvider || null }));
+                               consent: true, llm_provider: opties.llmProvider || null,
+                               vraagsuggesties: opties.vraagsuggesties === true,
+                               taal: opties.taal || 'nl' }));
     };
     ws.onmessage = function (bericht) {
       var e;
@@ -68,6 +71,9 @@ var SVConsultLive = (function () {
         rij.forEach(function (d) { ws.send(d); });
       } else if (e.type === 'voortgang') {
         if (opties.onVoortgang) opties.onVoortgang(e.seconden || 0, e.sprekers || 0);
+      } else if (e.type === 'suggesties') {
+        // Vraagsuggesties (alleen als server en arts ze aanzetten).
+        if (opties.onSuggesties) opties.onSuggesties({ klacht: e.klacht || '', vragen: Array.isArray(e.vragen) ? e.vragen : [] });
       } else if (e.type === 'result') {
         if (e.leeg) einde({ ok: false, terugval: true, melding: 'Live werd geen spraak gehoord.' });
         else einde({ ok: true, data: e.data });

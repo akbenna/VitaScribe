@@ -69,6 +69,8 @@ function setState(next) {
     stopping: 'afronden…',
   }[next];
   var busy = next !== 'idle';
+  // The page shows the same small pill as with Alt+Shift+D, with Stop.
+  chrome.runtime.sendMessage({ action: 'SV_PANEL_DICTATION', state: next }).catch(function () {});
   els.clean.disabled = busy;
   els.soepBtn.disabled = busy;
 }
@@ -330,6 +332,10 @@ function teardown() {
 }
 
 function toggleDictation() {
+  if (window.SVConsultUI && window.SVConsultUI.bezig()) {
+    setStatus('Er loopt een consultopname. Dicteren kan weer na het consult.', true);
+    return;
+  }
   if (state === 'idle') startDictation();
   else if (state === 'recording') stopDictation();
 }
@@ -369,6 +375,8 @@ async function processText(mode) {
       });
     } else {
       renderSoep(data.soep);
+      document.getElementById('soep-decisief').classList.add('hidden');
+      if (window.SVConsultUI) window.SVConsultUI.losgekoppeld();   // this SOEP is not the consult report
       setStatus('SOEP klaar. Klik in Bricks in een veld en gebruik "invoegen".');
     }
   } catch (err) {
@@ -381,7 +389,75 @@ async function processText(mode) {
 
 var SOEP_KEYS = [['s', 'S'], ['o', 'O'], ['e', 'E'], ['p', 'P']];
 
+// A consult about several problems comes back as several SOEP parts; the
+// doctor puts each in its own SOEP line in Bricks. One part: as before.
+var soepDelen = null;    // [{titel, s, o, e, p, icpc_code, icpc_titel}] or null
+var deelIdx = 0;
+var soepAlgemeen = {};   // aandachtspunten, shared by all parts
+
 function renderSoep(soep) {
+  var delen = Array.isArray(soep.problemen) ? soep.problemen : [];
+  soepAlgemeen = { aandachtspunten: soep.aandachtspunten };
+  var bar = document.getElementById('soep-delen');
+  bar.textContent = '';
+  if (delen.length > 1) {
+    soepDelen = delen.map(function (d) { return Object.assign({}, d); });
+    soepDelen.forEach(function (d, i) {
+      var b = document.createElement('button');
+      b.className = 'soep-deel';
+      b.setAttribute('role', 'tab');
+      b.textContent = (i + 1) + ' · ' + (d.titel || d.icpc_titel || 'Deel ' + (i + 1)) + (d.icpc_code ? ' (' + d.icpc_code + ')' : '');
+      b.addEventListener('click', function () { toonDeel(i); });
+      bar.appendChild(b);
+    });
+  } else {
+    soepDelen = null;
+  }
+  bar.classList.toggle('hidden', !soepDelen);
+  document.getElementById('soep-delen-hint').classList.toggle('hidden', !soepDelen);
+  deelIdx = 0;
+  renderSoepDeel(soepDelen ? soepDelen[0] : soep);
+  markeerDelen();
+}
+
+// Edits in the rows belong to the part on screen; keep them when switching.
+function bewaarDeel() {
+  if (!soepDelen) return;
+  var d = soepDelen[deelIdx];
+  els.soepRows.querySelectorAll('.soep-text').forEach(function (n) { d[n.dataset.key] = n.innerText.trim(); });
+  d.icpc_code = document.getElementById('icpc-code').innerText.trim();
+}
+
+function toonDeel(i) {
+  if (!soepDelen || !soepDelen[i]) return;
+  bewaarDeel();
+  deelIdx = i;
+  renderSoepDeel(soepDelen[i]);
+  markeerDelen();
+}
+
+function markeerDelen() {
+  var labels = soepDelen ? 'Deel ' + (deelIdx + 1) + ' invoegen' : 'Alles invoegen';
+  els.soepInsert.textContent = labels;
+  els.soepCopy.textContent = soepDelen ? 'Kopieer deel' : 'Kopieer alles';
+  document.querySelectorAll('#soep-delen .soep-deel').forEach(function (b, i) {
+    b.classList.toggle('active', i === deelIdx);
+    b.setAttribute('aria-selected', i === deelIdx ? 'true' : 'false');
+    b.classList.toggle('done', !!(soepDelen && soepDelen[i] && soepDelen[i].__ingevoegd));
+  });
+}
+
+/** For consult-ui.js: which part is on screen, and its current text. */
+function huidigDeel() {
+  bewaarDeel();
+  var soep = {};
+  els.soepRows.querySelectorAll('.soep-text').forEach(function (n) { soep[n.dataset.key] = n.innerText.trim(); });
+  soep.icpc_code = document.getElementById('icpc-code').innerText.trim();
+  return { index: soepDelen ? deelIdx : 0, soep: soep, delen: soepDelen ? soepDelen.length : 1 };
+}
+
+function renderSoepDeel(part) {
+  var soep = Object.assign({}, part, soepAlgemeen);
   lastSoep = soep;
   els.soepRows.textContent = '';
   SOEP_KEYS.forEach(function (pair) {
@@ -467,6 +543,17 @@ async function insertSoepPerField() {
         res.missing.map(function (k) { return FIELD_NAMES[k]; }).join(', ') + '.', true);
     } else {
       setStatus('SOEP ingevuld: ' + where + '.');
+    }
+    if (window.SVConsultUI) window.SVConsultUI.ingevoegd(soepDelen ? deelIdx : 0);   // pill and ✓ follow
+    if (soepDelen) {
+      soepDelen[deelIdx].__ingevoegd = true;
+      var volgende = soepDelen.findIndex(function (d) { return !d.__ingevoegd; });
+      if (volgende !== -1) {
+        toonDeel(volgende);
+        setStatus(els.status.textContent + ' Maak in Bricks een nieuwe SOEP-regel, klik in S en kies "Deel ' + (volgende + 1) + ' invoegen".');
+      } else {
+        markeerDelen();
+      }
     }
     return;
   }
@@ -619,6 +706,8 @@ els.clear.addEventListener('click', function () {
   els.text.value = '';
   els.interim.textContent = '';
   els.soep.classList.add('hidden');
+  document.getElementById('soep-decisief').classList.add('hidden');
+  if (window.SVConsultUI) window.SVConsultUI.losgekoppeld();
   lastSoep = null;
   setStatus('');
 });
@@ -655,6 +744,22 @@ document.getElementById('open-settings').addEventListener('click', function (e) 
 chrome.storage.local.get('svLiveInsert').then(function (r) { els.live.checked = !!r.svLiveInsert; });
 els.live.addEventListener('change', function () {
   chrome.storage.local.set({ svLiveInsert: els.live.checked });
+});
+
+// Dictating without the panel (Alt+Shift+D, "Dicteer in veld"): the text goes
+// into the field, and also shows here, so both ways end in the same place.
+chrome.runtime.onMessage.addListener(function (msg) {
+  if (msg.action !== 'SV_QUICK_EVENT' || state !== 'idle') return false;
+  if (msg.type === 'interim') {
+    els.interim.textContent = msg.text || '';
+  } else if (msg.type === 'final') {
+    els.interim.textContent = '';
+    els.text.value = joinText(els.text.value, msg.text || '');
+  } else if (msg.type === 'stopped') {
+    els.interim.textContent = '';
+    if (msg.text) setStatus('Gedicteerd in het veld; de tekst staat ook hierboven.');
+  }
+  return false;
 });
 
 // Keyboard shortcut (Alt+Shift+D) arrives via the service worker. The port

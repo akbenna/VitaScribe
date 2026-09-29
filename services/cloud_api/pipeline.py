@@ -15,7 +15,7 @@ from typing import Dict, List, Optional
 
 import structlog
 
-from . import data_policy, llm_service, stt_service
+from . import data_policy, llm_service, stt_service, talen
 from .medical_vocabulary import correct_transcript_full, CorrectionStats
 from .prompts import (
     NAZORG_SYSTEM_PROMPT,
@@ -29,7 +29,10 @@ logger = structlog.get_logger()
 
 # Output-token budgetten per call-type. Output is bij Claude 5x duurder dan
 # input, dus krap begroten waar het kan voorkomt onnodige kosten en runaway.
-SOEP_MAX_TOKENS = 900
+# Ruim genoeg voor meerdere SOEP-delen (een consult met 2-4 problemen).
+SOEP_MAX_TOKENS = 1600
+MAX_PROBLEMEN = 4
+SOEP_VELDEN = ("s", "o", "e", "p", "icpc_code", "icpc_titel")
 NAZORG_MAX_TOKENS = 700
 
 
@@ -41,6 +44,33 @@ class SOEPResult:
     p: str = ""
     icpc_code: str = ""
     icpc_titel: str = ""
+    # One part per separate health problem; the fields above are part 1.
+    problemen: List[Dict[str, str]] = field(default_factory=list)
+
+
+def soep_met_problemen(data: dict) -> Dict:
+    """Model output -> {s, o, e, p, icpc_code, icpc_titel, problemen}.
+
+    "problemen" always holds at least one part, and the top-level fields are
+    the first part, so a client that knows only one SOEP line still inserts
+    something sensible. Parts without any content are dropped."""
+    def schoon(d: dict) -> Dict[str, str]:
+        return {k: str(d.get(k) or "").strip() for k in ("titel",) + SOEP_VELDEN}
+
+    delen = []
+    for d in data.get("problemen") or []:
+        if isinstance(d, dict):
+            deel = schoon(d)
+            if any(deel[k] for k in ("s", "o", "e", "p")):
+                delen.append(deel)
+    delen = delen[:MAX_PROBLEMEN]
+    if not delen:
+        deel = schoon(data)
+        deel["titel"] = deel["icpc_titel"]
+        delen = [deel]
+    uit = {k: delen[0][k] for k in SOEP_VELDEN}
+    uit["problemen"] = delen
+    return uit
 
 
 @dataclass
@@ -77,6 +107,19 @@ class PipelineResult:
         }
 
 
+def _nazorg_velden(soep: SOEPResult) -> Dict[str, str]:
+    """S/O/E/P for the decisief line; with several problems, all of them,
+    numbered, so the line covers the whole consult."""
+    delen = soep.problemen if len(soep.problemen) > 1 else []
+    if not delen:
+        return {"s": soep.s, "o": soep.o, "e": soep.e, "p": soep.p,
+                "icpc_code": soep.icpc_code or "-", "icpc_titel": soep.icpc_titel or "-"}
+    samen = lambda k: " ".join(f"({i}) {d[k]}" for i, d in enumerate(delen, 1) if d.get(k))
+    return {"s": samen("s"), "o": samen("o"), "e": samen("e"), "p": samen("p"),
+            "icpc_code": ", ".join(d["icpc_code"] for d in delen if d.get("icpc_code")) or "-",
+            "icpc_titel": ", ".join(d["icpc_titel"] for d in delen if d.get("icpc_titel")) or "-"}
+
+
 def _parse_json_response(text: str) -> dict:
     """Extract JSON from LLM response, handling markdown code blocks."""
     text = text.strip()
@@ -93,6 +136,7 @@ async def process_consultation(
     llm_provider: str = None,
     deepgram_key: str = None,
     nadictaat_vanaf: Optional[float] = None,
+    taal: Optional[str] = None,
 ) -> PipelineResult:
     """
     Process a consultation audio file through the full pipeline.
@@ -110,19 +154,23 @@ async def process_consultation(
 
     # ── Step 1: Transcription ──
     logger.info("pipeline.step", step="transcription")
-    transcript = await stt_service.transcribe(audio_path, provider=stt_provider, deepgram_key=deepgram_key)
+    gekozen = talen.kies(taal)
+    transcript = await stt_service.transcribe(audio_path, provider=stt_provider, deepgram_key=deepgram_key,
+                                              language=gekozen.deepgram)
     stt_service.markeer_nadictaat(transcript, nadictaat_vanaf)
     try:
         grootte = f"{audio_path.stat().st_size / 1024:.1f} KB"
     except OSError:
         grootte = "onbekend"
-    return await verwerk_transcript(transcript, llm_provider=llm_provider, bestandsgrootte=grootte)
+    return await verwerk_transcript(transcript, llm_provider=llm_provider, bestandsgrootte=grootte,
+                                    taal=gekozen.code)
 
 
 async def verwerk_transcript(
     transcript: "stt_service.TranscriptResult",
     llm_provider: str = None,
     bestandsgrootte: str = "",
+    taal: Optional[str] = None,
 ) -> PipelineResult:
     """Van transcript naar SOEP, decisief en aandachtspunten.
 
@@ -175,22 +223,14 @@ async def verwerk_transcript(
     try:
         soep_response = await llm_service.complete(
             system_prompt=SOEP_SYSTEM_PROMPT,
-            user_prompt=SOEP_USER_TEMPLATE.format(transcript=result.transcript),
+            user_prompt=talen.prompt_regel(talen.kies(taal)) + SOEP_USER_TEMPLATE.format(transcript=result.transcript),
             provider=llm_provider,
             json_mode=True,
             max_tokens=SOEP_MAX_TOKENS,
             quality=True,
             json_schema=SOEP_JSON_SCHEMA,
         )
-        soep_data = _parse_json_response(soep_response)
-        result.soep = SOEPResult(
-            s=soep_data.get("s", ""),
-            o=soep_data.get("o", ""),
-            e=soep_data.get("e", ""),
-            p=soep_data.get("p", ""),
-            icpc_code=soep_data.get("icpc_code", ""),
-            icpc_titel=soep_data.get("icpc_titel", ""),
-        )
+        result.soep = SOEPResult(**soep_met_problemen(_parse_json_response(soep_response)))
         result.llm_provider = llm_provider or "default"
     except Exception as e:
         logger.error("pipeline.soep_error", error=str(e))
@@ -202,14 +242,7 @@ async def verwerk_transcript(
     try:
         nazorg_response = await llm_service.complete(
             system_prompt=NAZORG_SYSTEM_PROMPT,
-            user_prompt=NAZORG_USER_TEMPLATE.format(
-                s=result.soep.s,
-                o=result.soep.o,
-                e=result.soep.e,
-                p=result.soep.p,
-                icpc_code=result.soep.icpc_code or "-",
-                icpc_titel=result.soep.icpc_titel or "-",
-            ),
+            user_prompt=NAZORG_USER_TEMPLATE.format(**_nazorg_velden(result.soep)),
             provider=llm_provider,
             json_mode=True,
             max_tokens=NAZORG_MAX_TOKENS,

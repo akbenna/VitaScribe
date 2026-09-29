@@ -52,7 +52,7 @@ from .medical_vocabulary import (
     load_custom_vocabulary,
     save_custom_vocabulary,
 )
-from .pipeline import _parse_json_response, process_consultation
+from .pipeline import _parse_json_response, process_consultation, soep_met_problemen
 from .prompts import (
     DICTAAT_OPSCHONEN_SYSTEM_PROMPT,
     DICTAAT_OPSCHONEN_USER_TEMPLATE,
@@ -243,6 +243,7 @@ async def process_consult(
     llm_provider: str = Form(default=None, description="LLM provider override"),
     consent: bool = Form(default=False, description="Patiënt gaf toestemming voor opname"),
     nadictaat_vanaf: Optional[float] = Form(default=None, description="Seconde waarop het nadictaat van de arts begint"),
+    taal: Optional[str] = Form(default=None, description="Taal van het gesprek (nl, multi, en, tr, pl, uk)"),
     ident=Depends(huidige_identiteit),
 ):
     """Process a consultation audio recording through the full pipeline."""
@@ -307,6 +308,7 @@ async def process_consult(
             llm_provider=llm_provider,
             deepgram_key=await kies_spraak(ident),
             nadictaat_vanaf=nadictaat_vanaf,
+            taal=taal,
         )
 
         processing_time = time.time() - start_time
@@ -337,7 +339,7 @@ async def consult_stream(ws: WebSocket):
 
 # Output-budgetten: een dictaat is kort, dus ruim genoeg maar begrensd.
 DICTAAT_OPSCHONEN_MAX_TOKENS = 1200
-DICTAAT_SOEP_MAX_TOKENS = 900
+DICTAAT_SOEP_MAX_TOKENS = 1600   # room for several SOEP parts
 DICTAAT_MAX_CHARS = 20000
 
 
@@ -401,10 +403,7 @@ async def process_dictation(
                 json_schema=DICTAAT_SOEP_JSON_SCHEMA,
             )
             data = _parse_json_response(raw)
-            soep = {
-                key: str(data.get(key) or "").strip()
-                for key in ("s", "o", "e", "p", "icpc_code", "icpc_titel")
-            }
+            soep = soep_met_problemen(data)
             points = data.get("aandachtspunten")
             soep["aandachtspunten"] = [
                 str(x).strip() for x in points if str(x or "").strip()

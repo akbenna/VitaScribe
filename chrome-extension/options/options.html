@@ -147,12 +147,12 @@
     <p class="hint" id="policy-info">Dit bepaalt de server, niet de extensie (AVG-afspraak van de praktijk). Klik op "Test verbinding" om de actuele instelling te zien.</p>
     <ul class="hint" style="margin:6px 0 0 16px;padding:0">
       <li>Spraak: Deepgram, EU-eindpunt, zonder opslag of training</li>
-      <li>Dictaat, SOEP, consultverslag, schermafdrukken, patiëntinstructie: Mistral (EU)</li>
+      <li>Dictaat, SOEP, consultverslag, schermafdrukken, patiëntinstructie: Claude (Anthropic, VS; niet gebruikt voor training)</li>
       <li id="policy-brieven">Brieven, na verwijdering van naam, BSN, adres en datums: Claude</li>
     </ul>
     <!-- Kept for compatibility; the server ignores these for patient data. -->
     <select id="sttProvider" hidden><option value="deepgram">Deepgram</option></select>
-    <select id="llmProvider" hidden><option value="mistral">Mistral</option></select>
+    <select id="llmProvider" hidden><option value="anthropic">Claude</option></select>
   </div>
   </div>
 
@@ -191,6 +191,19 @@
         <option value="">Live volgen (aanbevolen)</option>
         <option value="uit">Eerst opnemen, na stop versturen</option>
       </select>
+    </div>
+    <div class="field">
+      <label style="display:flex;gap:8px;align-items:flex-start;font-weight:600">
+        <input type="checkbox" id="vraagsuggesties" style="width:auto;margin-top:3px">
+        Vraagsuggesties tijdens het consult
+      </label>
+      <p class="hint" style="margin-top:4px">
+        VitaScribe luistert mee en zet in het zijpaneel een paar korte vragen die bij de klacht horen en
+        nog niet gesteld zijn (bijv. &quot;koorts?&quot;, &quot;uitstraling been?&quot;; alarmsymptomen in rood).
+        Jij beslist wat je vraagt. Dit is klinische ondersteuning: bedoeld voor gebruik in je eigen praktijk.
+        Werkt alleen met &quot;Live volgen&quot; en als de server het toestaat.
+      </p>
+      <p class="hint" id="vraagsuggesties-server" style="margin-top:2px"></p>
     </div>
   </div>
 

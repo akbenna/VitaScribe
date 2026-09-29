@@ -75,6 +75,9 @@ class FakeResult:
         return {"soep": {"s": "keelpijn"}, "transcript_raw": self.transcript.raw_text}
 
 
+verwerkt_taal = []   # de taal die de live verwerking meekreeg
+
+
 def _app(upstream, gezien, verwerkt):
     app = FastAPI()
 
@@ -82,8 +85,9 @@ def _app(upstream, gezien, verwerkt):
         gezien.append((url, api_key))
         return upstream
 
-    async def fake_verwerk(transcript, llm_provider=None):
+    async def fake_verwerk(transcript, llm_provider=None, taal=None):
         verwerkt.append(transcript)
+        verwerkt_taal.append(taal)
         return FakeResult(transcript)
 
     @app.websocket("/ws")
@@ -288,3 +292,39 @@ def test_live_consult_met_nadictaat():
     assert transcript.segments[-1].speaker == "nadictaat"
     from services.cloud_api import stt_service
     assert stt_service.met_sprekers(transcript).endswith("Nadictaat arts: Keel rood.")
+
+
+# === Taal van het consult ===
+
+def test_taal_gaat_naar_deepgram_en_de_verwerking():
+    from services.cloud_api import talen
+    upstream = FakeUpstream([_final((0, "Merhaba", 0.0, 0.5))])
+    gezien, verwerkt = [], []
+    verwerkt_taal.clear()
+    client = TestClient(_app(upstream, gezien, verwerkt))
+    with client.websocket_connect("/ws") as ws:
+        ws.send_text(json.dumps(dict(AUTH, taal="tr", keyterms=["Lachman"])))
+        assert ws.receive_json() == {"type": "ready"}
+        ws.send_text(json.dumps({"type": "stop"}))
+        _tot_gesloten(ws)
+    query = parse_qs(urlparse(gezien[0][0]).query)
+    assert query["language"] == ["tr"]
+    assert "keyterm" not in query            # Nederlandse keyterms niet bij Turks
+    assert verwerkt_taal == ["tr"]
+    assert talen.kies("xx").code == "nl" and talen.kies(None).code == "nl"
+
+
+def test_meertalig_houdt_keyterms_en_standaard_is_nederlands():
+    cfg = get_config()
+    from services.cloud_api import talen
+    multi = parse_qs(urlparse(consult_live.build_consult_url(cfg, ["Lachman"], taal=talen.kies("multi"))).query)
+    assert multi["language"] == ["multi"] and "Lachman" in multi["keyterm"]
+    standaard = parse_qs(urlparse(consult_live.build_consult_url(cfg)).query)
+    assert standaard["language"] == ["nl"]
+
+
+def test_prompt_vraagt_nederlandse_soep_bij_andere_taal():
+    from services.cloud_api import talen
+    assert talen.prompt_regel(talen.kies("nl")) == ""
+    regel = talen.prompt_regel(talen.kies("pl"))
+    assert "Pools" in regel and "Nederlands" in regel and "tolk" in regel

@@ -18,6 +18,63 @@ MEDISCHE_TERMINOLOGIE = """MEDISCHE TERMINOLOGIE:
 - Voeg NOOIT bevindingen, diagnoses, doseringen of beleid toe die niet   gezegd zijn."""
 
 
+# ── Shared: several problems in one consult, and psychological complaints ──
+
+MEERDERE_PROBLEMEN = """MEERDERE PROBLEMEN (episodes):
+- Komen in het consult twee of meer AFZONDERLIJKE gezondheidsproblemen aan \
+  bod, elk met een eigen beoordeling (bijv. keelpijn én lage rugpijn, of \
+  hypertensiecontrole én een huidplekje), maak dan per probleem een eigen \
+  SOEP-deel in "problemen": elk met eigen s, o, e, p, icpc_code en \
+  icpc_titel, en een korte "titel" (de klacht of werkdiagnose, 1-4 woorden).
+- Verdeel de inhoud: in elk deel alleen de anamnese, het onderzoek, de \
+  conclusie en het beleid die bij DAT probleem horen. Algemene gegevens \
+  (voorgeschiedenis, medicatie, allergieën) alleen in het deel waar ze \
+  relevant zijn, of in deel 1 als ze bij alles horen. Niets dubbel.
+- Klachten die bij één ziektebeeld horen (koorts, hoesten en keelpijn bij \
+  een luchtweginfectie) zijn één probleem, niet meerdere.
+- Signalen dat het om meerdere problemen gaat: de arts zegt "klacht 1 / \
+  klacht 2", "ten eerste / ten tweede", "daarnaast", "verder komt pt voor", \
+  of er zijn klachten of werkdiagnosen in verschillende orgaansystemen \
+  (bijv. neus en darm). Twijfel je bij verschillende orgaansystemen, splits \
+  dan. Noemt E twee diagnosen voor twee klachten, dan zijn het twee delen.
+- VOORBEELD. Dictaat: "klacht 1 al lang verstopte neus, week erger; klacht \
+  2 buikpijn en moeizame ontlasting, bekend met buikoperaties; RT gb, neus \
+  lichte septumdeviatie; E rhinitis en anismus; P neusspray 6 weken, \
+  laxans". Dan deel 1 "Neusverstopping": S neus, O septumdeviatie, E \
+  chronische rhinitis, P neusspray 6 wk (met eigen ICPC). Deel 2 \
+  "Defecatieklachten": S buikpijn/ontlasting + buikoperaties, O RT gb, E \
+  anismus, P laxans (met eigen ICPC). Nooit beide in één S of E.
+- Volgorde: de hulpvraag waarvoor de patiënt kwam eerst. Maximaal 4 delen.
+- Eén probleem: "problemen" bevat precies één deel.
+- De velden s, o, e, p, icpc_code en icpc_titel buiten "problemen" zijn \
+  gelijk aan het EERSTE deel."""
+
+PSYCHISCHE_KLACHTEN = """PSYCHISCHE KLACHTEN (somberheid, angst, stress, overspanning, burn-out, \
+slaapproblemen, rouw, verslaving, suïcidale gedachten):
+- S: hulpvraag -> klachten in de woorden van de patiënt, duur en beloop -> \
+  aanleiding en stressoren (werk, relatie, verlies, financiën) -> \
+  functioneren (werk, sociaal, huishouden) -> slaap, eetlust, energie, \
+  concentratie -> middelengebruik (alcohol, drugs, medicatie) -> \
+  suïcidegedachten ALLEEN zoals besproken (wel of niet aanwezig, plannen) \
+  -> steunsysteem -> voorgeschiedenis, eerdere hulp. Neutraal en \
+  niet-oordelend formuleren; citeer kort tussen aanhalingstekens waar de \
+  eigen woorden ertoe doen.
+- O: psychisch onderzoek zoals de arts het beschrijft of waarneemt: \
+  contact, uiterlijk, stemming en affect, psychomotoriek, denken \
+  (tempo, inhoud), oriëntatie, suïcidaliteit. Eventueel lichamelijk \
+  onderzoek of vragenlijstscores (bijv. 4DKL, PHQ-9) erna. Niets \
+  beschreven: O leeg (ook bij een consultopname, dus niet "geen LO \
+  beschreven"). Nooit een psychiatrisch onderzoek invullen.
+- E: werkhypothese in de NHG-term (bijv. depressieve klachten, \
+  angstklachten, overspanning, burn-out, slapeloosheid) met de passende \
+  P-code (P01 angstig gevoel, P02 acute stressreactie, P03 depressief \
+  gevoel, P06 slaapstoornis, P74 angststoornis, P76 depressie, P78 \
+  overspanning/surmenage). Een DSM-diagnose alleen als de arts die stelt.
+- P: afspraken zoals besproken: psycho-educatie, begeleiding (POH-GGZ, \
+  psycholoog, verwijzing GGZ), medicatie, veiligheidsafspraken, \
+  werk/bedrijfsarts, controle en wanneer eerder contact."""
+
+
 # ── SOEP Extraction + Generation ──
 
 SOEP_SYSTEM_PROMPT = """\
@@ -70,6 +127,10 @@ GRENZEN
 
 """ + MEDISCHE_TERMINOLOGIE + """
 
+""" + MEERDERE_PROBLEMEN + """
+
+""" + PSYCHISCHE_KLACHTEN + """
+
 ANTWOORD in exact dit JSON-formaat:
 {
   "s": "...",
@@ -77,7 +138,10 @@ ANTWOORD in exact dit JSON-formaat:
   "e": "...",
   "p": "...",
   "icpc_code": "...",
-  "icpc_titel": "..."
+  "icpc_titel": "...",
+  "problemen": [
+    {"titel": "...", "s": "...", "o": "...", "e": "...", "p": "...", "icpc_code": "...", "icpc_titel": "..."}
+  ]
 }"""
 
 SOEP_USER_TEMPLATE = """\
@@ -299,6 +363,10 @@ GRENZEN (patiëntveiligheid)
 
 """ + MEDISCHE_TERMINOLOGIE + """
 
+""" + MEERDERE_PROBLEMEN + """
+
+""" + PSYCHISCHE_KLACHTEN + """
+
 ANTWOORD in exact dit JSON-formaat:
 {
   "s": "...",
@@ -307,6 +375,9 @@ ANTWOORD in exact dit JSON-formaat:
   "p": "...",
   "icpc_code": "...",
   "icpc_titel": "...",
+  "problemen": [
+    {"titel": "...", "s": "...", "o": "...", "e": "...", "p": "...", "icpc_code": "...", "icpc_titel": "..."}
+  ],
   "aandachtspunten": ["..."]
 }"""
 
@@ -319,17 +390,30 @@ DICTAAT:
 
 # ── JSON schema for SOEP output (structured outputs on Sonnet 5+) ──
 
+_SOEP_VELDEN = {
+    "s": {"type": "string"},
+    "o": {"type": "string"},
+    "e": {"type": "string"},
+    "p": {"type": "string"},
+    "icpc_code": {"type": "string"},
+    "icpc_titel": {"type": "string"},
+}
+
+# One part per separate health problem (episode); see MEERDERE_PROBLEMEN.
+PROBLEEM_JSON_SCHEMA = {
+    "type": "object",
+    "properties": {"titel": {"type": "string"}, **_SOEP_VELDEN},
+    "required": ["titel", "s", "o", "e", "p", "icpc_code", "icpc_titel"],
+    "additionalProperties": False,
+}
+
 SOEP_JSON_SCHEMA = {
     "type": "object",
     "properties": {
-        "s": {"type": "string"},
-        "o": {"type": "string"},
-        "e": {"type": "string"},
-        "p": {"type": "string"},
-        "icpc_code": {"type": "string"},
-        "icpc_titel": {"type": "string"},
+        **_SOEP_VELDEN,
+        "problemen": {"type": "array", "items": PROBLEEM_JSON_SCHEMA},
     },
-    "required": ["s", "o", "e", "p", "icpc_code", "icpc_titel"],
+    "required": ["s", "o", "e", "p", "icpc_code", "icpc_titel", "problemen"],
     "additionalProperties": False,
 }
 

@@ -236,3 +236,48 @@ async def test_upload_route_markeert_het_nadictaat():
         await pipeline.process_consultation(Path("/fake/audio.wav"), nadictaat_vanaf=30.0)
     prompt = complete_mock.await_args_list[0].kwargs["user_prompt"]
     assert "Nadictaat arts: Keel rood." in prompt
+
+
+# ── Meerdere problemen: elk een eigen SOEP-deel, één decisiefregel ──
+
+@pytest.mark.asyncio
+async def test_pipeline_keeps_parts_and_decisief_covers_all():
+    delen = [
+        {"titel": "Keelpijn", "s": "3d keelpijn", "o": "keel rood", "e": "virale faryngitis",
+         "p": "paracetamol", "icpc_code": "R74", "icpc_titel": "Acute infectie bovenste luchtwegen"},
+        {"titel": "Somberheid", "s": "somber sinds 2 mnd, slaapt slecht", "o": "", "e": "depressieve klachten",
+         "p": "POH-GGZ", "icpc_code": "P03", "icpc_titel": "Depressief gevoel"},
+    ]
+    soep_json = json.dumps({**{k: delen[0][k] for k in pipeline.SOEP_VELDEN}, "problemen": delen})
+    nazorg_json = json.dumps({"decisief": "Keelpijn (R74) en somberheid (P03)", "rode_vlaggen": [], "ontbrekende_info": []})
+    transcript = MagicMock(raw_text="keelpijn en ook somber", duration_secs=60.0, provider="deepgram")
+    complete_mock = AsyncMock(side_effect=[soep_json, nazorg_json])
+    with patch.object(pipeline.llm_service, "complete", new=complete_mock), \
+         patch.object(pipeline.stt_service, "met_sprekers", return_value="keelpijn en ook somber"), \
+         patch.object(pipeline, "correct_transcript_full", return_value=("keelpijn en ook somber", MagicMock(total_corrections=0))):
+        result = await pipeline.verwerk_transcript(transcript)
+    out = result.to_dict()["soep"]
+    assert [d["titel"] for d in out["problemen"]] == ["Keelpijn", "Somberheid"]
+    assert out["icpc_code"] == "R74"
+    nazorg_prompt = complete_mock.await_args_list[1].kwargs["user_prompt"]
+    assert "(1) virale faryngitis" in nazorg_prompt and "(2) depressieve klachten" in nazorg_prompt
+    assert "R74, P03" in nazorg_prompt
+
+
+# ── Taal van het consult (upload) ──
+
+@pytest.mark.asyncio
+async def test_opname_in_andere_taal():
+    transcript = MagicMock(raw_text="Dzień dobry, boli mnie gardło.", duration_secs=30.0, provider="deepgram")
+    soep_json = json.dumps({"s": "Keelpijn. Consult in het Pools.", "o": "", "e": "", "p": "", "icpc_code": "", "icpc_titel": ""})
+    nazorg_json = json.dumps({"decisief": "Keelpijn", "rode_vlaggen": [], "ontbrekende_info": []})
+    transcribe = AsyncMock(return_value=transcript)
+    complete = AsyncMock(side_effect=[soep_json, nazorg_json])
+    with patch.object(pipeline.stt_service, "transcribe", new=transcribe), \
+         patch.object(pipeline.stt_service, "met_sprekers", return_value=transcript.raw_text), \
+         patch.object(pipeline.llm_service, "complete", new=complete), \
+         patch.object(pipeline, "correct_transcript_full", return_value=(transcript.raw_text, MagicMock(total_corrections=0))):
+        await pipeline.process_consultation(Path("/fake/audio.webm"), taal="pl")
+    assert transcribe.await_args.kwargs["language"] == "pl"
+    assert "TAAL VAN HET GESPREK" in complete.await_args_list[0].kwargs["user_prompt"]
+    assert "Pools" in complete.await_args_list[0].kwargs["user_prompt"]

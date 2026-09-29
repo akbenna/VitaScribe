@@ -2,11 +2,13 @@
 VitaScribe Cloud API - Data policy (AVG)
 
 Which external service may process which kind of data. Decided with the
-practice (24-09-2026):
+practice (24-09-2026, changed 28-09-2026):
 
 - Text or images that can identify a patient (dictation, consultation
-  transcript, dossier screenshots, patient instructions) go only to an
-  EU-hosted language model (Mistral).
+  transcript, dossier screenshots, patient instructions) go to Claude
+  (Anthropic, US) under Anthropic's commercial terms: not used for training.
+  Mistral (EU) was the first choice but could not carry the load; it can be
+  switched back with PHI_LLM_PROVIDER=mistral once a paid plan is in place.
 - Letters are pseudonymised in the browser and on the server; they may go to
   the letters provider (Claude by default) once the agreements are in place
   (DPA + SCC's, zero data retention).
@@ -16,10 +18,14 @@ practice (24-09-2026):
   provider falls back to the configured one.
 
 Settings (environment):
-  PHI_LLM_PROVIDER        default "mistral"
+  PHI_LLM_PROVIDER        default "anthropic"
   LETTERS_LLM_PROVIDER    default "anthropic"
   ALLOWED_STT_PROVIDERS   default "deepgram"
-  CLINICAL_DECISION_SUPPORT  default "false": no clinical suggestions (MDR)
+  CLINICAL_DECISION_SUPPORT  default "false": no clinical suggestions (MDR).
+                          "true" on the practice's own server: red flags in the
+                          report and question suggestions during the live
+                          consult, the latter only for doctors who switch them
+                          on in the extension (vraagsuggesties.py).
 """
 
 from __future__ import annotations
@@ -40,7 +46,7 @@ def _env(name: str, default: str) -> str:
 
 def phi_llm_provider(requested: Optional[str] = None) -> str:
     """Language model for data that can identify a patient."""
-    configured = _env("PHI_LLM_PROVIDER", "mistral")
+    configured = _env("PHI_LLM_PROVIDER", "anthropic")
     if requested and requested.lower() != configured:
         logger.info("policy.provider_override_ignored", requested=requested, used=configured)
     return configured

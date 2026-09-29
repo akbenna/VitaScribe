@@ -21,7 +21,8 @@ tekst is vaak nog fout en leidt af van de patiënt.
 
 Protocol (WebSocket /api/v1/consult/stream):
   client -> server  {"type": "auth", "api_key": "...", "praktijk": "...",
-                     "consent": true, "keyterms": [...], "llm_provider": ...}
+                     "consent": true, "keyterms": [...], "llm_provider": ...,
+                     "vraagsuggesties": bool}
   client -> server  <binaire audio, webm/opus>
   client -> server  {"type": "nadictaat", "vanaf": 312.4}
                                                           de patiënt is weg; vanaf deze
@@ -29,6 +30,9 @@ Protocol (WebSocket /api/v1/consult/stream):
   client -> server  {"type": "stop"}
   server -> client  {"type": "ready"}
   server -> client  {"type": "voortgang", "seconden": 12.3, "sprekers": 2}
+  server -> client  {"type": "suggesties", "klacht": "...", "vragen": [{"tekst": "koorts?", "alarm": false}]}
+                                                          alleen met CLINICAL_DECISION_SUPPORT en
+                                                          "vraagsuggesties": true in auth
   server -> client  {"type": "verwerken"}
   server -> client  {"type": "result", "data": {...}, "leeg": bool}
   server -> client  {"type": "error", "message": "...", "terugval": bool}
@@ -50,7 +54,7 @@ from urllib.parse import urlencode
 import structlog
 from fastapi import WebSocket, WebSocketDisconnect
 
-from . import audit, pipeline
+from . import audit, pipeline, talen, vraagsuggesties
 from .config import AppConfig, get_config
 from .dictation import (
     KEYTERM_RETRY_BUDGETS,
@@ -77,12 +81,16 @@ def max_seconden() -> int:
 
 
 def build_consult_url(cfg: AppConfig, user_terms: Optional[List[str]] = None,
-                      token_budget: int = MAX_KEYTERM_TOKENS) -> str:
-    """Streaming-adres voor een gesprek: stemmen scheiden, geen tussentekst."""
+                      token_budget: int = MAX_KEYTERM_TOKENS,
+                      taal: Optional[talen.Taal] = None) -> str:
+    """Streaming-adres voor een gesprek: stemmen scheiden, geen tussentekst.
+
+    taal: de taal die de arts voor dit consult koos; zonder keuze de
+    serverinstelling (Nederlands)."""
     model = cfg.stt.deepgram_model
     params: List[tuple] = [
         ("model", model),
-        ("language", cfg.stt.deepgram_language),
+        ("language", taal.deepgram if taal else cfg.stt.deepgram_language),
         ("punctuate", "true"),
         ("smart_format", "true"),
         ("diarize", "true"),
@@ -90,7 +98,8 @@ def build_consult_url(cfg: AppConfig, user_terms: Optional[List[str]] = None,
         # AVG: niet bewaard en niet gebruikt voor training.
         ("mip_opt_out", "true"),
     ]
-    if token_budget > 0 and cfg.dictation.keyterms_enabled and model.startswith("nova-3"):
+    if (token_budget > 0 and cfg.dictation.keyterms_enabled and model.startswith("nova-3")
+            and (taal is None or taal.keyterms)):
         params.extend(("keyterm", term) for term in build_keyterms(user_terms, token_budget))
     return f"{cfg.dictation.deepgram_url}?{urlencode(params)}"
 
@@ -198,11 +207,12 @@ async def volg_consult(
         return
 
     user_terms = sanitize_user_keyterms(auth.get("keyterms"))
+    taal = talen.kies(auth.get("taal"))
     upstream = None
     last_exc: Optional[Exception] = None
     for budget in KEYTERM_RETRY_BUDGETS:
         try:
-            upstream = await connect(build_consult_url(cfg, user_terms, budget), deepgram_key)
+            upstream = await connect(build_consult_url(cfg, user_terms, budget, taal), deepgram_key)
             break
         except Exception as exc:
             last_exc = exc
@@ -216,11 +226,15 @@ async def volg_consult(
         return
 
     audit.log_event(ident.label, "consult.stream", consent=True)
-    logger.info("consult_live.start", model=cfg.stt.deepgram_model)
+    logger.info("consult_live.start", model=cfg.stt.deepgram_model, taal=taal.code)
     await _send_json(ws, {"type": "ready"})
 
     gesprek = Gesprek()
     gestopt = asyncio.Event()   # de arts klikte op stop (of de tijd is om)
+    # Vraagsuggesties: alleen als server en arts het allebei aanzetten.
+    meedenker = (vraagsuggesties.Meedenker(lambda payload: _send_json(ws, payload), ident.label,
+                                           auth.get("llm_provider"))
+                 if vraagsuggesties.toegestaan(auth) else None)
 
     async def client_naar_deepgram() -> None:
         try:
@@ -253,6 +267,8 @@ async def volg_consult(
                 if gesprek.verwerk(raw):
                     await _send_json(ws, {"type": "voortgang", "seconden": round(gesprek.seconden, 1),
                                           "sprekers": len(gesprek.sprekers)})
+                    if meedenker is not None and not gestopt.is_set():
+                        meedenker.misschien(gesprek)
         except Exception as exc:
             logger.warning("consult_live.upstream_closed", error=str(exc))
 
@@ -287,7 +303,7 @@ async def volg_consult(
 
         await _send_json(ws, {"type": "verwerken"})
         transcript = gesprek.transcript()
-        result = await verwerk(transcript, llm_provider=auth.get("llm_provider"))
+        result = await verwerk(transcript, llm_provider=auth.get("llm_provider"), taal=taal.code)
         data = result.to_dict()
         data["processing_time_secs"] = round(time.time() - start, 2)
         await _send_json(ws, {"type": "result", "data": data, "leeg": not transcript.raw_text.strip()})
@@ -298,6 +314,8 @@ async def volg_consult(
         await _send_json(ws, {"type": "error", "terugval": True,
                               "message": "Het verslag kon niet worden gemaakt."})
     finally:
+        if meedenker is not None:
+            meedenker.stop()
         for taak in (zender, ontvanger):
             if not taak.done():
                 taak.cancel()

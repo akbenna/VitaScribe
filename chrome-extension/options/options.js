@@ -40,6 +40,7 @@ async function loadSettings() {
     if (el && stored[key]) el.value = stored[key];
   });
   if (!stored.apiUrl) document.getElementById('apiUrl').value = STANDAARD_SERVER;
+  laadVraagsuggesties(stored.apiUrl || STANDAARD_SERVER);
 
   if (stored.bricksSelectors) {
     try {
@@ -58,6 +59,32 @@ async function loadSettings() {
     }
   }
 }
+
+// ── Question suggestions during the consult (clinical support) ──
+// A switch that takes effect at once (no "Opslaan" needed). The server has
+// the last word (CLINICAL_DECISION_SUPPORT); its answer is shown underneath.
+
+async function laadVraagsuggesties(apiUrl) {
+  var box = document.getElementById('vraagsuggesties');
+  var note = document.getElementById('vraagsuggesties-server');
+  if (!box) return;
+  var stored = await SVInstellingen.lees(['vraagsuggesties']);
+  box.checked = stored.vraagsuggesties === true;
+  try {
+    var resp = await fetch(String(apiUrl).replace(/\/$/, '') + '/health');
+    var policy = (await resp.json()).data_policy || {};
+    note.textContent = policy.clinical_decision_support
+      ? 'Deze server staat klinische ondersteuning toe.'
+      : 'Deze server staat klinische ondersteuning (nog) niet toe: zet CLINICAL_DECISION_SUPPORT=true op de server.';
+  } catch (e) {
+    note.textContent = '';
+  }
+}
+
+document.getElementById('vraagsuggesties').addEventListener('change', async function (e) {
+  await SVInstellingen.bewaar({ vraagsuggesties: e.target.checked });
+  showToast(e.target.checked ? 'Vraagsuggesties aan (vanaf het volgende consult).' : 'Vraagsuggesties uit.');
+});
 
 // ── Save settings ──
 

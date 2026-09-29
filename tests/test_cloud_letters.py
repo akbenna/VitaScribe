@@ -100,9 +100,9 @@ def test_extract_reads_image_and_filters(api):
                         json={"kind": "dossier", "media_type": "image/png", "data": "iVBORw0KGgoAAAANS"})
     assert resp.status_code == 200
     assert "123456789" not in resp.json()["text"] and "hoofdpijn" in resp.json()["text"]
-    # screenshots can identify the patient: EU model, in Mistral's image format
-    assert seen[0]["provider"] == "mistral"
-    assert seen[0]["user"][0]["type"] == "image_url"
+    # screenshots can identify the patient: the patient-data model, in its image format
+    assert seen[0]["provider"] == "anthropic"
+    assert seen[0]["user"][0]["type"] == "image"
 
 
 def test_letters_require_api_key(api):

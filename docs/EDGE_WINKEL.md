@@ -154,7 +154,8 @@ PERMISSIONS
   - activeTab, tabs, scripting: find the Bricks tab and insert text in the
     chosen field.
   - offscreen (USER_MEDIA, CLIPBOARD): keep the microphone recording when the
-    popup closes; clipboard as fallback for dictated text.
+    popup or side panel closes or the doctor opens another page; clipboard as
+    fallback for dictated text.
   - sidePanel: the main user interface.
   - storage: settings (sync), user-defined text snippets and the last result
     (local). The server API key is kept in local storage only and never in
@@ -163,17 +164,24 @@ PERMISSIONS
     "Uit schermafdruk (klembord)" (from screenshot on clipboard) to read an
     image of a referral letter they copied themselves.
 
-CONSULT RECORDING (Bricks pages only)
-  The floating widget on Bricks records a consultation only after the doctor
-  ticks that the patient consents. Audio is streamed in small chunks over a
-  WebSocket to the practice's server, which transcribes it and returns a
-  draft note. It cannot be tested without a Bricks login.
+CONSULT RECORDING
+  Click the toolbar icon and the record button (or press Alt+Shift+C). The
+  button text states that starting confirms the patient's consent. The key
+  is checked first. The recording runs in the offscreen document, so it
+  keeps going when the doctor opens another page; the toolbar badge shows
+  REC and a small draggable pill on the page shows the time and Stop. After
+  Stop the pill offers "Invoegen" (fill the note into the clicked field and
+  the ones after it) and "Bekijk" (side panel). Audio is streamed in small
+  chunks over a WebSocket to the practice's server, which transcribes it and
+  returns a draft note. The pill receives only its state, never patient text.
+  It can be tested on any page with a microphone.
 
 DATA
   Audio and text go only to the server configured by the practice. Speech
-  recognition uses an EU endpoint, and dictations and consultation notes use a
-  language model in the EU. Referral letters are pseudonymised first (name,
-  date of birth, BSN, address removed) and then sent to a language model in
-  the US, or to the practice's own AI provider. No analytics, no advertising,
+  recognition uses an EU endpoint. Dictations and consultation notes are
+  written by Claude (Anthropic, US) under commercial terms that exclude
+  training. Referral letters are pseudonymised first (name, date of birth,
+  BSN, address removed) and then sent to Claude, or to the practice's own AI
+  provider. No analytics, no advertising,
   no remote code. Privacy policy: https://www.provita-care.nl/vitascribe/privacy
 ```

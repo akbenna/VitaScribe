@@ -227,3 +227,27 @@ body {
 /* Empty state */
 .empty-state { text-align: center; padding: 24px 0; }
 .empty-state p { margin-bottom: 12px; color: var(--text-secondary); }
+
+/* Consult: one start button that also confirms consent */
+.consent-note { font-size: 11px; color: #6b4a00; background: #fff7e6; border: 1px solid #f0d9a8;
+  border-radius: 8px; padding: 5px 8px; margin: 6px 0; text-align: left; }
+.no-key { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px;
+  padding: 6px 8px; font-size: 12px; text-align: left; color: #92400e; background: #fffbeb;
+  border: 1px solid #fcd34d; border-radius: 8px; }
+.no-key.hidden, .btn-link.hidden, #btn-resend.hidden, #btn-error-settings.hidden { display: none; }
+.btn-small { padding: 4px 10px; font-size: 12px; }
+.btn-link { background: none; border: 0; color: var(--primary); text-decoration: underline; font-size: 12px;
+  cursor: pointer; margin-top: 6px; }
+.result-actions { flex-wrap: wrap; }
+.error-area .btn { margin: 4px 2px; }
+
+.taal-keuze { display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 12px;
+  color: var(--text-secondary); margin: 4px 0; }
+.taal-keuze select { font-size: 12px; padding: 2px 4px; border: 1px solid var(--border); border-radius: 6px; }
+.rec-vragen { display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; margin: 6px 0; }
+.rec-vragen.hidden { display: none; }
+.rec-vraag { border: 1px solid #c7d2fe; background: #eef2ff; color: #3730a3; border-radius: 999px; padding: 2px 8px; font-size: 11px; }
+.rec-vraag.alarm { border-color: #fecaca; background: #fef2f2; color: #b91c1c; font-weight: 600; }
+.deel-info { margin: 0 0 8px; padding: 6px 8px; font-size: 12px; color: #065f46; background: var(--primary-light);
+  border-radius: 8px; }
+.deel-info.hidden { display: none; }
