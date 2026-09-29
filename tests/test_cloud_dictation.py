@@ -485,3 +485,11 @@ def test_psychological_rules_forbid_inventing_findings():
         assert "suïcidegedachten ALLEEN zoals besproken" in prompt
         assert "Nooit een psychiatrisch onderzoek invullen" in prompt
         assert "P76 depressie" in prompt
+
+
+def test_split_rules_name_the_signals_and_an_example():
+    from services.cloud_api import prompts
+    for prompt in (prompts.SOEP_SYSTEM_PROMPT, prompts.DICTAAT_SOEP_SYSTEM_PROMPT):
+        assert '"klacht 1 / \\\n' not in prompt           # backslash-continuations are joined
+        assert "klacht 2" in prompt and "orgaansystemen" in prompt
+        assert "Nooit beide in één S of E" in prompt

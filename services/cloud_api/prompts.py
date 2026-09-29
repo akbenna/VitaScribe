@@ -32,6 +32,18 @@ MEERDERE_PROBLEMEN = """MEERDERE PROBLEMEN (episodes):
   relevant zijn, of in deel 1 als ze bij alles horen. Niets dubbel.
 - Klachten die bij één ziektebeeld horen (koorts, hoesten en keelpijn bij \
   een luchtweginfectie) zijn één probleem, niet meerdere.
+- Signalen dat het om meerdere problemen gaat: de arts zegt "klacht 1 / \
+  klacht 2", "ten eerste / ten tweede", "daarnaast", "verder komt pt voor", \
+  of er zijn klachten of werkdiagnosen in verschillende orgaansystemen \
+  (bijv. neus en darm). Twijfel je bij verschillende orgaansystemen, splits \
+  dan. Noemt E twee diagnosen voor twee klachten, dan zijn het twee delen.
+- VOORBEELD. Dictaat: "klacht 1 al lang verstopte neus, week erger; klacht \
+  2 buikpijn en moeizame ontlasting, bekend met buikoperaties; RT gb, neus \
+  lichte septumdeviatie; E rhinitis en anismus; P neusspray 6 weken, \
+  laxans". Dan deel 1 "Neusverstopping": S neus, O septumdeviatie, E \
+  chronische rhinitis, P neusspray 6 wk (met eigen ICPC). Deel 2 \
+  "Defecatieklachten": S buikpijn/ontlasting + buikoperaties, O RT gb, E \
+  anismus, P laxans (met eigen ICPC). Nooit beide in één S of E.
 - Volgorde: de hulpvraag waarvoor de patiënt kwam eerst. Maximaal 4 delen.
 - Eén probleem: "problemen" bevat precies één deel.
 - De velden s, o, e, p, icpc_code en icpc_titel buiten "problemen" zijn \
