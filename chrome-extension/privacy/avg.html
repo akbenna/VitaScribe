@@ -19,14 +19,14 @@
 </head>
 <body>
 <h1>VitaScribe en de AVG</h1>
-<p class="lead">Hoe de extensie omgaat met patiëntgegevens bij dicteren, SOEP-verslagen en brieven.</p>
+<p class="lead">Hoe de extensie omgaat met patiëntgegevens bij dicteren, SOEP-verslagen, brieven, dossiervragen en de post. Hoe je VitaScribe gebruikt staat in de <a href="../help/handleiding.html">handleiding</a>.</p>
 
 <h2>Wie doet wat</h2>
 <table>
   <tr><th>Rol</th><th>Wie</th></tr>
   <tr><td>Verwerkingsverantwoordelijke</td><td>De huisartsenpraktijk die VitaScribe gebruikt.</td></tr>
   <tr><td>Verwerker</td><td>De beheerder van de VitaScribe-server.</td></tr>
-  <tr><td>Subverwerkers</td><td>Deepgram (spraak, EU-eindpunt, deelname aan modeltraining uitgezet), Anthropic (VS; dictaat, SOEP, consultverslag, schermafdrukken en patiëntinstructie, en gepseudonimiseerde brieven; niet gebruikt voor training). De VitaScribe-server zelf draait bij Railway. Stelt de praktijk een eigen sleutel in, dan gaan brieven naar de eigen aanbieder van de praktijk (Anthropic of OpenAI) en spraak naar het eigen Deepgram-account; de overeenkomst met die aanbieder sluit de praktijk zelf.</td></tr>
+  <tr><td>Subverwerkers</td><td>Deepgram (spraak, EU-eindpunt, deelname aan modeltraining uitgezet), Anthropic (VS; dictaat, SOEP, consultverslag, meedenken onder de SOEP, schermafdrukken en patiëntinstructie, en gepseudonimiseerde brieven, dossiervragen en berichten uit de post; niet gebruikt voor training). De VitaScribe-server zelf draait bij Railway. Stelt de praktijk een eigen sleutel in, dan gaan brieven naar de eigen aanbieder van de praktijk (Anthropic of OpenAI) en spraak naar het eigen Deepgram-account; de overeenkomst met die aanbieder sluit de praktijk zelf.</td></tr>
 </table>
 <p>Met elke (sub)verwerker hoort een verwerkersovereenkomst te bestaan. Bij een aanbieder buiten de EER hoort daar een geldige doorgiftegrondslag bij. Controleer dit voordat de extensie in de praktijk wordt gebruikt.</p>
 
@@ -48,6 +48,15 @@
   <tr><td>Opslag</td><td>De extensie bewaart geen dossiers of brieven; na sluiten van het zijpaneel is een brief weg. Het laatste consultverslag blijft op het apparaat staan tot de arts op "Nieuw consult" klikt.</td></tr>
 </table>
 
+<h2>Meedenken onder de SOEP</h2>
+<p>Na elke SOEP gaat de tekst van die SOEP (S, O, E, P en de ICPC-code) nog één keer naar het taalmodel om medicijnnamen te controleren. Staat in Instellingen "Klinisch meedenken" aan, en staat de server dat toe, dan vraagt dezelfde aanroep ook of het beleid past bij de NHG-Standaard en welke Thuisarts-onderwerpen passen. Er gaat geen dossier mee, alleen de SOEP-regel. Er verandert niets in de SOEP zonder klik van de arts, en de server bewaart niets.</p>
+
+<h2>Dossiervraag</h2>
+<p>Bij een vraag aan het dossier leest het zijpaneel de onderdelen van het dossier die op dat moment in Bricks open staan. Naam, BSN, geboortedatum, adres en contactgegevens gaan eruit; consultdatums blijven staan, omdat de vraag daar vaak over gaat ("wanneer was de laatste kweek"). De gefilterde tekst gaat met de vraag naar het taalmodel. Elke vraag neemt het dossier opnieuw mee; er wordt niets bewaard, en vragen en antwoorden zijn weg zodra het zijpaneel sluit of een andere patiënt opent. Het auditlog noteert alleen dat er een vraag was en hoe lang de tekst was.</p>
+
+<h2>Post &amp; lab</h2>
+<p>Zolang het tabblad Post open is, leest het zijpaneel om de paar seconden het bericht dat in de Bricks-post in beeld staat: vanaf "Afzender" tot de knoppenbalk, plus de episodelijst (ICPC-code en titel) als context. De regel "Patiënt" met naam, geboortedatum en adres gaat er helemaal uit; alleen de leeftijd die daaruit volgt gaat mee. Identificatienummers worden weggefilterd. Een bericht gaat pas naar de server als het in beeld is gekomen; een bericht dat al beoordeeld is, komt uit het geheugen van het paneel. Tekst komt pas in Bricks als de arts op "Zet in Samenvatting" of "Zet in Memo" klikt. Wil de praktijk dit niet automatisch, dan zet de arts "Automatisch bij elk nieuw bericht" uit.</p>
+
 <h2>Licentie en praktijknummer</h2>
 <p>Om te controleren of een praktijk VitaScribe mag gebruiken, stuurt de extensie bij elke aanroep het Bricks-praktijknummer mee dat in de adresbalk staat. Dossier- en consultnummers staan dieper in het adres en gaan niet mee. De server houdt per gebruiker bij wanneer die VitaScribe voor het laatst gebruikte en met welk praktijknummer; verder niets.</p>
 
@@ -55,7 +64,7 @@
 <p>Volgens de KNMG-richtlijn Omgaan met medische gegevens verstrekt de behandelend arts alleen feitelijke gegevens, alleen op een gerichte vraag en alleen met uitdrukkelijke toestemming van de patiënt. De arts geeft geen oordeel. De extensie vraagt die bevestiging voor elke informatiebrief, en de brief beperkt zich tot feiten. Een oordeel over beperkingen, arbeidsgeschiktheid of causaliteit laat de brief over aan een onafhankelijk arts.</p>
 
 <h2>Thuisarts.nl bij de SOEP-regel</h2>
-<p>De extensie zoekt bij de ICPC-code die de arts zelf vastlegt een pagina op Thuisarts.nl. Dat gebeurt met een vaste tabel in de extensie, zonder taalmodel: een pagina kiezen op grond van het dictaat zou neerkomen op het voorstellen van een diagnose, en dat doet VitaScribe niet. Er gaat voor dat opzoeken niets het netwerk op; de tabel staat in de extensie zelf. Een QR-code op de afdruk wordt in de browser gemaakt en niet door een QR-dienst, omdat zo'n dienst anders ziet welke aandoening er op het papier van de patiënt komt.</p>
+<p>De extensie zoekt bij de ICPC-code die de arts zelf vastlegt een pagina op Thuisarts.nl. Dat gebeurt met een vaste tabel in de extensie, zonder taalmodel. Alleen als de praktijk "Klinisch meedenken" aanzet, stelt het taalmodel daarnaast onderwerpen voor op grond van de SOEP; die verschijnen als zoekterm op Thuisarts, nooit als zelfbedacht adres. Er gaat voor dat opzoeken niets het netwerk op; de tabel staat in de extensie zelf. Een QR-code op de afdruk wordt in de browser gemaakt en niet door een QR-dienst, omdat zo'n dienst anders ziet welke aandoening er op het papier van de patiënt komt.</p>
 <p>Een link verschijnt alleen als iemand hem met het oog heeft gecontroleerd; de tabel houdt bij wanneer en door wie. Staat er niets bij een code, dan zegt het scherm dat, met een zoekveld ernaast. De praktijk laat de links wekelijks nalopen vanaf de eigen server, zodat een pagina die verdwijnt opvalt en niet stil kapot gaat.</p>
 
 <h2>Naslag en uitleg uit ProVita Care</h2>
@@ -67,19 +76,19 @@
 
 <h2>Wat de extensie zelf doet en bewaart</h2>
 <p>De extensie praat met één server: de VitaScribe-server die in de instellingen staat. Ze stuurt geen gegevens naar andere partijen, gebruikt geen statistiek- of foutmeldingsdiensten, toont geen advertenties en laadt geen code van buiten.</p>
-<p>Het veldscript draait op elke pagina en in elk frame, omdat Bricks zijn tekstvelden in frames van verschillende domeinen zet en een vaste lijst adressen daar niet volstaat. Het script let alleen op het moment dat je in een tekstveld klikt, zodat het gedicteerde tekst daar kan neerzetten. Het leest geen pagina-inhoud, formulieren of browsegeschiedenis en stuurt niets over de pagina's die je bezoekt. Alleen op Bricks-pagina's leest de extensie het praktijknummer uit het adres (zie hierboven) en, als je zelf een brief samenstelt, de onderdelen van het dossier waaruit je kiest wat meegaat.</p>
+<p>Het veldscript draait op elke pagina en in elk frame, omdat Bricks zijn tekstvelden in frames van verschillende domeinen zet en een vaste lijst adressen daar niet volstaat. Het script let alleen op het moment dat je in een tekstveld klikt, zodat het gedicteerde tekst daar kan neerzetten. Het leest geen pagina-inhoud, formulieren of browsegeschiedenis en stuurt niets over de pagina's die je bezoekt. Alleen op Bricks-pagina's leest de extensie het praktijknummer uit het adres (zie hierboven). Daarnaast leest het zijpaneel pagina-inhoud van het actieve tabblad in drie situaties die de arts zelf start: bij het samenstellen van een brief (de onderdelen waaruit je kiest wat meegaat), bij een dossiervraag (de geopende onderdelen van het dossier) en zolang het tabblad Post open is (het bericht in beeld en de episodelijst). Buiten die situaties leest de extensie geen pagina-inhoud.</p>
 <table>
   <tr><th>Waar</th><th>Wat</th><th>Hoe lang</th></tr>
   <tr><td>Chrome-synchronisatie (<code>storage.sync</code>)</td><td>Serveradres, keuze van spraak- en taalmodel, microfoon, praktijkkeuzes (live meeschrijven, mailen) en eigen veldselectors voor Bricks. Geen patiëntgegevens en geen sleutel.</td><td>Tot je de instelling wijzigt of de extensie verwijdert.</td></tr>
   <tr><td>Alleen dit apparaat (<code>storage.local</code>)</td><td>De serversleutel, eigen tekstblokken, waar de SOEP-velden in Bricks staan, het laatst geziene praktijknummer en het laatste consultverslag.</td><td>Het consultverslag tot je op "Nieuw consult" klikt; de rest tot je het wijzigt of de extensie verwijdert.</td></tr>
   <tr><td>Alleen deze browsersessie (<code>storage.session</code>)</td><td>In welk tabblad en veld je het laatst klikte, en welk scherm van het zijpaneel openstaat.</td><td>Tot de browser sluit.</td></tr>
-  <tr><td>Geheugen van het zijpaneel</td><td>Dictaten, SOEP-concepten en brieven.</td><td>Tot het zijpaneel sluit.</td></tr>
+  <tr><td>Geheugen van het zijpaneel</td><td>Dictaten, SOEP-concepten, brieven, dossiervragen met antwoorden en beoordelingen van berichten uit de post.</td><td>Tot het zijpaneel sluit.</td></tr>
   <tr><td>Klembord</td><td>Tekst die je zelf kopieert. Het klembord wordt alleen gelezen als je op "Uit schermafdruk (klembord)" klikt.</td><td>Zolang het besturingssysteem het bewaart.</td></tr>
 </table>
-<p>Gegevens die de extensie ziet, gebruikt VitaScribe alleen voor het ene doel waarvoor de extensie bestaat: dicteren, verslaglegging en brieven voor de huisarts. Ze worden niet verkocht, niet gebruikt voor advertenties of profielen, niet doorgegeven aan handelaren in gegevens en niet gebruikt om taalmodellen te trainen. Dat geldt ook in de zin van de <em>Limited Use</em>-eisen van de Chrome Web Store en het beleid van de Edge Add-ons-winkel.</p>
+<p>Gegevens die de extensie ziet, gebruikt VitaScribe alleen voor het ene doel waarvoor de extensie bestaat: dicteren, verslaglegging, brieven en het terugvinden en samenvatten van dossierinformatie voor de huisarts. Ze worden niet verkocht, niet gebruikt voor advertenties of profielen, niet doorgegeven aan handelaren in gegevens en niet gebruikt om taalmodellen te trainen. Dat geldt ook in de zin van de <em>Limited Use</em>-eisen van de Chrome Web Store en het beleid van de Edge Add-ons-winkel.</p>
 
 <h2>Verwijderen, inzage en datalekken</h2>
-<p>Wat op het apparaat staat, is weg zodra je de extensie verwijdert. De server bewaart geen audio, dictaten, verslagen of brieven. Wel bewaart hij per gebruiker wanneer die VitaScribe voor het laatst gebruikte en met welk praktijknummer, en een auditlog van wie wat wanneer deed, zonder inhoud. Stopt een praktijk, dan trekt de beheerder de sleutels in; een verzoek om de gebruiksgegevens te wissen gaat naar het adres hieronder. Het auditlog blijft bewaard zolang de wet (NEN 7513) dat vraagt.</p>
+<p>Wat op het apparaat staat, is weg zodra je de extensie verwijdert. De server bewaart geen audio, dictaten, verslagen, brieven, dossiertekst, vragen of berichten uit de post. Wel bewaart hij per gebruiker wanneer die VitaScribe voor het laatst gebruikte en met welk praktijknummer, en een auditlog van wie wat wanneer deed, zonder inhoud. Stopt een praktijk, dan trekt de beheerder de sleutels in; een verzoek om de gebruiksgegevens te wissen gaat naar het adres hieronder. Het auditlog blijft bewaard zolang de wet (NEN 7513) dat vraagt.</p>
 <p>Omdat de server geen patiëntgegevens bewaart, is er bij VitaScribe niets over een patiënt in te zien of te corrigeren. Het dossier staat in het HIS van de praktijk. Merkt de beheerder een datalek, dan meldt hij dat zonder onnodige vertraging aan de praktijk, met wat er gebeurd is en welke gegevens het raakt, zodat de praktijk binnen 72 uur kan melden bij de Autoriteit Persoonsgegevens (AVG art. 33).</p>
 <p>Vragen en verzoeken: <a href="mailto:info@provita-care.nl">info@provita-care.nl</a>.</p>
 

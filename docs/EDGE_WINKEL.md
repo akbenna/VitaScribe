@@ -138,17 +138,29 @@ TEST ACCOUNT
 
 HOW TO TEST
   1. Open any page with a text field (for example a search box), click in it.
-  2. Open the side panel from the toolbar popup ("Zijpaneel openen").
+  2. Click the toolbar icon: the side panel opens. A manual in Dutch opens
+     on install and is linked at the bottom of the panel ("Handleiding").
   3. Click the microphone, speak a sentence, click it again, then
      "Invoegen in veld" (insert into field). The text appears in the field.
   4. "Maak SOEP" turns the dictation into a structured SOEP note.
   Alt+Shift+D starts and stops dictation without the side panel.
+  5. Tab "Dossiervraag": ask a question about the page that is open (for
+     example "Welke medicatie?"). The panel reads the page text, removes
+     names and identifiers, and shows the answer with quoted sources.
+  6. Tab "Post": open a page with a lab result or letter that starts with
+     "Afzender" (sender); the panel summarises it and can put the summary
+     into a field labelled "Samenvatting" or "Memo" on that page.
 
 PERMISSIONS
   - Content script on <all_urls>, all frames: inserts dictated text into the
     text field the user clicked, including in the embedded frames Bricks uses
     across several domains. It only reacts to focus on text fields. It never
     reads page content and never sends it anywhere.
+  - Page text is read only from the side panel (chrome.scripting on the
+    active tab), and only when the doctor starts it: composing a letter,
+    asking a question in "Dossiervraag", or while the "Post" tab is open.
+    Names, dates of birth, BSN and addresses are removed in the browser
+    before anything is sent to the practice's server.
   - Host permissions: the Bricks EHR domains (field detection and insertion)
     and the practice's own VitaScribe server (API calls).
   - activeTab, tabs, scripting: find the Bricks tab and insert text in the
@@ -182,6 +194,8 @@ DATA
   written by Claude (Anthropic, US) under commercial terms that exclude
   training. Referral letters are pseudonymised first (name, date of birth,
   BSN, address removed) and then sent to Claude, or to the practice's own AI
-  provider. No analytics, no advertising,
+  provider. Dossier questions and messages from the EHR inbox ("Post") are
+  pseudonymised the same way and sent to Claude; nothing is stored on the
+  server. No analytics, no advertising,
   no remote code. Privacy policy: https://www.provita-care.nl/vitascribe/privacy
 ```

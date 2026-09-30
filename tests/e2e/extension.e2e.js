@@ -283,9 +283,24 @@ function check(name, cond, extra) {
   check('knop "Brief schrijven"', await pop.isVisible('#btn-letters'));
   check('knop "Dossiervraag"', await pop.isVisible('#btn-dossier'));
   check('knop "Post & lab"', await pop.isVisible('#btn-post'));
+  check('handleiding in de popup', (await pop.getAttribute('#link-help', 'href')) === '../help/handleiding.html');
   const popDicht = pop.waitForEvent('close', { timeout: 3000 }).then(() => true, () => false);
   await pop.click('#btn-expand');
   check('paneelknop in de popup sluit de popup', await popDicht);
+
+  console.log('Handleiding');
+  check('handleiding opent bij installatie', ctx.pages().some((x) => x.url().endsWith('/help/handleiding.html')), ctx.pages().map((x) => x.url()));
+  const hl = await ctx.newPage();
+  hl.on('pageerror', (e) => errs.push(e.message));
+  await hl.goto(`chrome-extension://${id}/help/handleiding.html`);
+  const hoofdstukken = await hl.$$eval('h2', (h) => h.map((x) => x.id));
+  check('handleiding met alle hoofdstukken', ['start', 'paneel', 'consult', 'dicteren', 'meedenken', 'brieven', 'dossiervraag', 'post', 'instellingen', 'privacy', 'grenzen', 'problemen'].every((h) => hoofdstukken.includes(h)), hoofdstukken);
+  const kapot = await hl.$$eval('nav a', (as) => as.filter((a) => !document.querySelector(a.getAttribute('href'))).map((a) => a.textContent));
+  check('inhoudsopgave verwijst naar bestaande hoofdstukken', kapot.length === 0, kapot);
+  await hl.click('a[href="../privacy/avg.html"]');
+  await sleep(300);
+  check('link naar de AVG-pagina werkt', hl.url().endsWith('/privacy/avg.html') && (await hl.textContent('body')).includes('Post & lab'));
+  await hl.close();
 
   console.log('Instellingen');
   const opt = await ctx.newPage();
