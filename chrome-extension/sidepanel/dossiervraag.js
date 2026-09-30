@@ -40,7 +40,9 @@
 
   // ── Reading the dossier ──
   async function leesDossier() {
-    var d = await SVBricksDossier.lees(SVDossiervraag.MAX_TOTAAL);
+    // Broad: everything that is on screen in Bricks (journal, episodes,
+    // medication, letters, notes), not only recognised sections.
+    var d = await SVBricksDossier.lees(SVDossiervraag.MAX_TOTAAL, true);
     if (!SVDossiervraag.zelfdePatient(dv.naam, d.naam)) {
       dv.eerder = [];
       $('dv-antwoorden').textContent = '';
@@ -50,10 +52,10 @@
     // not carried over (each question stands on its own).
     if (!d.naam) dv.eerder = [];
     dv.naam = d.naam || dv.naam;
-    var b = SVDossiervraag.bouw(d.secties, d.naam, SVPrivacy);
+    var b = SVDossiervraag.bouw(d.secties, d.naam, SVPrivacy, SVPrivacy.datum(d.geboren));
     var totaal = b.onderdelen.reduce(function (n, o) { return n + o.tekens; }, 0);
     $('dv-bron').textContent = 'Ingelezen (' + b.initialen + '): '
-      + b.onderdelen.map(function (o) { return o.naam; }).join(', ')
+      + b.onderdelen.map(function (o) { return o.naam === 'Dossier (in beeld)' ? 'alles wat in beeld staat' : o.naam; }).join(', ')
       + ' · ' + SVDossiervraag.tekens(totaal)
       + (b.ingekort ? ' · ingekort, heel dik dossier' : '');
     $('dv-preview').textContent = b.tekst;
@@ -117,9 +119,14 @@
 
   function toonAntwoord(kaart, tekst, a) {
     kaart.classList.remove('bezig');
-    kaart.classList.toggle('niet', !a.gevonden);
+    var zeker = a.zekerheid || (a.gevonden ? 'expliciet' : 'niet_gevonden');
+    kaart.classList.toggle('niet', zeker === 'niet_gevonden');
+    kaart.classList.toggle('indirect', zeker === 'indirect');
     kaart.textContent = '';
-    kaart.appendChild(el('p', 'dv-vraag', tekst));
+    var kop = el('div', 'dv-kop-item');
+    kop.appendChild(el('p', 'dv-vraag', tekst));
+    kop.appendChild(el('span', 'dv-zeker ' + zeker, { expliciet: 'Staat erin', indirect: 'Alleen aanwijzingen', niet_gevonden: 'Niet gevonden' }[zeker]));
+    kaart.appendChild(kop);
     kaart.appendChild(el('p', 'dv-antwoord', a.antwoord || '—'));
     if (a.let_op) kaart.appendChild(el('p', 'dv-letop', a.let_op));
     if (a.bronnen && a.bronnen.length) {

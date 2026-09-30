@@ -86,7 +86,8 @@
   }
 
   // ── Dossier: loaded ──
-  function setDossier(secties, naamRauw, bron) {
+  function setDossier(secties, naamRauw, bron, geboren) {
+    lt.geboren = SVPrivacy.datum(geboren);
     lt.secties = {};
     Object.keys(secties || {}).forEach(function (k) {
       var t = String(secties[k] || '').trim();
@@ -137,7 +138,7 @@
   }
 
   function filterOpts() {
-    return { naam: lt.naamRauw, datumsBehouden: $('lt-keep-dates').checked };
+    return { naam: lt.naamRauw, geboren: lt.geboren, datumsBehouden: $('lt-keep-dates').checked };
   }
 
   function dossierTekst() {
@@ -162,7 +163,10 @@
 
   // ── Dossier: Bricks ──
   // Runs inside every frame of the Bricks tab; returns the text per section.
-  function scrapeFrame(maxPagina) {
+  // Only what is actually on screen counts: Bricks keeps earlier patients and
+  // closed tabs in the page (hidden), and reading those would mix patients.
+  // breed: the whole visible page as one text (Dossiervraag), not per section.
+  function scrapeFrame(maxPagina, breed) {
     var SECTIES = {
       'Journaal': ['journaal', 'journal', 'soep', 'episode', 'consult', 'icpc'],
       'Medicatie': ['medicatie', 'medication', 'recept', 'geneesmiddel'],
@@ -172,70 +176,90 @@
       'Metingen': ['meting', 'bloeddruk', 'gewicht', 'bmi'],
       'Allergieën': ['allergie', 'intolerant', 'overgevoelig', 'contra-indicat'],
     };
-    // innerText of the live element keeps line breaks between blocks
-    // (a detached clone would glue "Journaal" to the first date).
+    var out = { secties: {}, naam: '', geboren: '', top: window === window.top };
+    // A frame that is not shown (display:none iframe) has no size.
+    if (!document.body || window.innerWidth === 0 || window.innerHeight === 0) return out;
+    function zichtbaar(el) {
+      if (!el.getClientRects().length) return false;
+      var st = (el.ownerDocument.defaultView || window).getComputedStyle(el);
+      return st.visibility !== 'hidden' && st.display !== 'none';
+    }
+    // innerText of a rendered element keeps line breaks between blocks and
+    // leaves out hidden children; of a hidden element it would be glued text.
     function text(el) {
-      var t = el.innerText || el.textContent || '';
+      var t = el.innerText || '';
       return t.split('\n')
         .filter(function (line) { return !/^(opslaan|annuleren|sluiten|bewerken|verwijderen|nieuw|zoeken|print|afdrukken|meer|×|✕)$/i.test(line.trim()); })
         .join('\n')
         .replace(/\t+/g, ' ').replace(/ {3,}/g, '  ').replace(/\n{3,}/g, '\n\n').trim();
     }
-    var out = { secties: {}, naam: '', top: window === window.top };
-    if (!document.body) return out;
     // Inline frames (srcdoc/about:blank) are not reached by executeScript;
     // read them through the parent. Frames with their own URL get their own run.
     var docs = [document];
     document.querySelectorAll('iframe,frame').forEach(function (f) {
       var src = f.getAttribute('src') || '';
       if (src && !/^about:/.test(src)) return;
+      if (!zichtbaar(f)) return;
       try { if (f.contentDocument && f.contentDocument.body) docs.push(f.contentDocument); } catch (e) { /* cross-origin */ }
     });
     function all(sel) {
       var list = [];
       docs.forEach(function (d) { list = list.concat(Array.prototype.slice.call(d.querySelectorAll(sel))); });
-      return list;
+      return list.filter(zichtbaar);
     }
-    var nameEl = all('[class*="patient" i] [class*="name" i], [class*="patientnaam" i], [class*="patient-name" i], [data-testid*="patient" i]')[0];
-    if (nameEl) {
-      var n = nameEl.textContent.trim();
-      if (n.length >= 3 && n.length <= 60) out.naam = n;
+    // The patient: Bricks shows "Naam (84) (03-06-1941)" at the top.
+    var pagina = docs.map(function (d) { return text(d.body); }).join('\n');
+    var kop = /([A-Z][A-Za-zÀ-ÿ'.\- ]{1,60}?)\s*\((\d{1,3})\)\s*\((\d{1,2}-\d{1,2}-\d{4})\)/.exec(pagina);
+    if (kop) { out.naam = kop[1].trim(); out.geboren = kop[3]; }
+    if (!out.naam) {
+      var nameEl = all('[class*="patient" i] [class*="name" i], [class*="patientnaam" i], [class*="patient-name" i], [data-testid*="patient" i]')[0];
+      if (nameEl) {
+        var n = nameEl.textContent.trim();
+        if (n.length >= 3 && n.length <= 60) out.naam = n;
+      }
     }
-    var seen = new Set();
+    if (breed) {
+      if (pagina.length > 40) out.secties['Dossier (in beeld)'] = pagina.slice(0, maxPagina || 150000);
+      return out;
+    }
+    var gepakt = [];
     all('section,article,[class*="panel" i],[class*="widget" i],[class*="card" i],[class*="tab-content" i],[class*="module" i]').forEach(function (panel) {
+      // A panel inside one we already took (or around it) is the same text.
+      if (gepakt.some(function (g) { return g.contains(panel) || panel.contains(g); })) return;
       var hdr = panel.querySelector('h1,h2,h3,h4,h5,[class*="header" i],[class*="title" i],[class*="heading" i]');
       if (!hdr) return;
       var h = hdr.textContent.toLowerCase();
       Object.keys(SECTIES).some(function (s) {
         if (!SECTIES[s].some(function (kw) { return h.indexOf(kw) !== -1; })) return false;
         var t = text(panel);
-        if (t.length > 20 && !seen.has(t)) {
-          seen.add(t);
+        if (t.length > 20) {
+          gepakt.push(panel);
           out.secties[s] = (out.secties[s] ? out.secties[s] + '\n' : '') + t;
         }
         return true;
       });
     });
     if (!Object.keys(out.secties).length) {
-      var all = text(document.querySelector('main,[role="main"]') || document.body);
-      if (all.length > 40) out.secties['Dossier (pagina)'] = all.slice(0, maxPagina || 15000);
+      var main = document.querySelector('main,[role="main"]');
+      var rest = main && zichtbaar(main) ? text(main) : pagina;
+      if (rest.length > 40) out.secties['Dossier (pagina)'] = rest.slice(0, maxPagina || 15000);
     }
     return out;
   }
 
   // Reads the open patient from the Bricks tab in this window, all frames
   // merged. Also used by Dossiervraag (with a larger page limit).
-  async function leesBricks(maxPagina) {
+  async function leesBricks(maxPagina, breed) {
     var tabs = await chrome.tabs.query({ active: true, currentWindow: true });
     var tab = tabs[0];
     if (!tab || !/^https?:/.test(tab.url || '')) throw new Error('Open eerst de patiënt in Bricks in dit venster.');
-    var results = await chrome.scripting.executeScript({ target: { tabId: tab.id, allFrames: true }, func: scrapeFrame, args: [maxPagina || 15000] })
+    var results = await chrome.scripting.executeScript({ target: { tabId: tab.id, allFrames: true }, func: scrapeFrame, args: [maxPagina || 15000, !!breed] })
       .catch(function (e) { throw new Error('Geen toegang tot deze pagina (' + e.message + ').'); });
-    var merged = {}, naam = '';
+    var merged = {}, naam = '', geboren = '';
     (results || []).forEach(function (r) {
       var v = r && r.result;
       if (!v) return;
-      if (v.naam && !naam) naam = v.naam;
+      if (v.naam && !naam) { naam = v.naam; geboren = v.geboren || ''; }
       Object.keys(v.secties).forEach(function (k) {
         if (merged[k] && merged[k].indexOf(v.secties[k]) !== -1) return;   // same frame read twice
         merged[k] = merged[k] ? merged[k] + '\n' + v.secties[k] : v.secties[k];
@@ -244,7 +268,7 @@
     // A section found by heading beats the whole-page fallback.
     if (Object.keys(merged).length > 1) delete merged['Dossier (pagina)'];
     if (!Object.keys(merged).length) throw new Error('Weinig tekst gevonden. Is het dossier volledig geladen?');
-    return { secties: merged, naam: naam };
+    return { secties: merged, naam: naam, geboren: geboren };
   }
   window.SVBricksDossier = { lees: leesBricks };
 
@@ -253,7 +277,7 @@
     btn.disabled = true; status('Dossier ophalen…');
     try {
       var d = await leesBricks();
-      setDossier(d.secties, d.naam, 'Bricks');
+      setDossier(d.secties, d.naam, 'Bricks', d.geboren);
       status('Dossier opgehaald: ' + Object.keys(d.secties).join(', ') + '. Controleer de naam en de onderdelen.');
     } catch (e) {
       status(e.message, true);

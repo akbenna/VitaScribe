@@ -43,6 +43,9 @@ def test_privacy_safety_net_removes_direct_identifiers():
         assert secret not in out
     # medische getallen blijven staan
     assert letters.privacy_safety_net("RR 140/90, Hb 8.4, 500 mg 3dd") == "RR 140/90, Hb 8.4, 500 mg 3dd"
+    # datums in het journaal blijven heel (niet als telefoonnummer gezien)
+    for datum in ("Datum uitslag: 22-06-202622-06-2026 HA", "20-10-2025 HA-Cons", "12-06-2026"):
+        assert letters.privacy_safety_net(datum) == datum
 
 
 def test_informatiebrief_requires_consent(api):
