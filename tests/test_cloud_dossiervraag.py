@@ -129,3 +129,21 @@ def test_audit_bevat_geen_inhoud(api):
     args, kwargs = log.call_args
     assert args[1] == "dossier.vraag"
     assert "Antibiotica" not in json.dumps(kwargs) and "nitro" not in json.dumps(kwargs).lower()
+
+
+def test_indirecte_aanwijzingen_en_oude_antwoordvorm(api):
+    seen = []
+    antwoord = {"antwoord": "Niet expliciet vermeld. Aanwijzingen: episode urine-incontinentie (2013).",
+                "zekerheid": "indirect",
+                "bronnen": [{"datum": "", "onderdeel": "EPISODES", "citaat": "Nitrofurantoïne 5 dagen"}],
+                "let_op": "Mogelijk in een brief van de uroloog."}
+    with patch.object(dossiervraag.llm_service, "complete", fake_complete(antwoord, seen)):
+        d = api.post("/api/v1/dossier/vraag", headers=H, json={"dossier": DOSSIER, "vraag": "Indicatie katheter?"}).json()
+    assert d["zekerheid"] == "indirect" and d["gevonden"] is True
+    # de prompt zoekt breed, met synoniemen, en meldt een mogelijke andere patiënt
+    assert "synoniemen" in seen[0]["system"] and "andere patiënt" in seen[0]["system"]
+    assert seen[0]["schema"]["properties"]["zekerheid"]["enum"] == ["expliciet", "indirect", "niet_gevonden"]
+    oud = {"antwoord": "x", "gevonden": False, "bronnen": [], "let_op": ""}
+    with patch.object(dossiervraag.llm_service, "complete", fake_complete(oud)):
+        d = api.post("/api/v1/dossier/vraag", headers=H, json={"dossier": DOSSIER, "vraag": "MRI?"}).json()
+    assert d["zekerheid"] == "niet_gevonden" and d["gevonden"] is False

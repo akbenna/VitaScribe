@@ -1,0 +1,32 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Bricks dossier</title></head><body>
+<div class="topbar">Amer - Moulay (85) (03-06-1941) vrouw</div>
+<!-- Een eerder geopende patiënt: Bricks houdt die verborgen in de pagina -->
+<div id="vorige" style="display:none">
+  <section class="panel"><h3>Medicatie</h3><div>SOTALOL 40MG TABLET 08-09-2026 t/m 09-12-2026 hv:360 dos:2D2T</div></section>
+  <section class="panel"><h3>Journaal</h3><div>Beste Mw. G. Kerkhofs-Hiddink, pneumonie april 2025</div></section>
+</div>
+<iframe style="display:none" srcdoc="<p>VERBORGEN-FRAME andere patiënt Kerkhofs</p>"></iframe>
+<div style="display:flex;gap:16px">
+  <section class="panel widget"><h3>Medicatieprofiel</h3>
+    <div id="profiel1"></div>
+  </section>
+  <section class="panel"><h3>Medicatie (tabblad)</h3>
+    <div id="profiel2"></div>
+  </section>
+</div>
+<section class="panel"><h3>Journaal</h3>
+<div>16-06-2026<br>HA<br>-<br>CONS<br>S<br>info casemanager: ik heb de casus Amer - Moulay 03-06-1941 overgenomen. PGB loopt en thuiszorg is betrokken.</div>
+<div>14-07-2026<br>HA<br>-<br>CONS<br>S<br>Thuiszorg belt: 2-3x per week blaasspoeling, ivm veel gruis. Blaas blijft onrustig.</div>
+<div>03-09-2026<br>HA<br>-<br>INZI<br>S<br>Mw Amer krijgt van de huisarts de blaasspoeling. Voor Amer - Moulay 3-6-1941 machtiging Medireva.</div>
+<div>29-09-2026<br>HA<br>-<br>CONS<br>S<br>Zoon wil stoppen met de katheter; dan kan in de nacht iemand het incontinentiemateriaal vervangen.</div>
+</section>
+<section class="panel"><h3>Episoden</h3>
+<div>U04<br>01-03-2013<br>Urine-incontinentie [ex. P12]<br>P70<br>28-02-2025<br>Dementie<br>K90.03<br>06-10-2025<br>CVA Cerebraal infarct</div>
+</section>
+<script>
+  var regels = [];
+  for (var i = 0; i < 30; i++) regels.push('MIDDEL-' + i + ' 20MG TABLET<br>10-09-2026 t/m 06-10-2026<br>hv:21 dos:1D1T');
+  document.getElementById('profiel1').innerHTML = regels.join('<br>');
+  document.getElementById('profiel2').innerHTML = regels.join('<br>');
+</script>
+</body></html>

@@ -224,7 +224,12 @@ body.consult-running .consult { border-color: var(--rec); }
 .dv-item.niet { border-color: #f0d9a8; }
 .dv-vraag { margin: 0; font-size: 12px; font-weight: 600; color: var(--muted); }
 .dv-antwoord { margin: 0; white-space: pre-wrap; }
-.dv-item.niet .dv-antwoord::before { content: "Niet gevonden · "; font-weight: 600; color: #6b4a00; }
+.dv-kop-item { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.dv-zeker { flex-shrink: 0; font-size: 11px; font-weight: 600; border-radius: 999px; padding: 1px 8px; border: 1px solid var(--border); }
+.dv-zeker.expliciet { color: var(--brand-dark); background: #ecfdf5; border-color: #a7f3d0; }
+.dv-zeker.indirect { color: #92400e; background: #fffbeb; border-color: #fcd34d; }
+.dv-zeker.niet_gevonden { color: #475569; background: #f1f5f9; }
+.dv-item.indirect { border-color: #fcd34d; }
 .dv-letop { margin: 0; font-size: 12px; padding: 5px 8px; border-radius: 6px; background: #fff7e6; color: #6b4a00; }
 .dv-bronnen { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 3px; }
 .dv-bron { font-size: 12px; color: var(--muted); display: grid; grid-template-columns: 16px 1fr; gap: 4px; }

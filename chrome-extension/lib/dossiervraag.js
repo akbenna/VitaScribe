@@ -34,11 +34,38 @@ var SVDossiervraag = (function () {
   }
 
   /**
-   * secties: { naam: ruwe tekst }, naam: ruwe patiëntnaam (mag leeg),
-   * filter: SVPrivacy.filter. Geeft { tekst, onderdelen: [{naam, tekens}],
-   * ingekort, initialen }.
+   * The same block shown twice on screen (a medication profile in a widget and
+   * in a tab) is sent once: a run of RUN or more lines that already appeared,
+   * in the same order, is left out. Short repeats stay: a repeat prescription
+   * of the same five drugs under another date is information.
    */
-  function bouw(secties, naam, privacy) {
+  var RUN = 15;
+  function ontdubbel(tekst) {
+    var regels = String(tekst || '').split('\n');
+    var gezien = new Map();
+    var uit = [];
+    var i = 0;
+    while (i < regels.length) {
+      var sleutel = regels.slice(i, i + RUN).join('\n');
+      if (i + RUN <= regels.length && sleutel.replace(/\s/g, '').length > 120 && gezien.has(sleutel)) {
+        // Skip for as long as it keeps repeating the earlier run.
+        var j = gezien.get(sleutel);
+        while (i < regels.length && j < i && regels[i] === regels[j]) { i++; j++; }
+        continue;
+      }
+      if (i + RUN <= regels.length && !gezien.has(sleutel)) gezien.set(sleutel, i);
+      uit.push(regels[i]);
+      i++;
+    }
+    return uit.join('\n');
+  }
+
+  /**
+   * secties: { naam: ruwe tekst }, naam: ruwe patiëntnaam (mag leeg),
+   * privacy: SVPrivacy, geboren: Date of birth (mag leeg). Geeft { tekst,
+   * onderdelen: [{naam, tekens}], ingekort, initialen }.
+   */
+  function bouw(secties, naam, privacy, geboren) {
     var namen = Object.keys(secties || {})
       .filter(function (k) { return String(secties[k] || '').trim().length >= 5; })
       .sort(function (a, b) { return rang(a) - rang(b) || a.localeCompare(b); });
@@ -47,8 +74,8 @@ var SVDossiervraag = (function () {
     var onderdelen = [];
     var ingekort = false;
     namen.forEach(function (k) {
-      var t = privacy.filter(String(secties[k]).trim(), { naam: naam || '', datumsBehouden: true });
-      if (t.length > MAX_SECTIE) { t = t.slice(0, MAX_SECTIE); ingekort = true; }
+      var t = privacy.filter(ontdubbel(String(secties[k]).trim()), { naam: naam || '', geboren: geboren || null, datumsBehouden: true });
+      if (namen.length > 1 && t.length > MAX_SECTIE) { t = t.slice(0, MAX_SECTIE); ingekort = true; }
       var ruimte = MAX_TOTAAL - tekst.length - k.length - 12;
       if (ruimte < 200) { ingekort = true; return; }
       if (t.length > ruimte) { t = t.slice(0, ruimte); ingekort = true; }
@@ -72,7 +99,7 @@ var SVDossiervraag = (function () {
 
   return {
     MAX_SECTIE: MAX_SECTIE, MAX_TOTAAL: MAX_TOTAAL, SNELVRAGEN: SNELVRAGEN,
-    bouw: bouw, zelfdePatient: zelfdePatient, tekens: tekens,
+    bouw: bouw, ontdubbel: ontdubbel, zelfdePatient: zelfdePatient, tekens: tekens,
   };
 })();
 if (typeof module !== 'undefined') module.exports = SVDossiervraag;

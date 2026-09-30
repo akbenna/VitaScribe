@@ -41,7 +41,11 @@ function check(name, cond, extra) {
   });
   const sent = [];
   const POST = fs.readFileSync(path.join(HERE, 'bricks-post.html'), 'utf8');
-  await ctx.route('https://test.bfrcloud.com/**', (r) => r.fulfill({ contentType: 'text/html', body: r.request().url().endsWith('/post') ? POST : BRICKS }));
+  const DOSSIER = fs.readFileSync(path.join(HERE, 'bricks-dossier.html'), 'utf8');
+  await ctx.route('https://test.bfrcloud.com/**', (r) => {
+    const u = r.request().url();
+    return r.fulfill({ contentType: 'text/html', body: u.endsWith('/post') ? POST : u.endsWith('/dossier') ? DOSSIER : BRICKS });
+  });
   await ctx.route('http://localhost:8002/api/v1/**', async (r) => {
     const url = r.request().url();
     const body = r.request().postData() ? JSON.parse(r.request().postData()) : null;
@@ -75,6 +79,11 @@ function check(name, cond, extra) {
       beleid: body.cds ? { oordeel: 'in_lijn', richtlijn: 'NHG-Standaard Acuut hoesten', toelichting: '',
         suggesties: ['Controle na 2 dagen bij uitblijven verbetering'] } : null,
       thuisarts: body.cds ? ['longontsteking'] : [] }) });
+    if (url.endsWith('/dossier/vraag') && body.vraag.includes('katheter')) return r.fulfill({ contentType: 'application/json', body: JSON.stringify({
+      antwoord: 'Niet expliciet vermeld. Aanwijzingen: episode urine-incontinentie (2013); blaasspoeling wegens gruis (07-2026).',
+      zekerheid: 'indirect', gevonden: true,
+      bronnen: [{ datum: '01-03-2013', onderdeel: 'Episoden', citaat: 'Urine-incontinentie', geverifieerd: true }],
+      let_op: 'Mogelijk in een brief van de uroloog.' }) });
     if (url.endsWith('/dossier/vraag')) return r.fulfill({ contentType: 'application/json', body: JSON.stringify({
       antwoord: body.eerder.length ? 'Naproxen 500 mg 2dd.' : 'Geen kweek gevonden; wel lage rugpijn 14-05-2024.',
       gevonden: !!body.eerder.length,
@@ -210,14 +219,14 @@ function check(name, cond, extra) {
   await sleep(1200);
   const dv1 = sent.filter((s) => s.url.endsWith('/dossier/vraag'));
   const d1 = dv1[0] && dv1[0].body;
-  check('vraag verstuurd met dossier (ook ingebed frame)', d1 && d1.vraag.includes('kweken') && /== JOURNAAL ==/.test(d1.dossier) && d1.dossier.includes('HbA1c'), d1 && d1.vraag);
+  check('vraag verstuurd met alles wat in beeld staat (ook ingebed frame)', d1 && d1.vraag.includes('kweken') && /== DOSSIER \(IN BEELD\) ==/.test(d1.dossier) && d1.dossier.includes('HbA1c') && d1.dossier.includes('Naproxen'), d1 && d1.vraag);
   check('zonder naam, BSN, geboortedatum, telefoon, adres', d1 && !/Pieter|Vries|123456789|12-03-1961|12345678|6041 AB/.test(d1.dossier), d1 && d1.dossier.slice(0, 300));
   check('consultdatums blijven (nodig voor "laatste")', d1 && d1.dossier.includes('14-05-2024'));
   check('eerste vraag zonder eerdere context', d1 && d1.eerder.length === 0);
   check('antwoord getoond als "niet gevonden" met let op', (await panel.getAttribute('.dv-item', 'class')).includes('niet') && (await panel.textContent('.dv-letop')).includes('correspondentie'));
   const marks = await panel.$$eval('.dv-item:first-child .dv-mark', (e) => e.map((x) => x.textContent));
   check('bronnen: ✓ letterlijk gevonden, ? onzeker', marks.join('') === '✓?', marks);
-  check('ingelezen onderdelen en initialen getoond', /Ingelezen \(P\.V\.\).*Journaal/.test(await panel.textContent('#dv-bron')), await panel.textContent('#dv-bron'));
+  check('ingelezen: alles in beeld, met initialen', /Ingelezen \(P\.V\.\): alles wat in beeld staat/.test(await panel.textContent('#dv-bron')), await panel.textContent('#dv-bron'));
   await panel.fill('#dv-input', 'En welke pijnstillers?');
   await panel.press('#dv-input', 'Enter');
   await sleep(1200);
@@ -225,6 +234,27 @@ function check(name, cond, extra) {
   check('vervolgvraag met Enter, eerdere vraag als context', d2 && d2.body.eerder.length === 1 && d2.body.eerder[0].vraag.includes('kweken'));
   check('nieuwste antwoord bovenaan, invoer leeg', (await panel.$$('.dv-item')).length === 2
     && (await panel.textContent('.dv-item:first-child .dv-antwoord')).includes('Naproxen') && (await panel.inputValue('#dv-input')) === '');
+
+  console.log('Dossiervraag in een echt Bricks-beeld (verborgen vorige patiënt)');
+  await page.goto('https://test.bfrcloud.com/dossier');
+  await sleep(500);
+  await panel.bringToFront();
+  await panel.fill('#dv-input', 'Wat is de indicatie voor de katheter?');
+  await panel.press('#dv-input', 'Enter');
+  await sleep(1500);
+  const d3 = sent.filter((s) => s.url.endsWith('/dossier/vraag'))[2];
+  const t3 = d3 ? d3.body.dossier : '';
+  check('verborgen vorige patiënt en verborgen frame gaan niet mee', d3 && !/Kerkhofs|SOTALOL|pneumonie april|VERBORGEN-FRAME/.test(t3), t3.slice(0, 400));
+  check('naam en geboortedatum uit de kopregel overal weg', d3 && !/Amer|Moulay|03-06-1941|3-6-1941/.test(t3), (t3.match(/.{0,40}(Amer|Moulay|1941).{0,40}/g) || []).slice(0, 3));
+  check('datums met auteurscode blijven heel', t3.includes('16-06-2026\nHA') && t3.includes('29-09-2026') && !t3.includes('[POSTCODE]'), (t3.match(/.{0,20}\[POSTCODE\].{0,20}/g) || []).slice(0, 3));
+  check('breed ingelezen: journaal, episodes en thuiszorgnotities', /blaasspoeling/.test(t3) && /Urine-incontinentie/.test(t3) && /incontinentiemateriaal/.test(t3));
+  check('medicatieprofiel dat twee keer in beeld staat gaat één keer mee', (t3.match(/MIDDEL-17 /g) || []).length === 1, (t3.match(/MIDDEL-17 /g) || []).length);
+  check('andere patiënt: geen eerdere vragen als context', d3 && d3.body.eerder.length === 0);
+  check('initialen van de juiste patiënt', /Ingelezen \(A\.M\.\)/.test(await panel.textContent('#dv-bron')), await panel.textContent('#dv-bron'));
+  check('antwoord met aanwijzingen gemarkeerd als "Alleen aanwijzingen"', (await panel.textContent('.dv-item:first-child .dv-zeker')) === 'Alleen aanwijzingen'
+    && (await panel.getAttribute('.dv-item:first-child', 'class')).includes('indirect'));
+  await page.goto('https://test.bfrcloud.com/patient');
+  await sleep(300);
   await panel.click('.view-tab[data-view="dictate"]');
 
   console.log('Post & lab');
