@@ -13,12 +13,22 @@
       <img class="logo" src="../icons/icon48.png" alt="VitaScribe">
       <h1>VitaScribe</h1>
     </div>
-    <span id="conn" class="conn" title="Verbinding">klaar</span>
+    <div class="header-right">
+      <span id="conn" class="conn" title="Verbinding">klaar</span>
+      <button id="btn-minimaliseer" class="icon-btn" type="button"
+              title="Minimaliseren: paneel dicht, het icoon opent de compacte weergave. Een consultopname loopt door."
+              aria-label="Minimaliseren">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path d="M14 10l7-7M20 10h-6V4M10 14l-7 7M4 14h6v6"/>
+        </svg>
+      </button>
+    </div>
   </header>
 
   <nav class="views" role="tablist">
-    <button class="view-tab active" data-view="dictate" role="tab">Dicteren &amp; SOEP</button>
-    <button class="view-tab" data-view="letters" role="tab">Brieven</button>
+    <button class="view-tab active" data-view="dictate" role="tab" aria-selected="true">Dicteren &amp; SOEP</button>
+    <button class="view-tab" data-view="letters" role="tab" aria-selected="false">Brieven</button>
+    <button class="view-tab" data-view="dossier" role="tab" aria-selected="false" title="Vraag iets aan het geopende dossier">Dossiervraag</button>
   </nav>
 
   <div id="view-dictate" class="view">
@@ -284,6 +294,33 @@
     <p id="lt-status" class="status" role="status"></p>
   </div>
 
+  <div id="view-dossier" class="view hidden">
+    <section class="lt-card dv-card">
+      <div class="dv-kop">
+        <div>
+          <h2>Vraag het dossier</h2>
+          <p id="dv-bron" class="lt-hint">Open de patiënt in Bricks, met de onderdelen die ertoe doen (journaal, lab, correspondentie).</p>
+        </div>
+        <button id="dv-lees" class="btn small" title="Dossier opnieuw inlezen en tonen wat er meegaat">Inlezen</button>
+      </div>
+      <details id="dv-details" class="lt-preview hidden">
+        <summary>Toon precies wat er verstuurd wordt</summary>
+        <pre id="dv-preview"></pre>
+      </details>
+      <div id="dv-snel" class="chips dv-snel" aria-label="Snelle vragen"></div>
+      <form id="dv-form" class="dv-form">
+        <textarea id="dv-input" rows="2" maxlength="1000" spellcheck="true"
+                  placeholder="Bijv. Is er ooit een echo van de buik gedaan? Wanneer was de laatste HbA1c?"></textarea>
+        <button id="dv-go" class="btn primary" type="submit">Vraag</button>
+      </form>
+    </section>
+    <p id="dv-status" class="status" role="status"></p>
+    <div id="dv-antwoorden" class="dv-antwoorden" aria-live="polite"></div>
+    <p class="note">Zoekt alleen in wat nu in Bricks geopend is; bij elke vraag wordt het dossier opnieuw ingelezen.
+      Naam, BSN, geboortedatum en adres gaan er niet mee, datums wel. ✓ = de bron staat letterlijk in het dossier.
+      Geen advies: alleen wat er staat.</p>
+  </div>
+
   <footer class="footer">
     <a href="#" id="open-rules">Snelteksten &amp; correcties</a>
     <span class="sep">·</span>
@@ -304,8 +341,11 @@
   <script src="../lib/qrcode/qrcode.js"></script>
   <script src="../lib/thuisarts.js"></script>
   <script src="../lib/beslistools.js"></script>
+  <script src="../lib/dossiervraag.js"></script>
   <script src="sidepanel.js"></script>
   <script src="letters.js"></script>
+  <script src="views.js"></script>
+  <script src="dossiervraag.js"></script>
   <script src="../lib/meetwaarden.js"></script>
   <script src="meetwaarden-ui.js"></script>
   <script src="thuisarts-ui.js"></script>

@@ -33,7 +33,7 @@ var SVPrivacy = (function () {
     [/\b\d{4}\s?[A-Z]{2}\b/g, '[POSTCODE]'],
     [/(?<!\d)(?:\+31|0031|0)[\s-]?6[\s-]?\d(?:[\s-]?\d){7}(?!\d)/g, '[TEL]'],
     [/(?<!\d)0\d{2,3}[\s-]?\d{6,7}(?!\d)/g, '[TEL]'],
-    [/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, '[EMAIL]'],
+    [/[a-zA-Z0-9._%+-]{1,64}@[a-zA-Z0-9.-]{1,255}\.[a-zA-Z]{2,24}/g, '[EMAIL]'],
     [/\b(?:de heer|mevrouw|dhr\.|mw\.|mevr\.)\s+[A-Z][a-zà-ÿ]+(?:[\s-][A-Z][a-zà-ÿ]+)*/g, '[NAAM]'],
   ];
   var DATUMS = [[new RegExp('(?<!\\d)' + DATUM + '(?!\\d)', 'gi'), '[DATUM]']];
