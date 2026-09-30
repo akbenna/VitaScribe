@@ -9,6 +9,11 @@ practice (24-09-2026, changed 28-09-2026):
   (Anthropic, US) under Anthropic's commercial terms: not used for training.
   Mistral (EU) was the first choice but could not carry the load; it can be
   switched back with PHI_LLM_PROVIDER=mistral once a paid plan is in place.
+- Route A (01-10-2026): PHI_LLM_PROVIDER=bedrock sends the same text to the
+  same Claude models in Amazon Bedrock, EU region (eu-central-1, EU inference
+  profile). AWS runs the models; Anthropic has no access to prompts or
+  answers and is then not a (sub)processor. The server refuses to send when
+  the region or a model ID can route outside the EU (fail closed).
 - Letters are pseudonymised in the browser and on the server; they may go to
   the letters provider (Claude by default) once the agreements are in place
   (DPA + SCC's, zero data retention).
@@ -18,8 +23,10 @@ practice (24-09-2026, changed 28-09-2026):
   provider falls back to the configured one.
 
 Settings (environment):
-  PHI_LLM_PROVIDER        default "anthropic"
+  PHI_LLM_PROVIDER        default "anthropic"  (anthropic | bedrock | mistral)
   LETTERS_LLM_PROVIDER    default "anthropic"
+  BEDROCK_REGION, BEDROCK_MODEL, BEDROCK_SOEP_MODEL and the AWS credentials
+                          for route A (config.py)
   ALLOWED_STT_PROVIDERS   default "deepgram"
   CLINICAL_DECISION_SUPPORT  default "false": no clinical suggestions (MDR).
                           "true" on the practice's own server: red flags in the
@@ -37,7 +44,7 @@ import structlog
 
 logger = structlog.get_logger()
 
-EU_PROVIDERS = {"mistral"}
+EU_PROVIDERS = {"mistral", "bedrock"}
 
 
 def _env(name: str, default: str) -> str:

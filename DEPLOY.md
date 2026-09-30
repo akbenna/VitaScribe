@@ -328,9 +328,45 @@ antwoord 403 of 503 is en geen 200.
 ### Brieven in de EU
 
 Een praktijk die geen brieven naar de VS wil, krijgt in `/beheer` het vinkje
-"Brieven in de EU". Brieven gaan dan naar Mistral, ook als de praktijk een eigen
+"Brieven in de EU". Brieven gaan dan naar het EU-model van de server (Bedrock
+EU als route A aan staat, anders Mistral), ook als de praktijk een eigen
 sleutel bij Anthropic of OpenAI heeft. Voor alle praktijken tegelijk zet je
-`LETTERS_LLM_PROVIDER=mistral`.
+`LETTERS_LLM_PROVIDER=bedrock` (of `mistral`).
+
+### Route A: Claude in Amazon Bedrock (EU)
+
+Hetzelfde model (Haiku 4.5, Sonnet 5 voor SOEP), maar verwerkt door AWS in de
+EU in plaats van door Anthropic in de VS. Anthropic heeft op Bedrock geen
+toegang tot prompts of antwoorden en is dan geen subverwerker.
+
+1. AWS-account van de praktijk, regio `eu-central-1` (Frankfurt). Vraag in de
+   Bedrock-console modeltoegang aan voor Claude Sonnet 5 en Claude Haiku 4.5.
+   Laat *model invocation logging* uit.
+2. IAM-gebruiker met alleen het recht om het model aan te roepen
+   (`bedrock-mantle:CreateInference`, beperkt tot die twee modellen). Maak
+   voor die gebruiker een toegangssleutel.
+3. Zoek in de Bedrock-console de model-ID's van het **EU-inferentieprofiel**
+   op. De server gaat uit van `eu.anthropic.claude-sonnet-5` en
+   `eu.anthropic.claude-haiku-4-5`; wijkt de console af, zet dan
+   `BEDROCK_SOEP_MODEL` en `BEDROCK_MODEL`.
+4. Test lokaal, zonder patiëntgegevens:
+   `AWS_ACCESS_KEY_ID=… AWS_SECRET_ACCESS_KEY=… python scripts/bedrock_check.py`
+5. Zet in Railway: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`,
+   `BEDROCK_REGION=eu-central-1`, eventueel de model-ID's, en als laatste
+   `PHI_LLM_PROVIDER=bedrock` (en `LETTERS_LLM_PROVIDER=bedrock`).
+6. Controleer `/health`: `patient_data_llm` is `bedrock` en
+   `patient_data_llm_in_eu` is `true`. `/health/deep` meldt `bedrock: ok`.
+
+De server weigert te verzenden als de regio niet met `eu-` begint of een
+model-ID met `global.`, `us.` of een andere niet-EU-route begint. Er gaat dan
+niets de deur uit; de arts ziet een foutmelding. Terug naar de directe API:
+`PHI_LLM_PROVIDER=anthropic`.
+
+Verschillen met de directe API: regionale verwerking kost ongeveer 10% meer,
+en Bedrock kent geen *structured outputs*. Het JSON-schema gaat daar als
+instructie mee en de server knipt het JSON-object uit het antwoord; dat is
+getest, maar controleer na de omschakeling een paar SOEP's, dossiervragen en
+Post-beoordelingen.
 
 ### Back-up van het register
 
