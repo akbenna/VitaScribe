@@ -231,3 +231,24 @@ body.consult-running .consult { border-color: var(--rec); }
 .dv-bron.onzeker .dv-mark { color: #b45309; }
 .dv-bron q { color: var(--text); font-style: italic; }
 .dv-acties { display: flex; gap: 6px; }
+
+/* Meedenken under the SOEP: subtle, never in the way */
+.md { border-top: 1px dashed var(--border); padding-top: 6px; display: flex; flex-direction: column; gap: 5px; font-size: 12px; }
+.md-kop { display: flex; align-items: center; gap: 6px; }
+.md-titel { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.md-status { color: var(--muted); flex: 1; }
+.md-opnieuw { font-size: 13px; padding: 0 4px; }
+.md-lijst { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 3px; }
+.md-lijst li { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+.md-mark { font-weight: 700; color: var(--brand); width: 12px; flex-shrink: 0; }
+.md-lijst li.twijfel .md-mark, .md-lijst li.fout .md-mark { color: #b45309; }
+.md-oud { text-decoration: line-through; color: var(--muted); }
+.md-opm { flex-basis: 100%; margin-left: 18px; color: #6b4a00; }
+.md-beleid { display: flex; flex-direction: column; gap: 3px; }
+.md-oordeel { color: var(--muted); }
+.md-oordeel b { color: var(--text); font-weight: 600; }
+.md-beleid.deels .md-oordeel b, .md-beleid.afwijkend .md-oordeel b { color: #b45309; }
+.md-sug { display: flex; align-items: baseline; gap: 6px; color: var(--ai); }
+.md-sug .btn { padding: 0 6px; font-size: 11px; }
+.md-ta { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; color: var(--muted); }
+.md-noot { color: var(--muted); font-size: 11px; }

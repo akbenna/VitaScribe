@@ -68,9 +68,11 @@ def stt_provider(requested: Optional[str] = None) -> str:
 
 
 def clinical_decision_support() -> bool:
-    """Clinical suggestions (alarm symptoms, NHG advice) are off: that would
-    make the software a medical device (MDR rule 11). Only documentation
-    completeness is reported."""
+    """Clinical suggestions (question suggestions, NHG policy check, Thuisarts
+    topics) make the software a medical device (MDR rule 11). Off unless the
+    server allows it; the doctor then still switches each one on in the
+    extension. Without it only documentation completeness and the medication
+    name check are reported."""
     return _env("CLINICAL_DECISION_SUPPORT", "false") == "true"
 
 

@@ -48,8 +48,17 @@ function check(name, cond, extra) {
     if (url.endsWith('/letters/extract')) return r.fulfill({ contentType: 'application/json', body: JSON.stringify({ text: 'Journaal\nHoofdpijn\nMedicatie\nParacetamol' }) });
     if (url.endsWith('/letters/generate')) return r.fulfill({ contentType: 'text/plain; charset=utf-8', body: LETTER });
     if (url.endsWith('/dictation/process')) return r.fulfill({ contentType: 'application/json', body: JSON.stringify({ mode: 'soep', soep: {
-      s: '2 wk hoesten', o: 'RR 150/90 mmHg', e: 'Pneumonie', p: 'Amoxicilline 3dd 500 mg', icpc_code: 'R81', icpc_titel: 'Pneumonie',
+      s: '2 wk hoesten, gebruikt meta prolol 50 mg', o: 'RR 150/90 mmHg', e: 'Pneumonie', p: 'Amoxicilline 3dd 500 mg', icpc_code: 'R81', icpc_titel: 'Pneumonie',
       aandachtspunten: ['Duur van de kuur ontbreekt in P'] } }) });
+    if (url.endsWith('/soep/meedenken')) return r.fulfill({ contentType: 'application/json', body: JSON.stringify({
+      cds: body.cds,
+      medicatie: [
+        { veld: 's', genoemd: 'meta prolol 50 mg', middel: 'metoprolol', vervang: 'metoprolol 50 mg', zeker: true, opmerking: '' },
+        { veld: 'p', genoemd: 'Amoxicilline', middel: 'amoxicilline', vervang: '', zeker: true, opmerking: 'Penicilline-allergie nagevraagd?' },
+      ],
+      beleid: body.cds ? { oordeel: 'in_lijn', richtlijn: 'NHG-Standaard Acuut hoesten', toelichting: '',
+        suggesties: ['Controle na 2 dagen bij uitblijven verbetering'] } : null,
+      thuisarts: body.cds ? ['longontsteking'] : [] }) });
     if (url.endsWith('/dossier/vraag')) return r.fulfill({ contentType: 'application/json', body: JSON.stringify({
       antwoord: body.eerder.length ? 'Naproxen 500 mg 2dd.' : 'Geen kweek gevonden; wel lage rugpijn 14-05-2024.',
       gevonden: !!body.eerder.length,
@@ -73,6 +82,7 @@ function check(name, cond, extra) {
   await sw.evaluate(async () => {
     await chrome.storage.sync.set({ apiUrl: 'http://localhost:8002' });
     await chrome.storage.local.set({ apiKey: 'test' });
+    await chrome.storage.sync.set({ meedenken: true });
   });
   const page = await ctx.newPage();
   await page.goto('https://test.bfrcloud.com/patient');
@@ -106,11 +116,30 @@ function check(name, cond, extra) {
   check('SOEP getoond', (await panel.$$eval('.soep-text', (e) => e.map((x) => x.textContent))).includes('Pneumonie'));
   const kaart = await panel.textContent('#soep-check');
   check('kaart heet "Onvolledig in de verslaglegging"', kaart.includes('Onvolledig in de verslaglegging') && kaart.includes('Duur'), kaart);
+
+  console.log('Meedenken');
+  await sleep(600);
+  const md = sent.find((x) => x.url.endsWith('/soep/meedenken'));
+  check('meedenken gevraagd met de SOEP en de keuze uit Instellingen', md && md.body.soep.p.includes('Amoxicilline') && md.body.cds === true, md && md.body);
+  const soepTekst = (k) => panel.$eval(`.soep-text[data-key="${k}"]`, (n) => n.innerText);
+  check('verhaspelde naam met voorstel', (await panel.textContent('#md-med')).includes('→ metoprolol 50 mg'));
+  check('goed herkende naam met opmerking', /✓\s*amoxicilline/.test(await panel.textContent('#md-med')) && (await panel.textContent('#md-med')).includes('allergie'));
+  check('niets veranderd zonder klik', (await soepTekst('s')).includes('meta prolol'));
+  await panel.click('#md-med button');
+  await sleep(200);
+  check('Vervang zet de juiste naam in S', (await soepTekst('s')).includes('gebruikt metoprolol 50 mg') && !(await soepTekst('s')).includes('meta prolol'), await soepTekst('s'));
+  check('beleid: in lijn met de NHG-Standaard', (await panel.textContent('#md-beleid')).includes('In lijn met NHG-Standaard Acuut hoesten'));
+  await panel.click('#md-beleid button');
+  await sleep(200);
+  check('+ P zet het voorstel in het plan', (await soepTekst('p')).endsWith('Controle na 2 dagen bij uitblijven verbetering.'), await soepTekst('p'));
+  check('Thuisarts als zoeklink, geen gegokt adres',
+    (await panel.getAttribute('#md-ta a', 'href')) === 'https://www.thuisarts.nl/zoeken?query=longontsteking');
+  check('maar één aanvraag voor deze SOEP', sent.filter((x) => x.url.endsWith('/soep/meedenken')).length === 1);
   // Thuisarts: the shipped table has no URLs yet, so no link may appear. The
   // title lookup after correcting the code can only come from the real table,
   // loaded via chrome.runtime.getURL inside the extension.
   check('geen Thuisarts-link zonder gecontroleerde regel',
-    (await panel.textContent('#ta')).includes('Geen Thuisarts-pagina') && (await panel.$$('.ta-chip')).length === 0);
+    (await panel.textContent('#ta')).includes('Geen Thuisarts-pagina') && (await panel.$$('#ta .ta-chip')).length === 0);
   await panel.click('#icpc-code');
   await panel.keyboard.press('Control+A');
   await panel.keyboard.type('R78');

@@ -103,6 +103,12 @@ const server = http.createServer((req, res) => {
     });
     return;
   }
+  if (url.pathname === '/api/v1/soep/meedenken' && req.method === 'POST') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ cds: false, beleid: null, thuisarts: [], medicatie: [
+      { veld: 'p', genoemd: 'Paracetamol zo nodig', middel: 'paracetamol', vervang: 'Paracetamol 1000 mg zo nodig', zeker: true, opmerking: '' }] }));
+    return;
+  }
   res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
   res.end(url.pathname === '/consult' ? CONSULT_PAGE : `<!doctype html><title>${url.pathname}</title><h1>${url.pathname}</h1><p>Andere pagina</p>`);
 });
@@ -342,6 +348,10 @@ async function listenPill(page, clickStop) {
   await sleep(900);
   const edited = await sw.evaluate(() => chrome.storage.session.get('svConsult').then((r) => r.svConsult.result.soep.s));
   check('aanpassing in het zijpaneel gaat mee naar het verslag', edited.includes('aangepast in het zijpaneel'), edited);
+  await side.click('#md-med button');
+  await sleep(900);
+  const pNa = await sw.evaluate(() => chrome.storage.session.get('svConsult').then((r) => r.svConsult.result.soep.p));
+  check('medicatievoorstel "Vervang" gaat ook mee naar het verslag', pNa.includes('Paracetamol 1000 mg zo nodig'), pNa);
   await tab.bringToFront();
 
   console.log('H. Invoegen in de velden via het bolletje');
@@ -355,7 +365,7 @@ async function listenPill(page, clickStop) {
   await sleep(900);
   const fields = await tab.evaluate(() => ['S', 'O', 'E', 'ICPC', 'P'].map((f) => document.getElementById(f).value));
   check('S, O, E, ICPC en P ingevuld, met de aangepaste S', fields[0].includes('aangepast in het zijpaneel') && fields[1].includes('Keel rood') &&
-    fields[2].includes('faryngitis') && fields[3] === 'R74' && fields[4].includes('Paracetamol'), fields);
+    fields[2].includes('faryngitis') && fields[3] === 'R74' && fields[4].includes('Paracetamol 1000 mg'), fields);
   p = await pill(tab);
   check('bolletje weg en icoon leeg na invoegen', !p.visible && (await badge()) === '', p && p.text);
   pop = await openPopup();

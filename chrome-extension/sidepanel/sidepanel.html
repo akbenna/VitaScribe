@@ -140,6 +140,16 @@
     <p id="soep-delen-hint" class="note hidden">Meerdere problemen: zet elk deel in een eigen SOEP-regel in Bricks.</p>
     <p id="soep-decisief" class="soep-decisief hidden"></p>
     <div class="soep-rows" id="soep-rows"></div>
+    <div id="md" class="md hidden" aria-live="polite">
+      <div class="md-kop">
+        <span class="md-titel">Meedenken</span>
+        <span id="md-status" class="md-status"></span>
+        <button id="md-opnieuw" class="icon-btn md-opnieuw" type="button" title="Opnieuw meedenken (na aanpassen)" aria-label="Opnieuw meedenken">↻</button>
+      </div>
+      <ul id="md-med" class="md-lijst"></ul>
+      <div id="md-beleid" class="md-beleid hidden"></div>
+      <div id="md-ta" class="md-ta hidden"></div>
+    </div>
     <div id="ta" class="ta hidden"></div>
     <div id="bt" class="bt hidden"></div>
     <div id="soep-check" class="soep-check hidden">
@@ -351,6 +361,7 @@
   <script src="thuisarts-ui.js"></script>
   <script src="beslistools-ui.js"></script>
   <script src="patient-ui.js"></script>
+  <script src="meedenken-ui.js"></script>
   <script src="consult-ui.js"></script>
 </body>
 </html>

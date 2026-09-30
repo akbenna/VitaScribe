@@ -240,6 +240,14 @@ Rechtsboven in het paneel staat "Minimaliseren": het paneel gaat dicht en het he
 volgende klik op het icoon haalt het terug. Een consultopname loopt door, met het bolletje op de pagina.
 Wie liever de compacte popup op het icoon heeft, kiest dat in Instellingen onder "Weergave".
 
+**Meedenken onder de SOEP.** Na elke SOEP (dictaat of consult) kijkt de server op de achtergrond mee
+(`POST /api/v1/soep/meedenken`, Claude). Altijd: elk geneesmiddel in S en P met de juiste Nederlandse
+stofnaam; een verhaspelde naam krijgt een knop "Vervang", die alleen werkt als de genoemde tekst letterlijk
+in de SOEP staat. Met "Meedenken bij het beleid" in Instellingen, en `CLINICAL_DECISION_SUPPORT=true` op de
+server: of P in lijn is met de NHG-Standaard bij de werkdiagnose in E, hooguit drie voorstellen die met
+"+ P" in het plan kunnen, en Thuisarts.nl-onderwerpen als zoeklink. Niets verandert zonder klik; een
+aanpassing gaat ook mee naar het bolletje en de popup. Kosten: ongeveer een cent per SOEP.
+
 **Dossiervraag (derde tabblad).** Naast "Dicteren & SOEP" en "Brieven": stel een vraag aan het dossier dat
 in Bricks open staat ("laatste kweken en resistentie?", "ooit een echo buik?"), of kies een snelle vraag.
 Bij elke vraag leest het paneel de geopende onderdelen opnieuw in; naam, BSN, geboortedatum, adres en
