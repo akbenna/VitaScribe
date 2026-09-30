@@ -13,7 +13,8 @@ const os = require('os');
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 
 const ROOT = path.resolve(__dirname, '..', '..');
-const EXT = path.join(ROOT, 'chrome-extension');
+// EXT_DIR: test another build, e.g. the unpacked store zip.
+const EXT = process.env.EXT_DIR || path.join(ROOT, 'chrome-extension');
 const HERE = __dirname;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const BRICKS = fs.readFileSync(path.join(HERE, 'bricks.html'), 'utf8');
@@ -49,6 +50,12 @@ function check(name, cond, extra) {
     if (url.endsWith('/dictation/process')) return r.fulfill({ contentType: 'application/json', body: JSON.stringify({ mode: 'soep', soep: {
       s: '2 wk hoesten', o: 'RR 150/90 mmHg', e: 'Pneumonie', p: 'Amoxicilline 3dd 500 mg', icpc_code: 'R81', icpc_titel: 'Pneumonie',
       aandachtspunten: ['Duur van de kuur ontbreekt in P'] } }) });
+    if (url.endsWith('/dossier/vraag')) return r.fulfill({ contentType: 'application/json', body: JSON.stringify({
+      antwoord: body.eerder.length ? 'Naproxen 500 mg 2dd.' : 'Geen kweek gevonden; wel lage rugpijn 14-05-2024.',
+      gevonden: !!body.eerder.length,
+      bronnen: [{ datum: '14-05-2024', onderdeel: 'JOURNAAL', citaat: 'lage rugpijn sinds 3 mnd', geverifieerd: true },
+        { datum: '', onderdeel: 'LAB', citaat: 'kweek negatief', geverifieerd: false }],
+      let_op: body.eerder.length ? '' : 'Er is geen correspondentie over kweken ingelezen.' }) });
     if (url.endsWith('/patient-instructions')) return r.fulfill({ contentType: 'application/json', body: JSON.stringify({ nl: 'Uw medicijn\nAmoxicilline 500 mg, 3 keer per dag.', vertaling: 'دواؤك', taal: 'Arabisch' }) });
     return r.fulfill({ status: 404, body: '' });
   });
@@ -143,6 +150,45 @@ function check(name, cond, extra) {
   check('brief via eigen server, gefilterd', gen && !/Pieter|123456789/.test(JSON.stringify(gen.body)) && gen.body.toestemming === true);
   check('concept getoond', (await panel.textContent('#lt-out')).includes('[Naam huisarts]'));
 
+  console.log('Dossiervraag');
+  const weergave = () => sw.evaluate(async () => ({
+    popup: await chrome.action.getPopup({}),
+    paneel: (await chrome.sidePanel.getPanelBehavior()).openPanelOnActionClick,
+  }));
+  let w = await weergave();
+  check('icoon opent standaard het zijpaneel', w.popup === '' && w.paneel === true, w);
+  await panel.click('.view-tab[data-view="dossier"]');
+  check('derde tabblad Dossiervraag', await panel.isVisible('#view-dossier') && await panel.isHidden('#view-letters') && await panel.isHidden('#view-dictate'));
+  check('snelle vragen als chips', (await panel.$$('#dv-snel .chip')).length >= 5);
+  await panel.click('#dv-snel .chip:first-child');
+  await sleep(1200);
+  const dv1 = sent.filter((s) => s.url.endsWith('/dossier/vraag'));
+  const d1 = dv1[0] && dv1[0].body;
+  check('vraag verstuurd met dossier (ook ingebed frame)', d1 && d1.vraag.includes('kweken') && /== JOURNAAL ==/.test(d1.dossier) && d1.dossier.includes('HbA1c'), d1 && d1.vraag);
+  check('zonder naam, BSN, geboortedatum, telefoon, adres', d1 && !/Pieter|Vries|123456789|12-03-1961|12345678|6041 AB/.test(d1.dossier), d1 && d1.dossier.slice(0, 300));
+  check('consultdatums blijven (nodig voor "laatste")', d1 && d1.dossier.includes('14-05-2024'));
+  check('eerste vraag zonder eerdere context', d1 && d1.eerder.length === 0);
+  check('antwoord getoond als "niet gevonden" met let op', (await panel.getAttribute('.dv-item', 'class')).includes('niet') && (await panel.textContent('.dv-letop')).includes('correspondentie'));
+  const marks = await panel.$$eval('.dv-item:first-child .dv-mark', (e) => e.map((x) => x.textContent));
+  check('bronnen: ✓ letterlijk gevonden, ? onzeker', marks.join('') === '✓?', marks);
+  check('ingelezen onderdelen en initialen getoond', /Ingelezen \(P\.V\.\).*Journaal/.test(await panel.textContent('#dv-bron')), await panel.textContent('#dv-bron'));
+  await panel.fill('#dv-input', 'En welke pijnstillers?');
+  await panel.press('#dv-input', 'Enter');
+  await sleep(1200);
+  const d2 = sent.filter((s) => s.url.endsWith('/dossier/vraag'))[1];
+  check('vervolgvraag met Enter, eerdere vraag als context', d2 && d2.body.eerder.length === 1 && d2.body.eerder[0].vraag.includes('kweken'));
+  check('nieuwste antwoord bovenaan, invoer leeg', (await panel.$$('.dv-item')).length === 2
+    && (await panel.textContent('.dv-item:first-child .dv-antwoord')).includes('Naproxen') && (await panel.inputValue('#dv-input')) === '');
+  await panel.click('.view-tab[data-view="dictate"]');
+
+  console.log('Minimaliseren');
+  const panelDicht = panel.waitForEvent('close', { timeout: 3000 }).then(() => true, () => false);
+  await panel.click('#btn-minimaliseer');
+  await sleep(500);
+  w = await weergave();
+  check('minimaliseren: icoon opent de compacte popup', w.popup.endsWith('popup/popup.html') && w.paneel === false, w);
+  check('minimaliseren sluit het paneel', await panelDicht);
+
   console.log('Popup');
   const pop = await ctx.newPage();
   pop.on('pageerror', (e) => errs.push(e.message));
@@ -151,6 +197,28 @@ function check(name, cond, extra) {
   check('startknop bevestigt toestemming (tekst bij de knop)', (await pop.textContent('#consent-note')).includes('toestemming'));
   check('consult-flow getest in tests/e2e/consult.e2e.js', fs.existsSync(path.join(HERE, 'consult.e2e.js')));
   check('knop "Brief schrijven"', await pop.isVisible('#btn-letters'));
+  check('knop "Dossiervraag"', await pop.isVisible('#btn-dossier'));
+  const popDicht = pop.waitForEvent('close', { timeout: 3000 }).then(() => true, () => false);
+  await pop.click('#btn-expand');
+  check('paneelknop in de popup sluit de popup', await popDicht);
+  await sleep(300);
+  w = await weergave();
+  check('daarna opent het icoon weer het zijpaneel', w.popup === '' && w.paneel === true, w);
+
+  console.log('Instellingen');
+  const opt = await ctx.newPage();
+  opt.on('pageerror', (e) => errs.push(e.message));
+  await opt.goto(`chrome-extension://${id}/options/options.html`);
+  await sleep(500);
+  check('instelling staat standaard op zijpaneel', (await opt.inputValue('#weergave')) === 'paneel');
+  await opt.selectOption('#weergave', 'compact');
+  await sleep(400);
+  w = await weergave();
+  check('instelling "compacte popup" werkt meteen', w.popup.endsWith('popup/popup.html') && w.paneel === false, w);
+  await opt.selectOption('#weergave', 'paneel');
+  await sleep(400);
+  w = await weergave();
+  check('en terug naar zijpaneel', w.popup === '' && w.paneel === true, w);
 
   check('geen JS-fouten', errs.length === 0, errs);
   console.log(`\n${ok} geslaagd, ${fail} mislukt`);

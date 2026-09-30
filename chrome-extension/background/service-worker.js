@@ -23,6 +23,46 @@ chrome.tabs.onActivated.addListener(function (active) {
   });
 });
 
+// ── Icon click: side panel first, compact popup when minimised ──
+// The side panel is the default. "Minimaliseren" in the panel switches the
+// icon to the compact popup for the rest of this browser session; "Zijpaneel"
+// in the popup switches back. The default itself is a setting (weergave).
+const WEERGAVEN = ['paneel', 'compact'];
+
+async function weergaveNu() {
+  const [{ weergave }, { svWeergaveNu }] = await Promise.all([
+    chrome.storage.sync.get('weergave'), chrome.storage.session.get('svWeergaveNu'),
+  ]);
+  if (WEERGAVEN.includes(svWeergaveNu)) return svWeergaveNu;
+  return WEERGAVEN.includes(weergave) ? weergave : 'paneel';
+}
+
+async function pasWeergaveToe() {
+  const w = await weergaveNu();
+  await chrome.action.setPopup({ popup: w === 'compact' ? 'popup/popup.html' : '' });
+  await chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: w !== 'compact' });
+  return w;
+}
+
+pasWeergaveToe().catch(() => { /* old browser without sidePanel behaviour: popup stays */ });
+chrome.storage.onChanged.addListener((changes, area) => {
+  if ((area === 'sync' && changes.weergave) || (area === 'session' && changes.svWeergaveNu)) {
+    pasWeergaveToe().catch(() => {});
+  }
+});
+
+chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+  if (msg.action !== 'SV_WEERGAVE') return false;
+  const zet = WEERGAVEN.includes(msg.weergave)
+    ? chrome.storage.session.set({ svWeergaveNu: msg.weergave })
+    : chrome.storage.session.remove('svWeergaveNu');   // back to the setting
+  zet.then(pasWeergaveToe).then(
+    (w) => sendResponse({ ok: true, weergave: w }),
+    (e) => sendResponse({ ok: false, message: String(e && e.message || e) }),
+  );
+  return true;
+});
+
 // ── API call (runs in service worker — survives popup close) ──
 
 async function callCloudAPI(base64Audio, mimeType) {

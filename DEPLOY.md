@@ -235,7 +235,27 @@ koppelen kan altijd, bijvoorbeeld als Bricks van opmaak verandert.
 vervangen door je standaardtekst; correcties verbeteren woorden die verkeerd verstaan worden en gaan als
 hint mee naar Deepgram. Opgeslagen per computer (Chrome, lokaal); overzetten via Exporteren/Importeren.
 
+**Zijpaneel eerst, minimaliseren kan.** Een klik op het VitaScribe-icoon opent het zijpaneel. Rechtsboven
+in het paneel staat "Minimaliseren": het paneel gaat dicht en het icoon opent voor de rest van de
+browsersessie de compacte popup (een consultopname loopt door, met het bolletje op de pagina). Het
+paneelknopje in de popup, of een herstart van de browser, brengt het zijpaneel terug. Wie standaard de
+popup wil, kiest dat in Instellingen onder "Weergave".
+
+**Dossiervraag (derde tabblad).** Naast "Dicteren & SOEP" en "Brieven": stel een vraag aan het dossier dat
+in Bricks open staat ("laatste kweken en resistentie?", "ooit een echo buik?"), of kies een snelle vraag.
+Bij elke vraag leest het paneel de geopende onderdelen opnieuw in; naam, BSN, geboortedatum, adres en
+contactgegevens gaan er niet mee, datums wel. Het antwoord noemt alleen wat er staat, met datum en een
+letterlijk citaat als bron; de server controleert elk citaat in de tekst (✓) en markeert wat niet
+letterlijk terug te vinden is (?). Een vervolgvraag ("en daarvoor?") krijgt de laatste drie vragen mee;
+bij een andere patiënt begint het opnieuw. Niets wordt bewaard. Het dossier staat in de gecachte
+system-prompt: de eerste vraag kost bij een gemiddeld dossier enkele centen, volgende vragen over
+dezelfde patiënt ongeveer een tiende daarvan. Taalmodel: `PHI_LLM_PROVIDER` (standaard Claude).
+Beperking: alleen wat in Bricks geopend (en geladen) is, telt mee; het paneel meldt welke onderdelen
+het heeft ingelezen.
+
 **Endpoints:**
+- `POST /api/v1/dossier/vraag`: `{"dossier": "...", "vraag": "...", "eerder": [{"vraag","antwoord"}]}` →
+  `{"antwoord", "gevonden", "bronnen": [{"datum","onderdeel","citaat","geverifieerd"}], "let_op"}`
 - `WS /api/v1/dictation/stream`: audio in, tekst terug (eerste bericht: `{"type":"auth","api_key":"..."}`)
 - `POST /api/v1/dictation/process`: `{"text": "...", "mode": "clean" | "soep"}`
 

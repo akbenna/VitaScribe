@@ -33,6 +33,9 @@ body {
 .brand { display: flex; align-items: center; gap: 8px; }
 .logo { width: 28px; height: 28px; display: block; }
 h1 { font-size: 16px; margin: 0; }
+.header-right { display: flex; align-items: center; gap: 6px; }
+.icon-btn { border: 0; background: transparent; color: var(--muted); padding: 4px; border-radius: 6px; cursor: pointer; display: grid; place-items: center; }
+.icon-btn:hover { background: #eef2f6; color: var(--text); }
 .conn { font-size: 12px; color: var(--muted); }
 .conn.live { color: var(--rec); font-weight: 600; }
 .conn.error { color: var(--warn); }
@@ -184,6 +187,7 @@ textarea:focus { outline: 2px solid var(--brand); outline-offset: -1px; }
    comes back once the report is there. */
 body.consult-running .views,
 body.consult-running #view-letters,
+body.consult-running #view-dossier,
 body.consult-running .footer,
 body.consult-running #view-dictate > :not(#consult):not(#status) { display: none !important; }
 body.consult-running .consult { border-color: var(--rec); }
@@ -204,3 +208,26 @@ body.consult-running .consult { border-color: var(--rec); }
   font: inherit; font-size: 12px; cursor: pointer; color: var(--text); }
 .soep-deel.active { border-color: var(--brand); background: var(--brand); color: #fff; }
 .soep-deel.done::after { content: " ✓"; }
+
+/* Dossiervraag */
+.dv-kop { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.dv-kop h2 { font-size: 14px; margin: 0 0 2px; }
+.dv-snel { display: flex; flex-wrap: wrap; gap: 4px; }
+.dv-form { display: flex; flex-direction: column; gap: 6px; }
+.dv-form textarea { min-height: 52px; }
+.dv-form .btn { align-self: flex-end; }
+.dv-antwoorden { display: flex; flex-direction: column; gap: 8px; }
+.dv-item { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 9px 11px;
+  display: flex; flex-direction: column; gap: 6px; }
+.dv-item.bezig { border-style: dashed; }
+.dv-item.niet { border-color: #f0d9a8; }
+.dv-vraag { margin: 0; font-size: 12px; font-weight: 600; color: var(--muted); }
+.dv-antwoord { margin: 0; white-space: pre-wrap; }
+.dv-item.niet .dv-antwoord::before { content: "Niet gevonden · "; font-weight: 600; color: #6b4a00; }
+.dv-letop { margin: 0; font-size: 12px; padding: 5px 8px; border-radius: 6px; background: #fff7e6; color: #6b4a00; }
+.dv-bronnen { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 3px; }
+.dv-bron { font-size: 12px; color: var(--muted); display: grid; grid-template-columns: 16px 1fr; gap: 4px; }
+.dv-bron .dv-mark { font-weight: 700; color: var(--brand); }
+.dv-bron.onzeker .dv-mark { color: #b45309; }
+.dv-bron q { color: var(--text); font-style: italic; }
+.dv-acties { display: flex; gap: 6px; }

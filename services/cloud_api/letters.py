@@ -42,7 +42,7 @@ _SAFETY_PATTERNS = [
     (re.compile(r"\bNL\d{2}[A-Z]{4}\d{10}\b"), "[IBAN]"),
     (re.compile(r"(?<!\d)\d{9}(?!\d)"), "[BSN]"),
     (re.compile(r"(?<!\d)\d{4}\.\d{2}\.\d{3}(?!\d)"), "[BSN]"),
-    (re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}"), "[EMAIL]"),
+    (re.compile(r"[A-Za-z0-9._%+-]{1,64}@[A-Za-z0-9.-]{1,255}\.[A-Za-z]{2,24}"), "[EMAIL]"),
     (re.compile(r"(?<!\d)(?:\+31|0031|0)[\s-]?6[\s-]?\d(?:[\s-]?\d){7}(?!\d)"), "[TEL]"),
     (re.compile(r"(?<!\d)0\d{2,3}[\s-]?\d{6,7}(?!\d)"), "[TEL]"),
 ]

@@ -41,6 +41,7 @@ async function loadSettings() {
   });
   if (!stored.apiUrl) document.getElementById('apiUrl').value = STANDAARD_SERVER;
   laadVraagsuggesties(stored.apiUrl || STANDAARD_SERVER);
+  laadWeergave();
 
   if (stored.bricksSelectors) {
     try {
@@ -84,6 +85,21 @@ async function laadVraagsuggesties(apiUrl) {
 document.getElementById('vraagsuggesties').addEventListener('change', async function (e) {
   await SVInstellingen.bewaar({ vraagsuggesties: e.target.checked });
   showToast(e.target.checked ? 'Vraagsuggesties aan (vanaf het volgende consult).' : 'Vraagsuggesties uit.');
+});
+
+// ── What the toolbar icon opens ──
+// Takes effect at once; also ends a "minimised" session so the choice is
+// what the next click does.
+
+async function laadWeergave() {
+  var stored = await SVInstellingen.lees(['weergave']);
+  document.getElementById('weergave').value = stored.weergave === 'compact' ? 'compact' : 'paneel';
+}
+
+document.getElementById('weergave').addEventListener('change', async function (e) {
+  await SVInstellingen.bewaar({ weergave: e.target.value });
+  await chrome.runtime.sendMessage({ action: 'SV_WEERGAVE', weergave: null }).catch(function () {});
+  showToast(e.target.value === 'compact' ? 'Het icoon opent nu de compacte popup.' : 'Het icoon opent nu het zijpaneel.');
 });
 
 // ── Save settings ──

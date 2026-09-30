@@ -38,28 +38,6 @@
     el.classList.toggle('error', !!isError);
   }
 
-  // ── Views ──
-  document.querySelectorAll('.view-tab').forEach(function (tab) {
-    tab.addEventListener('click', function () { showView(tab.dataset.view); });
-  });
-  function showView(view) {
-    document.querySelectorAll('.view-tab').forEach(function (t) { t.classList.toggle('active', t.dataset.view === view); });
-    $('view-dictate').classList.toggle('hidden', view !== 'dictate');
-    $('view-letters').classList.toggle('hidden', view !== 'letters');
-    try { localStorage.setItem('svView', view); } catch (e) { /* ignore */ }
-  }
-  try { if (localStorage.getItem('svView') === 'letters') showView('letters'); } catch (e) { /* ignore */ }
-  // Popup buttons "Zijpaneel openen" / "Brief schrijven" choose the view.
-  function applyRequestedView(v) {
-    if (v !== 'letters' && v !== 'dictate') return;
-    showView(v);
-    chrome.storage.session.remove('svOpenView');
-  }
-  chrome.storage.session.get('svOpenView').then(function (r) { applyRequestedView(r.svOpenView); });
-  chrome.storage.onChanged.addListener(function (changes, area) {
-    if (area === 'session' && changes.svOpenView) applyRequestedView(changes.svOpenView.newValue);
-  });
-
   // ── Small UI helpers ──
   function segment(containerId, attr, onPick) {
     var c = $(containerId);
@@ -184,7 +162,7 @@
 
   // ── Dossier: Bricks ──
   // Runs inside every frame of the Bricks tab; returns the text per section.
-  function scrapeFrame() {
+  function scrapeFrame(maxPagina) {
     var SECTIES = {
       'Journaal': ['journaal', 'journal', 'soep', 'episode', 'consult', 'icpc'],
       'Medicatie': ['medicatie', 'medication', 'recept', 'geneesmiddel'],
@@ -240,35 +218,43 @@
     });
     if (!Object.keys(out.secties).length) {
       var all = text(document.querySelector('main,[role="main"]') || document.body);
-      if (all.length > 40) out.secties['Dossier (pagina)'] = all.slice(0, 15000);
+      if (all.length > 40) out.secties['Dossier (pagina)'] = all.slice(0, maxPagina || 15000);
     }
     return out;
   }
+
+  // Reads the open patient from the Bricks tab in this window, all frames
+  // merged. Also used by Dossiervraag (with a larger page limit).
+  async function leesBricks(maxPagina) {
+    var tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+    var tab = tabs[0];
+    if (!tab || !/^https?:/.test(tab.url || '')) throw new Error('Open eerst de patiënt in Bricks in dit venster.');
+    var results = await chrome.scripting.executeScript({ target: { tabId: tab.id, allFrames: true }, func: scrapeFrame, args: [maxPagina || 15000] })
+      .catch(function (e) { throw new Error('Geen toegang tot deze pagina (' + e.message + ').'); });
+    var merged = {}, naam = '';
+    (results || []).forEach(function (r) {
+      var v = r && r.result;
+      if (!v) return;
+      if (v.naam && !naam) naam = v.naam;
+      Object.keys(v.secties).forEach(function (k) {
+        if (merged[k] && merged[k].indexOf(v.secties[k]) !== -1) return;   // same frame read twice
+        merged[k] = merged[k] ? merged[k] + '\n' + v.secties[k] : v.secties[k];
+      });
+    });
+    // A section found by heading beats the whole-page fallback.
+    if (Object.keys(merged).length > 1) delete merged['Dossier (pagina)'];
+    if (!Object.keys(merged).length) throw new Error('Weinig tekst gevonden. Is het dossier volledig geladen?');
+    return { secties: merged, naam: naam };
+  }
+  window.SVBricksDossier = { lees: leesBricks };
 
   $('lt-scrape').addEventListener('click', async function () {
     var btn = this;
     btn.disabled = true; status('Dossier ophalen…');
     try {
-      var tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-      var tab = tabs[0];
-      if (!tab || !/^https?:/.test(tab.url || '')) throw new Error('Open eerst de patiënt in Bricks in dit venster.');
-      var results = await chrome.scripting.executeScript({ target: { tabId: tab.id, allFrames: true }, func: scrapeFrame })
-        .catch(function (e) { throw new Error('Geen toegang tot deze pagina (' + e.message + ').'); });
-      var merged = {}, naam = '';
-      (results || []).forEach(function (r) {
-        var v = r && r.result;
-        if (!v) return;
-        if (v.naam && !naam) naam = v.naam;
-        Object.keys(v.secties).forEach(function (k) {
-          if (merged[k] && merged[k].indexOf(v.secties[k]) !== -1) return;   // same frame read twice
-          merged[k] = merged[k] ? merged[k] + '\n' + v.secties[k] : v.secties[k];
-        });
-      });
-      // A section found by heading beats the whole-page fallback.
-      if (Object.keys(merged).length > 1) delete merged['Dossier (pagina)'];
-      if (!Object.keys(merged).length) throw new Error('Weinig tekst gevonden. Is het dossier volledig geladen?');
-      setDossier(merged, naam, 'Bricks');
-      status('Dossier opgehaald: ' + Object.keys(merged).join(', ') + '. Controleer de naam en de onderdelen.');
+      var d = await leesBricks();
+      setDossier(d.secties, d.naam, 'Bricks');
+      status('Dossier opgehaald: ' + Object.keys(d.secties).join(', ') + '. Controleer de naam en de onderdelen.');
     } catch (e) {
       status(e.message, true);
     } finally {
