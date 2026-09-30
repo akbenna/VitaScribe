@@ -40,6 +40,7 @@ from .consult_live import volg_consult
 from .letters import router as letters_router
 from .dossiervraag import router as dossiervraag_router
 from .meedenken import router as meedenken_router
+from .post import router as post_router
 from .patient_info import router as patient_router
 from .usage import router as usage_router
 from .praktijk_sleutels import kies_spraak, router as licentie_router
@@ -348,6 +349,7 @@ DICTAAT_MAX_CHARS = 20000
 app.include_router(letters_router)
 app.include_router(dossiervraag_router)
 app.include_router(meedenken_router)
+app.include_router(post_router)
 app.include_router(patient_router)
 app.include_router(usage_router)
 app.include_router(licentie_router)

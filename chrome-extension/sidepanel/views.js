@@ -1,7 +1,7 @@
 /**
  * VitaScribe - Tabbladen van het zijpaneel en "Minimaliseren"
  *
- * Drie tabbladen: Dicteren & SOEP, Brieven en Dossiervraag. De laatste keuze
+ * Vier tabbladen: Dicteren & SOEP, Brieven, Dossiervraag en Post. De laatste keuze
  * blijft bewaard; knoppen in de popup kunnen een tabblad kiezen (svOpenView).
  *
  * Minimaliseren sluit het zijpaneel, zodat het hele scherm vrij is. Een klik
@@ -14,7 +14,7 @@
 (function () {
   'use strict';
 
-  var VIEWS = ['dictate', 'letters', 'dossier'];
+  var VIEWS = ['dictate', 'letters', 'dossier', 'post'];
   var $ = function (id) { return document.getElementById(id); };
 
   function showView(view) {

@@ -248,6 +248,18 @@ server: of P in lijn is met de NHG-Standaard bij de werkdiagnose in E, hooguit d
 "+ P" in het plan kunnen, en Thuisarts.nl-onderwerpen als zoeklink. Niets verandert zonder klik; een
 aanpassing gaat ook mee naar het bolletje en de popup. Kosten: ongeveer een cent per SOEP.
 
+**Post & lab (vierde tabblad).** Klik in de Bricks-post een labuitslag, kweek of brief aan: zolang het
+tabblad open is, leest het paneel het bericht in (vanaf "Afzender"; de regel "Patiënt" met naam,
+geboortedatum en adres gaat er niet mee, alleen de leeftijd; de episodelijst gaat mee als context) en
+stuurt het naar `POST /api/v1/post/beoordeel`. Terug komt een klinische samenvatting voor "Samenvatting
+(zichtbaar in journaal)" en uitleg in eenvoudige woorden voor de patiënt voor "Memo", elk met een knop
+die de tekst in het Bricks-veld zet (bestaande tekst blijft staan). Bij lab de relevante waarden; met
+"Klinisch meedenken" in Instellingen (en `CLINICAL_DECISION_SUPPORT=true`) ook duiding, een oordeel
+(normaal, afwijkend, of "via aanvrager" als het afhangt van kliniek of eerdere waarden) en een
+beleidsvoorstel conform NHG; bij een kweek het passende middel met oog op nierfunctie en allergie uit
+de episodes. Bij een brief: van, reden, conclusie en wat er van de huisarts verwacht wordt. Een bericht
+dat al beoordeeld is, komt uit het geheugen van het paneel. Kosten: ongeveer 1 à 2 cent per bericht.
+
 **Dossiervraag (derde tabblad).** Naast "Dicteren & SOEP" en "Brieven": stel een vraag aan het dossier dat
 in Bricks open staat ("laatste kweken en resistentie?", "ooit een echo buik?"), of kies een snelle vraag.
 Bij elke vraag leest het paneel de geopende onderdelen opnieuw in; naam, BSN, geboortedatum, adres en

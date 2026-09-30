@@ -26,9 +26,10 @@
   </header>
 
   <nav class="views" role="tablist">
-    <button class="view-tab active" data-view="dictate" role="tab" aria-selected="true">Dicteren &amp; SOEP</button>
+    <button class="view-tab active" data-view="dictate" role="tab" aria-selected="true" title="Dicteren &amp; SOEP">Dicteren</button>
     <button class="view-tab" data-view="letters" role="tab" aria-selected="false">Brieven</button>
     <button class="view-tab" data-view="dossier" role="tab" aria-selected="false" title="Vraag iets aan het geopende dossier">Dossiervraag</button>
+    <button class="view-tab" data-view="post" role="tab" aria-selected="false" title="Labuitslagen en brieven uit de Bricks-post beoordelen">Post</button>
   </nav>
 
   <div id="view-dictate" class="view">
@@ -331,6 +332,50 @@
       Geen advies: alleen wat er staat.</p>
   </div>
 
+  <div id="view-post" class="view hidden">
+    <section class="lt-card">
+      <div class="dv-kop">
+        <div>
+          <h2>Post &amp; lab</h2>
+          <p class="lt-hint">Klik in de Bricks-post een labuitslag of brief aan; VitaScribe leest mee.</p>
+        </div>
+        <button id="po-lees" class="btn small" title="Het bericht in beeld (opnieuw) beoordelen">Beoordeel</button>
+      </div>
+      <label class="lt-check"><input type="checkbox" id="po-auto" checked> Automatisch bij elk nieuw bericht</label>
+    </section>
+    <p id="po-status" class="status" role="status"></p>
+    <section id="po-uit" class="lt-card po-uit hidden" aria-live="polite">
+      <div class="po-kop">
+        <span id="po-soort" class="po-soort"></span>
+        <span id="po-oordeel" class="po-oordeel hidden"></span>
+      </div>
+      <p id="po-letop" class="dv-letop hidden"></p>
+      <div class="po-blok">
+        <span class="po-label">Samenvatting (journaal)</span>
+        <div id="po-sam" class="po-tekst" contenteditable="true" spellcheck="true"></div>
+        <div class="lt-row">
+          <button id="po-zet-sam" class="btn primary small">Zet in Samenvatting</button>
+          <button id="po-kop-sam" class="btn small">Kopieer</button>
+        </div>
+      </div>
+      <ul id="po-lab" class="po-lab hidden"></ul>
+      <p id="po-beleid" class="po-beleid hidden"></p>
+      <p id="po-verg" class="po-verg hidden"></p>
+      <dl id="po-brief" class="po-brief hidden"></dl>
+      <div id="po-pat-blok" class="po-blok hidden">
+        <span class="po-label">Voor de patiënt (memo)</span>
+        <div id="po-pat" class="po-tekst" contenteditable="true" spellcheck="true"></div>
+        <div class="lt-row">
+          <button id="po-zet-memo" class="btn small">Zet in Memo</button>
+          <button id="po-kop-pat" class="btn small">Kopieer</button>
+        </div>
+      </div>
+    </section>
+    <p class="note">Alleen wat in beeld staat; eerdere uitslagen alleen als ze in het bericht staan. Naam, geboortedatum
+      en adres gaan niet mee; leeftijd en episodes wel. Duiding en beleid alleen met "Klinisch meedenken" in Instellingen.
+      Voorstel: jij beslist.</p>
+  </div>
+
   <footer class="footer">
     <a href="#" id="open-rules">Snelteksten &amp; correcties</a>
     <span class="sep">·</span>
@@ -352,10 +397,12 @@
   <script src="../lib/thuisarts.js"></script>
   <script src="../lib/beslistools.js"></script>
   <script src="../lib/dossiervraag.js"></script>
+  <script src="../lib/post.js"></script>
   <script src="sidepanel.js"></script>
   <script src="letters.js"></script>
   <script src="views.js"></script>
   <script src="dossiervraag.js"></script>
+  <script src="post-ui.js"></script>
   <script src="../lib/meetwaarden.js"></script>
   <script src="meetwaarden-ui.js"></script>
   <script src="thuisarts-ui.js"></script>
