@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Handleiding VitaScribe</title>
+<style>
+  :root { --text:#0f172a; --muted:#64748b; --brand:#047857; --border:#e2e8f0; --bg:#ffffff; --soft:#f8fafc; --warn:#92400e; --warn-bg:#fffbeb; }
+  * { box-sizing: border-box; }
+  body { font: 15px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: var(--text);
+         background: var(--bg); max-width: 760px; margin: 32px auto 64px; padding: 0 16px; }
+  h1 { font-size: 26px; color: var(--brand); margin: 0 0 4px; }
+  h2 { font-size: 18px; margin: 36px 0 8px; color: var(--brand); scroll-margin-top: 12px; }
+  h3 { font-size: 15px; margin: 18px 0 4px; }
+  p { margin: 6px 0 10px; }
+  p.lead { color: var(--muted); margin-top: 0; font-size: 16px; }
+  ol, ul { padding-left: 22px; margin: 6px 0 12px; }
+  li { margin: 3px 0; }
+  kbd { font: 12px/1 ui-monospace, SFMono-Regular, Menlo, monospace; border: 1px solid var(--border); border-bottom-width: 2px;
+        border-radius: 4px; padding: 2px 5px; background: var(--soft); }
+  .knop { display: inline-block; font-size: 13px; border: 1px solid var(--border); border-radius: 6px; padding: 0 6px; background: var(--soft); white-space: nowrap; }
+  nav.inhoud { background: var(--soft); border: 1px solid var(--border); border-radius: 10px; padding: 12px 16px; margin: 18px 0 8px; }
+  nav.inhoud ol { margin: 4px 0 0; columns: 2; column-gap: 28px; }
+  nav.inhoud a { color: var(--text); text-decoration: none; }
+  nav.inhoud a:hover { color: var(--brand); text-decoration: underline; }
+  .kader { border-left: 3px solid var(--brand); background: var(--soft); padding: 8px 12px; border-radius: 0 8px 8px 0; margin: 10px 0 14px; }
+  .let-op { border-left: 3px solid #d97706; background: var(--warn-bg); color: var(--warn); padding: 8px 12px; border-radius: 0 8px 8px 0; margin: 10px 0 14px; }
+  table { width: 100%; border-collapse: collapse; margin: 8px 0 14px; font-size: 14px; }
+  th, td { text-align: left; vertical-align: top; padding: 7px 8px; border-bottom: 1px solid var(--border); }
+  th { background: var(--soft); font-weight: 600; }
+  .foot { margin-top: 36px; padding-top: 10px; border-top: 1px solid var(--border); font-size: 13px; color: var(--muted); }
+  a { color: var(--brand); }
+  @media (max-width: 560px) { nav.inhoud ol { columns: 1; } }
+  @media print { nav.inhoud { display: none; } body { margin: 0 auto; } h2 { break-after: avoid; } }
+</style>
+</head>
+<body>
+
+<h1>Handleiding VitaScribe</h1>
+<p class="lead">Dicteren, consultverslagen, brieven, dossiervragen en de post: wat VitaScribe doet, hoe je het gebruikt en waar je als arts op let.</p>
+
+<nav class="inhoud" aria-label="Inhoud">
+  <strong>Inhoud</strong>
+  <ol>
+    <li><a href="#start">Eerste keer instellen</a></li>
+    <li><a href="#paneel">Zijpaneel en minimaliseren</a></li>
+    <li><a href="#consult">Een consult opnemen</a></li>
+    <li><a href="#dicteren">Dicteren en SOEP</a></li>
+    <li><a href="#meedenken">Meedenken onder de SOEP</a></li>
+    <li><a href="#brieven">Brieven</a></li>
+    <li><a href="#dossiervraag">Dossiervraag</a></li>
+    <li><a href="#post">Post &amp; lab</a></li>
+    <li><a href="#instellingen">Instellingen</a></li>
+    <li><a href="#privacy">Privacy in het kort</a></li>
+    <li><a href="#grenzen">Wat VitaScribe niet doet</a></li>
+    <li><a href="#problemen">Als iets niet werkt</a></li>
+  </ol>
+</nav>
+
+<h2 id="start">1. Eerste keer instellen</h2>
+<ol>
+  <li>Open <strong>Instellingen</strong> (rechtsklik op het VitaScribe-icoon → Opties, of onderaan het zijpaneel).</li>
+  <li>Vul bij <em>API Verbinding</em> de <strong>API-sleutel</strong> in die je van de beheerder kreeg. Het serveradres staat al goed. Klik op <span class="knop">Opslaan</span>. De sleutel blijft op dit apparaat en gaat niet mee met Chrome- of Edge-synchronisatie.</li>
+  <li>Kies bij <em>Microfoon</em> het juiste invoerapparaat. De eerste keer vraagt de browser toestemming voor de microfoon; kies <em>Toestaan</em>.</li>
+  <li>Wil je dat VitaScribe klinisch meedenkt (NHG-beleid, labduiding, vraagsuggesties)? Zet dat aan onder <em>Consultopname</em>. Zie <a href="#meedenken">Meedenken</a> en <a href="#grenzen">Wat VitaScribe niet doet</a>.</li>
+  <li>Eenmalig per Bricks-omgeving: <em>S/O/E/P-velden koppelen</em> (onderaan het zijpaneel). Klik daarna in Bricks achter elkaar in het S-, O-, E- en P-veld. Vanaf dan komt elk deel van een SOEP in het eigen veld.</li>
+</ol>
+
+<h2 id="paneel">2. Zijpaneel en minimaliseren</h2>
+<p>Een klik op het VitaScribe-icoon opent het <strong>zijpaneel</strong> naast Bricks. Daarin zitten vier tabbladen:</p>
+<table>
+  <tr><th>Tabblad</th><th>Waarvoor</th></tr>
+  <tr><td><strong>Dicteren</strong></td><td>Consult opnemen, dicteren, SOEP maken en invoegen, met meedenken eronder.</td></tr>
+  <tr><td><strong>Brieven</strong></td><td>Informatiebrief aan derden en verwijsbrief, op basis van het dossier.</td></tr>
+  <tr><td><strong>Dossiervraag</strong></td><td>Een vraag stellen aan het dossier dat in Bricks open staat.</td></tr>
+  <tr><td><strong>Post</strong></td><td>Labuitslagen, kweken en brieven uit de Bricks-post laten beoordelen en samenvatten.</td></tr>
+</table>
+<p>Heb je even het hele scherm nodig, klik dan rechtsboven in het paneel op het <strong>minimaliseer-icoon</strong> (twee pijltjes naar binnen). Het paneel gaat dicht; een lopende consultopname gaat gewoon door, met een klein opnamebolletje op de pagina. Een volgende klik op het icoon haalt het paneel terug. Dicteren in het paneel moet je eerst stoppen, want dat leeft in het paneel zelf.</p>
+<p>Liever een compacte popup op het icoon? Kies dat in Instellingen onder <em>Weergave</em>.</p>
+<table>
+  <tr><th>Sneltoets</th><th>Doet</th></tr>
+  <tr><td><kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>C</kbd></td><td>Consultopname starten of stoppen, vanaf elke pagina. Starten betekent: de patiënt geeft toestemming.</td></tr>
+  <tr><td><kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>D</kbd></td><td>Dicteren starten of stoppen in het veld waarin je klikte (met het paneel open: het dicteren van het paneel).</td></tr>
+</table>
+
+<h2 id="consult">3. Een consult opnemen</h2>
+<ol>
+  <li><strong>Vraag de patiënt om toestemming</strong> voor opname en een AI-verslag. Klik pas daarna op <span class="knop">Consult opnemen</span>; die klik geldt als bevestiging dat de patiënt heeft ingestemd.</li>
+  <li>Spreekt de patiënt een andere taal, kies dan eerst bij <em>Taal gesprek</em> de taal (of <em>Meertalig</em>). Dat geldt alleen voor dit consult; daarna staat het weer op Nederlands.</li>
+  <li>Tijdens het consult zie je alleen een klein balkje met de tijd. Je kunt gewoon naar andere pagina's in Bricks; de opname loopt door.</li>
+  <li>Is de patiënt weg en wil je nog onderzoek of beleid inspreken: klik <span class="knop">Nadicteren</span> en dicteer kort. Dat deel telt als jouw dictaat, niet als gesprek.</li>
+  <li>Klik <span class="knop">Stop</span>. Na een paar seconden staat het verslag in het SOEP-blok.</li>
+  <li>Controleer, pas zo nodig aan in het paneel, en kies <span class="knop">Alles invoegen</span> met de cursor in de S-regel van Bricks. Het invoegen kan ook via het opnamebolletje op de pagina.</li>
+</ol>
+<div class="kader"><strong>Meerdere problemen in één consult</strong> (bijvoorbeeld neus én darm) worden gesplitst in aparte SOEP-delen, elk met eigen ICPC-code. Je ziet tabjes <em>1 · … 2 · …</em>. Maak in Bricks per probleem een eigen SOEP-regel en voeg de delen één voor één in. Psychische klachten krijgen een SOEP die past bij een GGZ-gesprek.</div>
+<p><strong>Vraagsuggesties</strong> (als je ze aanzette): tijdens het consult verschijnen af en toe korte chips met nog niet gestelde vragen die bij de klacht horen, zoals "koorts?" of "uitstraling been?". Alarmsymptomen staan in rood. Tik een chip aan als je hem gevraagd hebt. Jij bepaalt wat je vraagt.</p>
+<p>Hoort de microfoon niets, dan meldt het balkje "geen geluid: microfoon?". Een opname korter dan een paar seconden wordt niet verwerkt. Valt de verbinding weg, dan bewaart de extensie de opname en kun je hem met <span class="knop">Opnieuw versturen</span> alsnog laten verwerken.</p>
+
+<h2 id="dicteren">4. Dicteren en SOEP</h2>
+<ol>
+  <li>Klik in Bricks in het veld waar de tekst moet komen. Het paneel toont het bij <em>Doelveld</em>.</li>
+  <li>Klik op de grote microfoonknop (of <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>D</kbd>) en dicteer. Zeg "nieuwe regel" voor een regelafbreking.</li>
+  <li>Met <em>Live in veld</em> aan verschijnt de tekst direct in Bricks terwijl je spreekt. Uit: de tekst komt eerst in het paneel en je kiest <span class="knop">Invoegen in veld</span>.</li>
+  <li><span class="knop">Opschonen</span> haalt haperingen en herhalingen weg; de inhoud blijft gelijk. <span class="knop">Maak SOEP</span> zet een dictaat om in een SOEP-regel.</li>
+</ol>
+<p><strong>Onvolledig in de verslaglegging</strong>: onder een SOEP uit een dictaat kan een kaartje staan met wat in de regel ontbreekt (bijvoorbeeld de duur van een kuur). Dat is een geheugensteun voor het verslag, geen advies.</p>
+<p><strong>Meetwaarden</strong> die je dicteert (bloeddruk, pols, saturatie, temperatuur, gewicht, lengte, BMI) worden zonder AI herkend en apart getoond, zodat je ze in het meetwaardeveld kunt zetten.</p>
+<p><strong>Leren</strong>: selecteer in het paneel een verkeerd verstaan woord en kies <span class="knop">Verbeter woord</span>; VitaScribe verstaat het daarna beter. Met <span class="knop">Maak sneltekst</span> maak je van een stuk tekst een sneltekst die je voortaan met een kort commando dicteert. Beheer ze via <em>Snelteksten &amp; correcties</em> onderaan het paneel.</p>
+<p><strong>Patiëntinstructie</strong> onder de SOEP maakt uitleg in eenvoudige taal (B1) op basis van je E en P, desgewenst met een vertaling ernaast, om af te drukken of te kopiëren naar het berichtenveld.</p>
+
+<h2 id="meedenken">5. Meedenken onder de SOEP</h2>
+<p>Onder elke SOEP, uit een consult of dictaat, kijkt VitaScribe op de achtergrond mee. Er verandert <strong>nooit iets zonder jouw klik</strong>.</p>
+<h3>Medicijnnamen (staat altijd aan)</h3>
+<p>Spraakherkenning verhaspelt geneesmiddelnamen. Elk middel in S en P wordt herkend met de juiste Nederlandse stofnaam.</p>
+<ul>
+  <li><strong>✓ metformine</strong>: goed herkend.</li>
+  <li><strong>? <s>meta prolol 50 mg</s> → metoprolol 50 mg</strong> <span class="knop">Vervang</span>: klik om alleen de naam te herstellen. De knop voegt nooit een sterkte, dosering of toedieningsvorm toe die je niet dicteerde.</li>
+  <li><strong>? "…": controleer de naam</strong>: VitaScribe weet het niet zeker; kijk het zelf na.</li>
+</ul>
+<h3>Beleid volgens de NHG (met <em>Klinisch meedenken</em> aan)</h3>
+<p>Eén regel of je plan in P past bij de NHG-Standaard die hoort bij je werkdiagnose in E: <em>In lijn met</em>, <em>Grotendeels in lijn met</em> of <em>Wijkt af van</em>, met de naam van de standaard. Daaronder hooguit drie korte voorstellen. Met <span class="knop">+ P</span> zet je een voorstel in je plan; negeer het anders gewoon. De werkdiagnose blijft die van jou: VitaScribe stelt geen andere diagnose voor.</p>
+<h3>Voor de patiënt</h3>
+<p>Onderwerpen op Thuisarts.nl als zoeklink ("Thuisarts: blaasontsteking ↗"). VitaScribe verzint geen adressen; de link opent de zoekpagina van Thuisarts.</p>
+<p>Een aanpassing via <span class="knop">Vervang</span> of <span class="knop">+ P</span> gaat ook mee naar het opnamebolletje en de popup, dus invoegen vanaf de pagina gebruikt de verbeterde tekst. Na zelf aanpassen kun je met <span class="knop">↻</span> opnieuw laten meekijken.</p>
+
+<h2 id="brieven">6. Brieven</h2>
+<ol>
+  <li><strong>Dossier ophalen</strong>: open de patiënt in Bricks met de onderdelen die mee moeten (journaal, medicatie, voorgeschiedenis, lab) en klik <span class="knop">Ophalen uit Bricks</span>. Het kan ook uit een schermafdruk of een PDF-export.</li>
+  <li>Kies per onderdeel wat meegaat. Onder <em>Toon precies wat er verstuurd wordt</em> zie je de tekst zonder naam, BSN, geboortedatum, adres en contactgegevens. Consultdatums gaan alleen mee als je dat aanvinkt.</li>
+  <li><strong>Informatiebrief</strong>: kies de aanvrager, plak of laad de vraag, en bevestig dat er een gerichte vraag en schriftelijke toestemming van de patiënt is. De brief geeft volgens de KNMG-richtlijn alleen feiten, geen oordeel over beperkingen, arbeidsgeschiktheid of causaliteit.</li>
+  <li><strong>Verwijzing</strong>: kies het specialisme, de urgentie en schrijf of neem de verwijsreden over uit je dictaat.</li>
+  <li>Het concept verschijnt terwijl het geschreven wordt. Controleer, vul <em>[Naam huisarts]</em> en eventuele <em>[aanvullen]</em> in, en kopieer of voeg in.</li>
+</ol>
+
+<h2 id="dossiervraag">7. Dossiervraag</h2>
+<p>Voor dikke dossiers: vraag iets aan het dossier dat in Bricks open staat, bijvoorbeeld "Welke kweken zijn er gedaan en wat was de resistentie?" of "Is er ooit een echo van de buik gemaakt?". Typ je vraag en druk op <kbd>Enter</kbd>, of kies een snelle vraag (kweken &amp; resistentie, beeldvorming, laatste lab, allergieën, verwijzingen, gestopte medicatie).</p>
+<ul>
+  <li>Bij elke vraag leest het paneel het dossier opnieuw in; een onderdeel dat je net opende telt dus mee.</li>
+  <li>Het antwoord noemt alleen wat er staat, met datum en een letterlijk citaat als bron. <strong>✓</strong> betekent dat het citaat letterlijk in het dossier is teruggevonden; <strong>?</strong> betekent: controleer het in Bricks.</li>
+  <li>"Niet gevonden" betekent: niet in wat is ingelezen. Het paneel toont welke onderdelen dat waren. Wat niet geopend of geladen is in Bricks (bijvoorbeeld een oude journaalperiode of een PDF-bijlage), kan VitaScribe niet zien.</li>
+  <li>Een vervolgvraag ("en daarvoor?") begrijpt de vorige vragen. Bij een andere patiënt begint het opnieuw; er wordt niets bewaard.</li>
+</ul>
+
+<h2 id="post">8. Post &amp; lab</h2>
+<p>Open het tabblad <strong>Post</strong> en klik in de Bricks-post een bericht aan. Zolang het tabblad open is, leest VitaScribe elk nieuw bericht automatisch en geeft binnen enkele seconden:</p>
+<ul>
+  <li><strong>Samenvatting (journaal)</strong>: de klinische kern in één tot drie zinnen. <span class="knop">Zet in Samenvatting</span> zet de tekst in het veld <em>Samenvatting (zichtbaar in journaal)</em>.</li>
+  <li><strong>Voor de patiënt (memo)</strong>: uitleg in eenvoudige woorden over wat de uitslag of brief betekent en wat er nu gebeurt. <span class="knop">Zet in Memo</span> zet de tekst in het veld <em>Memo</em>.</li>
+  <li><strong>Bij lab</strong>: de relevante waarden met ↑/↓, en met <em>Klinisch meedenken</em> aan ook een korte duiding, een oordeel en een beleidsvoorstel volgens de NHG. Het oordeel is <em>Normaal</em>, <em>Afwijkend</em> of <em>Via aanvrager</em>: dat laatste als het afhangt van de kliniek of van eerdere waarden die niet in beeld zijn.</li>
+  <li><strong>Bij een kweek</strong>: verwekker en gevoeligheid, en het passende middel. VitaScribe houdt daarbij rekening met wat in de episodelijst staat, zoals nierfunctie en allergieën.</li>
+  <li><strong>Bij een brief</strong>: van wie, waarom, de conclusie en wat er van jou verwacht wordt.</li>
+  <li>Een rode regel bovenaan vraagt om snelle actie (bijvoorbeeld kalium 6,8).</li>
+</ul>
+<p>Beide teksten kun je in het paneel eerst aanpassen. Tekst die al in het Bricks-veld staat, blijft staan; de nieuwe tekst komt eronder. Een bericht dat al beoordeeld is, komt bij terugklikken meteen uit het geheugen. Liever niet automatisch? Zet <em>Automatisch bij elk nieuw bericht</em> uit en gebruik <span class="knop">Beoordeel</span>.</p>
+<div class="let-op">Eerdere uitslagen neemt VitaScribe alleen mee als ze in het bericht of in de episodelijst staan. Een trend over maanden kan het dus meestal niet beoordelen; bij twijfel staat er "via aanvrager".</div>
+
+<h2 id="instellingen">9. Instellingen</h2>
+<table>
+  <tr><th>Instelling</th><th>Wat het doet</th></tr>
+  <tr><td>Weergave</td><td>Wat een klik op het icoon opent: het zijpaneel (aanbevolen) of de compacte popup.</td></tr>
+  <tr><td>API Verbinding</td><td>Serveradres en jouw persoonlijke sleutel.</td></tr>
+  <tr><td>Microfoon</td><td>Welke microfoon VitaScribe gebruikt.</td></tr>
+  <tr><td>Consult</td><td><em>Live volgen</em> (aanbevolen: verslag een paar seconden na Stop) of <em>Eerst opnemen, na stop versturen</em>.</td></tr>
+  <tr><td>Vraagsuggesties</td><td>Korte vragen tijdens het consult. Klinische ondersteuning; alleen met Live volgen.</td></tr>
+  <tr><td>Klinisch meedenken (NHG)</td><td>Beleid onder de SOEP, Thuisarts-onderwerpen, en duiding en beleid bij labuitslagen in Post. De controle van medicijnnamen staat altijd aan.</td></tr>
+  <tr><td>Informatie delen met de patiënt</td><td>Of de mailknop bij de patiëntinstructie zichtbaar is (standaard uit).</td></tr>
+</table>
+
+<h2 id="privacy">10. Privacy in het kort</h2>
+<ul>
+  <li>Naam, BSN, geboortedatum, adres, telefoon en e-mail worden in de browser uit dossiertekst, brieven en berichten gehaald, en op de server nog eens als vangnet. Bij Post gaat van de patiënt alleen de leeftijd mee.</li>
+  <li>Spraak gaat naar Deepgram (EU). De tekstverwerking gebeurt door Claude (Anthropic). Geen van beide gebruikt de gegevens voor training.</li>
+  <li>De server bewaart geen audio, dictaten, verslagen, dossiers, vragen of antwoorden. Het auditlog noteert wie wat wanneer deed, zonder inhoud (NEN 7513).</li>
+  <li>Een consult wordt alleen opgenomen na toestemming van de patiënt.</li>
+</ul>
+<p>Alles in detail: <a href="../privacy/avg.html">VitaScribe en de AVG</a>.</p>
+
+<h2 id="grenzen">11. Wat VitaScribe niet doet</h2>
+<p>VitaScribe schrijft concepten en denkt mee, maar <strong>jij bent de arts</strong>. Controleer elk verslag, elke brief en elke samenvatting voordat je opslaat of verstuurt.</p>
+<ul>
+  <li>VitaScribe verzint niets: staat iets niet in het gesprek, dictaat of dossier, dan staat het er niet in, of staat er <em>[?]</em>.</li>
+  <li>Meedenken, labduiding en vraagsuggesties zijn voorstellen op basis van de NHG-Standaarden en alleen de informatie die VitaScribe ziet. Het kent je patiënt niet zoals jij hem kent. Bij twijfel gaat jouw klinische oordeel voor.</li>
+  <li>Deze klinische functies zijn bedoeld voor gebruik in de eigen praktijk en staan alleen aan als de server en jij dat kiezen.</li>
+  <li>VitaScribe slaat zelf niets op in Bricks: tekst komt pas in een veld als jij op invoegen of "Zet in …" klikt, en opslaan doe je zelf in Bricks.</li>
+</ul>
+
+<h2 id="problemen">12. Als iets niet werkt</h2>
+<table>
+  <tr><th>Wat je ziet</th><th>Wat je doet</th></tr>
+  <tr><td>"Geen API-sleutel" of fout 401/403</td><td>Vul de sleutel in bij Instellingen of vraag de beheerder om een nieuwe.</td></tr>
+  <tr><td>"Kan de server niet bereiken"</td><td>Controleer de internetverbinding. Blijft het, neem contact op met de beheerder.</td></tr>
+  <tr><td>"Geen spraak gedetecteerd" of "geen geluid: microfoon?"</td><td>Kies in Instellingen de juiste microfoon en controleer of de browser de microfoon mag gebruiken (slotje in de adresbalk).</td></tr>
+  <tr><td>Invoegen komt in het verkeerde veld</td><td>Klik eerst in het juiste Bricks-veld, of koppel de S/O/E/P-velden opnieuw.</td></tr>
+  <tr><td>"Veld … niet gevonden" bij Post</td><td>De tekst staat op het klembord; plak hem zelf in het veld.</td></tr>
+  <tr><td>Het icoon opent niets</td><td>Klik nog eens; lukt het niet, open het paneel via het menu van de browser (Zijpaneel → VitaScribe) en meld het bij de beheerder.</td></tr>
+  <tr><td>"Deze server kent … nog niet"</td><td>De server moet bijgewerkt worden; meld het bij de beheerder.</td></tr>
+</table>
+<p>Lukt invoegen helemaal niet, kies dan <em>Diagnose</em> onderaan het zijpaneel. Het laat zien of VitaScribe de tekstvelden op de Bricks-pagina vindt. Antwoordt geen enkel frame, ververs dan de pagina (<kbd>F5</kbd>).</p>
+
+<p class="foot">VitaScribe, AI-consultassistent voor Bricks Huisarts. Vragen: <a href="mailto:info@provita-care.nl">info@provita-care.nl</a>.</p>
+</body>
+</html>

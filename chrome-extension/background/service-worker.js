@@ -903,7 +903,11 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 // ── After install/update: bring the field script back into open tabs ──
 // Scripts already running in open pages are cut off by an update; re-inject
 // so the doctor doesn't have to refresh Bricks (only where we have access).
-chrome.runtime.onInstalled.addListener(async () => {
+chrome.runtime.onInstalled.addListener(async (details) => {
+  // A new doctor starts with the manual; an update does not interrupt anyone.
+  if (details && details.reason === 'install') {
+    chrome.tabs.create({ url: chrome.runtime.getURL('help/handleiding.html') }).catch(() => {});
+  }
   // The server key used to live in chrome.storage.sync; move it to this device.
   await SVInstellingen.migreer().catch(() => { /* settings stay readable as before */ });
   const tabs = await chrome.tabs.query({});
