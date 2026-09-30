@@ -135,3 +135,12 @@ def test_schema_is_strikt():
         if s.get("type") == "array":
             controleer(s["items"])
     controleer(meedenken.SCHEMA)
+
+
+def test_vervang_voegt_niets_toe():
+    # Echte uitkomst uit de praktijktest: het model zette er "mga" bij.
+    assert meedenken.alleen_herstel("nitrofurantoïne mga 100 mg 2dd", "Nitro furan toïne 100 mg 2dd",
+                                     "nitrofurantoïne") == "nitrofurantoïne 100 mg 2dd"
+    assert meedenken.alleen_herstel("Amoxicilline 3dd 250 mg", "Amoxy cilline 3dd 250 mg",
+                                     "amoxicilline") == "Amoxicilline 3dd 250 mg"
+    assert meedenken.alleen_herstel("metoprolol retard 50 mg", "meta prolol 50 mg", "metoprolol") == "metoprolol 50 mg"

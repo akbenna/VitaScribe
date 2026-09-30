@@ -26,6 +26,7 @@ Endpoint (API-sleutel verplicht):
 from __future__ import annotations
 
 import json
+import re
 from typing import List, Optional
 
 import structlog
@@ -56,8 +57,9 @@ TAAK 1 — MEDICATIE HERKENNEN
 - "middel": de juiste Nederlandse stofnaam zoals in het Farmacotherapeutisch \
   Kompas en de G-Standaard (bij een merknaam: stofnaam).
 - "vervang": alleen als "genoemd" een herkenningsfout of verkeerde \
-  schrijfwijze bevat: hoe het er correct uitziet (zelfde sterkte en \
-  dosering). Anders een lege string.
+  schrijfwijze bevat: dezelfde tekst met alleen de naam hersteld. Voeg niets \
+  toe (geen toedieningsvorm zoals "mga", geen sterkte of dosering die er niet \
+  staat). Anders een lege string.
 - "zeker": true als je zeker weet welk middel bedoeld is; bij twijfel false \
   en "vervang" leeg. Verzin geen middelen."""
 
@@ -173,6 +175,20 @@ def _tekst(v) -> str:
     return str(v or "").strip()
 
 
+def _woorden(tekst: str) -> List[str]:
+    return re.findall(r"[\w/]+", tekst.lower())
+
+
+def alleen_herstel(vervang: str, genoemd: str, middel: str) -> str:
+    """A replacement may only repair the name: every other word must already be
+    in the dictated text. "Nitro furan toïne 100 mg" -> "nitrofurantoïne mga
+    100 mg" becomes "nitrofurantoïne 100 mg"; the model does not get to add a
+    formulation, strength or frequency the doctor did not say."""
+    toegestaan = set(_woorden(genoemd)) | set(_woorden(middel))
+    rest = [w for w in vervang.split() if all(x in toegestaan for x in _woorden(w))]
+    return " ".join(rest).strip()
+
+
 def schoon_medicatie(items, soep: dict, cds: bool) -> List[dict]:
     """Keep what the UI can act on safely. A replacement only stands when the
     quoted text occurs literally in its field; otherwise the button could
@@ -191,6 +207,7 @@ def schoon_medicatie(items, soep: dict, cds: bool) -> List[dict]:
             if genoemd.lower() in soep.get(ander, "").lower():
                 veld, gevonden = ander, True
         zeker = bool(m.get("zeker"))
+        vervang = alleen_herstel(vervang, genoemd, middel)
         if not gevonden or not zeker or vervang.lower() == genoemd.lower():
             vervang = ""
         uit.append({
