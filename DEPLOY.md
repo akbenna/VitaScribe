@@ -235,11 +235,10 @@ koppelen kan altijd, bijvoorbeeld als Bricks van opmaak verandert.
 vervangen door je standaardtekst; correcties verbeteren woorden die verkeerd verstaan worden en gaan als
 hint mee naar Deepgram. Opgeslagen per computer (Chrome, lokaal); overzetten via Exporteren/Importeren.
 
-**Zijpaneel eerst, minimaliseren kan.** Een klik op het VitaScribe-icoon opent het zijpaneel. Rechtsboven
-in het paneel staat "Minimaliseren": het paneel gaat dicht en het icoon opent voor de rest van de
-browsersessie de compacte popup (een consultopname loopt door, met het bolletje op de pagina). Het
-paneelknopje in de popup, of een herstart van de browser, brengt het zijpaneel terug. Wie standaard de
-popup wil, kiest dat in Instellingen onder "Weergave".
+**Zijpaneel eerst, minimaliseren kan.** Een klik op het VitaScribe-icoon opent altijd het zijpaneel.
+Rechtsboven in het paneel staat "Minimaliseren": het paneel gaat dicht en het hele scherm is vrij; een
+volgende klik op het icoon haalt het terug. Een consultopname loopt door, met het bolletje op de pagina.
+Wie liever de compacte popup op het icoon heeft, kiest dat in Instellingen onder "Weergave".
 
 **Dossiervraag (derde tabblad).** Naast "Dicteren & SOEP" en "Brieven": stel een vraag aan het dossier dat
 in Bricks open staat ("laatste kweken en resistentie?", "ooit een echo buik?"), of kies een snelle vraag.

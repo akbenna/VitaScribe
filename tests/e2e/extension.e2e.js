@@ -157,6 +157,7 @@ function check(name, cond, extra) {
   }));
   let w = await weergave();
   check('icoon opent standaard het zijpaneel', w.popup === '' && w.paneel === true, w);
+  check('terugval: klik op het icoon opent het paneel ook zelf', await sw.evaluate(() => chrome.action.onClicked.hasListeners()));
   await panel.click('.view-tab[data-view="dossier"]');
   check('derde tabblad Dossiervraag', await panel.isVisible('#view-dossier') && await panel.isHidden('#view-letters') && await panel.isHidden('#view-dictate'));
   check('snelle vragen als chips', (await panel.$$('#dv-snel .chip')).length >= 5);
@@ -186,7 +187,7 @@ function check(name, cond, extra) {
   await panel.click('#btn-minimaliseer');
   await sleep(500);
   w = await weergave();
-  check('minimaliseren: icoon opent de compacte popup', w.popup.endsWith('popup/popup.html') && w.paneel === false, w);
+  check('minimaliseren verandert het icoon niet: dat opent weer het zijpaneel', w.popup === '' && w.paneel === true, w);
   check('minimaliseren sluit het paneel', await panelDicht);
 
   console.log('Popup');
@@ -201,9 +202,6 @@ function check(name, cond, extra) {
   const popDicht = pop.waitForEvent('close', { timeout: 3000 }).then(() => true, () => false);
   await pop.click('#btn-expand');
   check('paneelknop in de popup sluit de popup', await popDicht);
-  await sleep(300);
-  w = await weergave();
-  check('daarna opent het icoon weer het zijpaneel', w.popup === '' && w.paneel === true, w);
 
   console.log('Instellingen');
   const opt = await ctx.newPage();
