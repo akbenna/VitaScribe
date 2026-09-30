@@ -150,3 +150,50 @@ def test_live_consult_zonder_instelling_geen_suggesties(monkeypatch):
             events = _tot_gesloten(ws)
     assert maak.await_count == 0
     assert all(e["type"] != "suggesties" for e in events)
+
+
+@pytest.mark.asyncio
+async def test_meedenker_op_platte_dicteertekst():
+    nu = [0.0]
+    maak = AsyncMock(return_value={"klacht": "hoofdpijn", "vragen": [{"tekst": "misselijk?", "alarm": False}]})
+    gezonden = []
+
+    async def zend(p):
+        gezonden.append(p)
+
+    m = vraagsuggesties.Meedenker(zend, "dr", maak=maak, klok=lambda: nu[0], bron="dictaat")
+    m.misschien_tekst("patiënt heeft hoofdpijn")            # te weinig woorden
+    assert m.taak is None
+    m.misschien_tekst(" ".join(["woord"] * 30))
+    await m.taak
+    assert gezonden[0]["type"] == "suggesties" and maak.await_count == 1
+    nu[0] = 5.0
+    m.misschien_tekst(" ".join(["woord"] * 60))            # binnen 30 s: niets
+    assert maak.await_count == 1
+
+
+@pytest.mark.asyncio
+async def test_dicteerprompt_zegt_dat_sprekers_ontbreken(monkeypatch):
+    gezien = {}
+
+    async def nep_complete(system_prompt, user_prompt, **kw):
+        gezien["user"] = user_prompt
+        return '{"klacht": "x", "vragen": []}'
+
+    monkeypatch.setattr(vraagsuggesties.llm_service, "complete", nep_complete)
+    await vraagsuggesties.maak_suggesties("sinds gisteren buikpijn", bron="dictaat")
+    assert "zonder sprekerscheiding" in gezien["user"] and "sinds gisteren buikpijn" in gezien["user"]
+    await vraagsuggesties.maak_suggesties("sinds gisteren buikpijn")
+    assert "GESPREK TOT NU TOE" in gezien["user"] and "sprekerscheiding" not in gezien["user"]
+
+
+def test_waarom_per_vraag_kort_en_in_het_schema():
+    uit = vraagsuggesties.schoon({"klacht": "hoofdpijn", "vragen": [
+        {"tekst": "nekstijfheid?", "alarm": True, "waarom": "  uitsluiten   meningitis  "},
+        {"tekst": "koorts?", "alarm": False},
+    ]})
+    assert uit["vragen"][0]["waarom"] == "uitsluiten meningitis"
+    assert uit["vragen"][1]["waarom"] == ""
+    item = vraagsuggesties.JSON_SCHEMA["properties"]["vragen"]["items"]
+    assert "waarom" in item["required"]
+    assert '"waarom"' in vraagsuggesties.SYSTEM_PROMPT and "geen diagnoses" in vraagsuggesties.SYSTEM_PROMPT

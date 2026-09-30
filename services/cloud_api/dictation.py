@@ -13,6 +13,9 @@ Client protocol (WebSocket /api/v1/dictation/stream):
   server -> client  {"type": "ready"}
   server -> client  {"type": "transcript", "text": "...", "is_final": bool,
                      "speech_final": bool}
+  server -> client  {"type": "suggesties", "klacht": "...", "vragen": [...]}
+                    (only with "vraagsuggesties": true in auth and
+                    CLINICAL_DECISION_SUPPORT on the server)
   server -> client  {"type": "error", "message": "..."}
   server -> client  {"type": "closed"}
 
@@ -299,6 +302,14 @@ async def relay_dictation(
     audit.log_event(ident.label, "dictation.stream")
     await _send_json(ws, {"type": "ready"})
 
+    # Question suggestions while dictating (clinical support): only when the
+    # server allows it and the doctor switched it on (auth "vraagsuggesties").
+    from . import vraagsuggesties
+    meedenker = (vraagsuggesties.Meedenker(lambda payload: _send_json(ws, payload), ident.label,
+                                           bron="dictaat")
+                 if vraagsuggesties.toegestaan(auth) else None)
+    finals: list = []
+
     async def client_to_upstream() -> None:
         # Ends on "stop", client disconnect or the session time limit.
         try:
@@ -331,6 +342,9 @@ async def relay_dictation(
                 event = parse_deepgram_message(raw)
                 if event:
                     await _send_json(ws, event)
+                    if meedenker is not None and event.get("is_final") and event.get("text"):
+                        finals.append(event["text"])
+                        meedenker.misschien_tekst(" ".join(finals))
         except Exception as exc:
             logger.warning("dictation.upstream_closed", error=str(exc))
 
@@ -352,6 +366,8 @@ async def relay_dictation(
         except asyncio.TimeoutError:
             receiver.cancel()
     finally:
+        if meedenker is not None:
+            meedenker.stop()
         try:
             await upstream.close()
         except Exception:
