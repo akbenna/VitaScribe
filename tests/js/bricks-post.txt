@@ -1,0 +1,38 @@
+MFH Gorris - Aarts (64) (26-10-1961) bsd
+Episoden
+○			Geen
+○	●	B81.02	Vitamine B12-deficiëntie-anemie	⋮
+○	●	K92.01	Claudicatio intermittens	⋮
+◉	●	T90.02	Diabetes mellitus type 2	⋮
+○	●	K76.02	Vroeger myocardinfarct (> 4 wkn geleden)	⋮
+○	●	R95.00	Emfyseem/COPD gold 2	⋮
+Portaal Geen portaalgebruiker
+Samenvatting (zichtbaar in journaal)
+
+Memo
+
+Afzender	Diagnostiek voor U - Diagnostiek voor U
+Patiënt	MFH Gorris - Aarts 26-10-1961 De Eerensstraat 4 6045 HB ROERMOND
+
+DATUM: 15-09-2026 09:48
+
+MATERIAAL: Code compleet: N Identificatienummer: 625805083
+
+Uitgevoerde labbepalingen - Chemie
+
+Bepaling		Waarde	Eenheid	Min	Max	Opmerking
+gamma-glutamyltransferase (gammaGT)	*	330	U/L		38	
+alanineaminotransferase (ALAT;SGPT)	*	64	U/L		34	
+creatinine		58	umol/L	49	90	
+eGFR volgens CKD-EPI formule		>90	mL/min/1.			
+natrium		141	mmol/L	135	145	
+kalium		4,3	mmol/L	3,5	5	
+cholesterol totaal		4,22	mmol/L		5	
+HDL-cholesterol		1,77	mmol/L	1,2		
+triglyceriden		1,4	mmol/L		2	
+Verwijder
+Export
+Afdrukken
+Nieuwe taak
+Opslaan
+Annuleren

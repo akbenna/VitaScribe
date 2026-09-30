@@ -235,11 +235,30 @@ koppelen kan altijd, bijvoorbeeld als Bricks van opmaak verandert.
 vervangen door je standaardtekst; correcties verbeteren woorden die verkeerd verstaan worden en gaan als
 hint mee naar Deepgram. Opgeslagen per computer (Chrome, lokaal); overzetten via Exporteren/Importeren.
 
-**Zijpaneel eerst, minimaliseren kan.** Een klik op het VitaScribe-icoon opent het zijpaneel. Rechtsboven
-in het paneel staat "Minimaliseren": het paneel gaat dicht en het icoon opent voor de rest van de
-browsersessie de compacte popup (een consultopname loopt door, met het bolletje op de pagina). Het
-paneelknopje in de popup, of een herstart van de browser, brengt het zijpaneel terug. Wie standaard de
-popup wil, kiest dat in Instellingen onder "Weergave".
+**Zijpaneel eerst, minimaliseren kan.** Een klik op het VitaScribe-icoon opent altijd het zijpaneel.
+Rechtsboven in het paneel staat "Minimaliseren": het paneel gaat dicht en het hele scherm is vrij; een
+volgende klik op het icoon haalt het terug. Een consultopname loopt door, met het bolletje op de pagina.
+Wie liever de compacte popup op het icoon heeft, kiest dat in Instellingen onder "Weergave".
+
+**Meedenken onder de SOEP.** Na elke SOEP (dictaat of consult) kijkt de server op de achtergrond mee
+(`POST /api/v1/soep/meedenken`, Claude). Altijd: elk geneesmiddel in S en P met de juiste Nederlandse
+stofnaam; een verhaspelde naam krijgt een knop "Vervang", die alleen werkt als de genoemde tekst letterlijk
+in de SOEP staat. Met "Meedenken bij het beleid" in Instellingen, en `CLINICAL_DECISION_SUPPORT=true` op de
+server: of P in lijn is met de NHG-Standaard bij de werkdiagnose in E, hooguit drie voorstellen die met
+"+ P" in het plan kunnen, en Thuisarts.nl-onderwerpen als zoeklink. Niets verandert zonder klik; een
+aanpassing gaat ook mee naar het bolletje en de popup. Kosten: ongeveer een cent per SOEP.
+
+**Post & lab (vierde tabblad).** Klik in de Bricks-post een labuitslag, kweek of brief aan: zolang het
+tabblad open is, leest het paneel het bericht in (vanaf "Afzender"; de regel "Patiënt" met naam,
+geboortedatum en adres gaat er niet mee, alleen de leeftijd; de episodelijst gaat mee als context) en
+stuurt het naar `POST /api/v1/post/beoordeel`. Terug komt een klinische samenvatting voor "Samenvatting
+(zichtbaar in journaal)" en uitleg in eenvoudige woorden voor de patiënt voor "Memo", elk met een knop
+die de tekst in het Bricks-veld zet (bestaande tekst blijft staan). Bij lab de relevante waarden; met
+"Klinisch meedenken" in Instellingen (en `CLINICAL_DECISION_SUPPORT=true`) ook duiding, een oordeel
+(normaal, afwijkend, of "via aanvrager" als het afhangt van kliniek of eerdere waarden) en een
+beleidsvoorstel conform NHG; bij een kweek het passende middel met oog op nierfunctie en allergie uit
+de episodes. Bij een brief: van, reden, conclusie en wat er van de huisarts verwacht wordt. Een bericht
+dat al beoordeeld is, komt uit het geheugen van het paneel. Kosten: ongeveer 1 à 2 cent per bericht.
 
 **Dossiervraag (derde tabblad).** Naast "Dicteren & SOEP" en "Brieven": stel een vraag aan het dossier dat
 in Bricks open staat ("laatste kweken en resistentie?", "ooit een echo buik?"), of kies een snelle vraag.

@@ -23,44 +23,31 @@ chrome.tabs.onActivated.addListener(function (active) {
   });
 });
 
-// ── Icon click: side panel first, compact popup when minimised ──
-// The side panel is the default. "Minimaliseren" in the panel switches the
-// icon to the compact popup for the rest of this browser session; "Zijpaneel"
-// in the popup switches back. The default itself is a setting (weergave).
-const WEERGAVEN = ['paneel', 'compact'];
-
-async function weergaveNu() {
-  const [{ weergave }, { svWeergaveNu }] = await Promise.all([
-    chrome.storage.sync.get('weergave'), chrome.storage.session.get('svWeergaveNu'),
-  ]);
-  if (WEERGAVEN.includes(svWeergaveNu)) return svWeergaveNu;
-  return WEERGAVEN.includes(weergave) ? weergave : 'paneel';
-}
+// ── Icon click: always the side panel ──
+// A click on the icon opens the side panel. "Minimaliseren" in the panel only
+// closes it; the next click opens it again. Only a practice that chooses the
+// compact popup in Instellingen (weergave) gets the popup on the icon.
+// setPanelBehavior comes first: if setPopup ran first and the behaviour call
+// then failed, the icon would do nothing at all. action.onClicked is the
+// fallback for browsers that ignore the behaviour (it only fires without popup).
 
 async function pasWeergaveToe() {
-  const w = await weergaveNu();
-  await chrome.action.setPopup({ popup: w === 'compact' ? 'popup/popup.html' : '' });
-  await chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: w !== 'compact' });
-  return w;
+  const { weergave } = await chrome.storage.sync.get('weergave');
+  const compact = weergave === 'compact';
+  await chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: !compact }).catch(() => {});
+  await chrome.action.setPopup({ popup: compact ? 'popup/popup.html' : '' });
+  return compact ? 'compact' : 'paneel';
 }
 
-pasWeergaveToe().catch(() => { /* old browser without sidePanel behaviour: popup stays */ });
+// Version 2.8.0 kept a per-session "minimised" state; it no longer exists.
+chrome.storage.session.remove('svWeergaveNu').catch(() => {});
+pasWeergaveToe().catch(() => {});
 chrome.storage.onChanged.addListener((changes, area) => {
-  if ((area === 'sync' && changes.weergave) || (area === 'session' && changes.svWeergaveNu)) {
-    pasWeergaveToe().catch(() => {});
-  }
+  if (area === 'sync' && changes.weergave) pasWeergaveToe().catch(() => {});
 });
-
-chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
-  if (msg.action !== 'SV_WEERGAVE') return false;
-  const zet = WEERGAVEN.includes(msg.weergave)
-    ? chrome.storage.session.set({ svWeergaveNu: msg.weergave })
-    : chrome.storage.session.remove('svWeergaveNu');   // back to the setting
-  zet.then(pasWeergaveToe).then(
-    (w) => sendResponse({ ok: true, weergave: w }),
-    (e) => sendResponse({ ok: false, message: String(e && e.message || e) }),
-  );
-  return true;
+chrome.action.onClicked.addListener((tab) => {
+  // Must run inside the click (user gesture): no await before open().
+  chrome.sidePanel.open({ windowId: tab.windowId }).catch(() => {});
 });
 
 // ── API call (runs in service worker — survives popup close) ──

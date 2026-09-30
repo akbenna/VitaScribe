@@ -1,20 +1,20 @@
 /**
  * VitaScribe - Tabbladen van het zijpaneel en "Minimaliseren"
  *
- * Drie tabbladen: Dicteren & SOEP, Brieven en Dossiervraag. De laatste keuze
+ * Vier tabbladen: Dicteren & SOEP, Brieven, Dossiervraag en Post. De laatste keuze
  * blijft bewaard; knoppen in de popup kunnen een tabblad kiezen (svOpenView).
  *
- * Minimaliseren sluit het zijpaneel en laat het icoon voor de rest van deze
- * browsersessie de compacte popup openen. Een lopende consultopname gaat door
- * (die zit in het offscreen-document, met het bolletje op de pagina); het
- * dicteren in het paneel niet, dus dat moet eerst stoppen.
+ * Minimaliseren sluit het zijpaneel, zodat het hele scherm vrij is. Een klik
+ * op het icoon opent het weer. Een lopende consultopname gaat door (die zit in
+ * het offscreen-document, met het bolletje op de pagina); het dicteren in het
+ * paneel niet, dus dat moet eerst stoppen.
  *
  * Uses from sidepanel.js: state, setStatus()
  */
 (function () {
   'use strict';
 
-  var VIEWS = ['dictate', 'letters', 'dossier'];
+  var VIEWS = ['dictate', 'letters', 'dossier', 'post'];
   var $ = function (id) { return document.getElementById(id); };
 
   function showView(view) {
@@ -53,7 +53,6 @@
       setStatus('Stop eerst het dicteren; daarna kun je minimaliseren.', true);
       return;
     }
-    await chrome.runtime.sendMessage({ action: 'SV_WEERGAVE', weergave: 'compact' }).catch(function () {});
     // sidePanel.close (Chrome 141+) closes the panel; window.close() is the
     // fallback for older versions and does nothing once the panel is gone.
     try {

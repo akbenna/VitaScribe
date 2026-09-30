@@ -501,6 +501,7 @@ function renderSoepDeel(part) {
   });
   document.getElementById('soep-check').classList.toggle('hidden', points.length === 0);
   els.soep.classList.remove('hidden');
+  if (window.SVMeedenkenUI) window.SVMeedenkenUI.toon(soep);
 }
 
 // ── S/O/E/P into separate Bricks fields ──

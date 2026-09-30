@@ -69,8 +69,9 @@ async function laadVraagsuggesties(apiUrl) {
   var box = document.getElementById('vraagsuggesties');
   var note = document.getElementById('vraagsuggesties-server');
   if (!box) return;
-  var stored = await SVInstellingen.lees(['vraagsuggesties']);
+  var stored = await SVInstellingen.lees(['vraagsuggesties', 'meedenken']);
   box.checked = stored.vraagsuggesties === true;
+  document.getElementById('meedenken').checked = stored.meedenken === true;
   try {
     var resp = await fetch(String(apiUrl).replace(/\/$/, '') + '/health');
     var policy = (await resp.json()).data_policy || {};
@@ -88,8 +89,7 @@ document.getElementById('vraagsuggesties').addEventListener('change', async func
 });
 
 // ── What the toolbar icon opens ──
-// Takes effect at once; also ends a "minimised" session so the choice is
-// what the next click does.
+// Takes effect at once (the service worker listens to the setting).
 
 async function laadWeergave() {
   var stored = await SVInstellingen.lees(['weergave']);
@@ -98,8 +98,12 @@ async function laadWeergave() {
 
 document.getElementById('weergave').addEventListener('change', async function (e) {
   await SVInstellingen.bewaar({ weergave: e.target.value });
-  await chrome.runtime.sendMessage({ action: 'SV_WEERGAVE', weergave: null }).catch(function () {});
   showToast(e.target.value === 'compact' ? 'Het icoon opent nu de compacte popup.' : 'Het icoon opent nu het zijpaneel.');
+});
+
+document.getElementById('meedenken').addEventListener('change', async function (e) {
+  await SVInstellingen.bewaar({ meedenken: e.target.checked });
+  showToast(e.target.checked ? 'Meedenken bij het beleid aan (vanaf de volgende SOEP).' : 'Meedenken bij het beleid uit; medicijnnamen worden nog wel gecontroleerd.');
 });
 
 // ── Save settings ──

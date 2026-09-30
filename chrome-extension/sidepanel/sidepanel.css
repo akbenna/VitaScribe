@@ -188,6 +188,7 @@ textarea:focus { outline: 2px solid var(--brand); outline-offset: -1px; }
 body.consult-running .views,
 body.consult-running #view-letters,
 body.consult-running #view-dossier,
+body.consult-running #view-post,
 body.consult-running .footer,
 body.consult-running #view-dictate > :not(#consult):not(#status) { display: none !important; }
 body.consult-running .consult { border-color: var(--rec); }
@@ -231,3 +232,48 @@ body.consult-running .consult { border-color: var(--rec); }
 .dv-bron.onzeker .dv-mark { color: #b45309; }
 .dv-bron q { color: var(--text); font-style: italic; }
 .dv-acties { display: flex; gap: 6px; }
+
+/* Meedenken under the SOEP: subtle, never in the way */
+.md { border-top: 1px dashed var(--border); padding-top: 6px; display: flex; flex-direction: column; gap: 5px; font-size: 12px; }
+.md-kop { display: flex; align-items: center; gap: 6px; }
+.md-titel { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.md-status { color: var(--muted); flex: 1; }
+.md-opnieuw { font-size: 13px; padding: 0 4px; }
+.md-lijst { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 3px; }
+.md-lijst li { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+.md-mark { font-weight: 700; color: var(--brand); width: 12px; flex-shrink: 0; }
+.md-lijst li.twijfel .md-mark, .md-lijst li.fout .md-mark { color: #b45309; }
+.md-oud { text-decoration: line-through; color: var(--muted); }
+.md-opm { flex-basis: 100%; margin-left: 18px; color: #6b4a00; }
+.md-beleid { display: flex; flex-direction: column; gap: 3px; }
+.md-oordeel { color: var(--muted); }
+.md-oordeel b { color: var(--text); font-weight: 600; }
+.md-beleid.deels .md-oordeel b, .md-beleid.afwijkend .md-oordeel b { color: #b45309; }
+.md-sug { display: flex; align-items: baseline; gap: 6px; color: var(--ai); }
+.md-sug .btn { padding: 0 6px; font-size: 11px; }
+.md-ta { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; color: var(--muted); }
+.md-noot { color: var(--muted); font-size: 11px; }
+
+/* Post & lab */
+.po-uit { gap: 7px; }
+.po-kop { display: flex; align-items: center; gap: 6px; }
+.po-soort { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); font-weight: 600; }
+.po-oordeel { font-size: 12px; font-weight: 600; border-radius: 999px; padding: 1px 9px; border: 1px solid var(--border); }
+.po-oordeel.normaal { color: var(--brand-dark); border-color: #a7f3d0; background: #ecfdf5; }
+.po-oordeel.afwijkend { color: #92400e; border-color: #fcd34d; background: #fffbeb; }
+.po-oordeel.niet_beoordeelbaar { color: #475569; background: #f1f5f9; }
+.po-blok { display: flex; flex-direction: column; gap: 4px; }
+.po-label { font-size: 11px; color: var(--muted); font-weight: 600; }
+.po-tekst { white-space: pre-wrap; border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; background: #fff; }
+.po-tekst:focus { outline: none; border-color: var(--brand); }
+.po-lab { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 2px; font-size: 13px; }
+.po-lab li { display: grid; grid-template-columns: 14px 1fr; gap: 4px; }
+.po-pijl { font-weight: 700; color: var(--muted); }
+.po-hoog .po-pijl, .po-laag .po-pijl, .po-afwijkend .po-pijl { color: #b45309; }
+.po-beleid { margin: 0; font-size: 13px; }
+.po-verg { margin: 0; font-size: 12px; color: var(--muted); }
+.po-brief { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; font-size: 13px; }
+.po-brief dt { color: var(--muted); }
+.po-brief dd { margin: 0; }
+.po-acties { margin: 0; padding-left: 16px; }
+.view-tab { font-size: 12px; padding: 6px 4px; }

@@ -195,16 +195,12 @@ function currentResult() {
 // ── Side panel ──
 // sidePanel.open must be called directly in the click, so the window is resolved up front.
 
-// Opening the panel from here also ends "minimised": the icon opens the
-// panel again, which is the default.
 function openPanel(view) {
   if (currentWindowId === null) return;
   chrome.sidePanel.open({ windowId: currentWindowId });
   // The panel picks this up on load, or live when it is already open.
-  Promise.all([
-    view ? chrome.storage.session.set({ svOpenView: view }) : null,
-    chrome.runtime.sendMessage({ action: 'SV_WEERGAVE', weergave: 'paneel' }).catch(function () {}),
-  ]).finally(function () { window.close(); });
+  Promise.resolve(view ? chrome.storage.session.set({ svOpenView: view }) : null)
+    .finally(function () { window.close(); });
 }
 
 // ── Event listeners ──
@@ -240,6 +236,7 @@ $('btn-push-bricks').addEventListener('click', async function () {
 $('btn-dictate').addEventListener('click', function () { openPanel('dictate'); });
 $('btn-letters').addEventListener('click', function () { openPanel('letters'); });
 $('btn-dossier').addEventListener('click', function () { openPanel('dossier'); });
+$('btn-post').addEventListener('click', function () { openPanel('post'); });
 $('btn-expand').addEventListener('click', function () { openPanel(null); });
 
 // Dictate straight into the clicked field, without the side panel.
