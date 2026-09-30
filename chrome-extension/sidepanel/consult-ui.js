@@ -9,7 +9,7 @@
  * Tijdens de opname blijft alleen een klein balkje met de tijd staan; na
  * stop komt het verslag in het gewone SOEP-blok, met alle knoppen erbij.
  *
- * Gebruikt uit sidepanel.js: renderSoep(), setStatus(), state.
+ * Gebruikt uit sidepanel.js: renderSoep(), setStatus(), state, koppelWaarom().
  */
 window.SVConsultUI = (function () {
   'use strict';
@@ -54,17 +54,19 @@ window.SVConsultUI = (function () {
     $('cv-klacht').textContent = s.klacht ? ' · ' + s.klacht : '';
     var chips = $('cv-chips');
     chips.textContent = '';
+    $('cv-waarom').textContent = '';
     vragen.forEach(function (v) {
       var sleutel = String(v.tekst || '').toLowerCase();
       var b = document.createElement('button');
       b.type = 'button';
       b.className = 'cv-chip' + (v.alarm ? ' alarm' : '') + (gevraagd[sleutel] ? ' gedaan' : '');
       b.textContent = v.tekst;
-      b.title = (v.alarm ? 'Alarmsymptoom. ' : '') + 'Aantikken als gevraagd';
+      b.setAttribute('aria-label', v.tekst + (v.alarm ? ' (alarmsymptoom)' : '') + ', aantikken als gevraagd');
       b.addEventListener('click', function () {
         gevraagd[sleutel] = !gevraagd[sleutel];
         b.classList.toggle('gedaan', gevraagd[sleutel]);
       });
+      koppelWaarom(b, v, $('cv-waarom'));   // sidepanel.js
       chips.appendChild(b);
     });
   }

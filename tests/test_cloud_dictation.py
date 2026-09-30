@@ -493,3 +493,52 @@ def test_split_rules_name_the_signals_and_an_example():
         assert '"klacht 1 / \\\n' not in prompt           # backslash-continuations are joined
         assert "klacht 2" in prompt and "orgaansystemen" in prompt
         assert "Nooit beide in één S of E" in prompt
+
+
+# === Vraagsuggesties tijdens dicteren ===
+
+class _NepMeedenker:
+    gemaakt = []
+
+    def __init__(self, zend, gebruiker="", bron="consult", **kw):
+        self.bron, self.teksten, self.gestopt = bron, [], False
+        _NepMeedenker.gemaakt.append(self)
+
+    def misschien_tekst(self, tekst):
+        self.teksten.append(tekst)
+
+    def stop(self):
+        self.gestopt = True
+
+
+def _dicteer(auth_extra, monkeypatch, cds):
+    from services.cloud_api import vraagsuggesties
+    monkeypatch.setenv("CLINICAL_DECISION_SUPPORT", "true" if cds else "false")
+    monkeypatch.setattr(vraagsuggesties, "Meedenker", _NepMeedenker)
+    _NepMeedenker.gemaakt = []
+    upstream = FakeUpstream([
+        _results("patiënt heeft", is_final=False),
+        _results("patiënt heeft sinds drie dagen hoofdpijn"),
+        _results("vooral 's ochtends"),
+    ])
+    client = TestClient(_relay_app(upstream, []))
+    with client.websocket_connect("/ws") as ws:
+        ws.send_text(json.dumps({"type": "auth", "api_key": "geheim", **auth_extra}))
+        assert ws.receive_json() == {"type": "ready"}
+        ws.send_text(json.dumps({"type": "stop"}))
+        _receive_until_closed(ws)
+    return _NepMeedenker.gemaakt
+
+
+def test_dicteren_volgt_de_tekst_voor_vraagsuggesties(monkeypatch):
+    gemaakt = _dicteer({"vraagsuggesties": True}, monkeypatch, cds=True)
+    assert len(gemaakt) == 1 and gemaakt[0].bron == "dictaat"
+    # alleen definitieve tekst, steeds het hele dictaat tot nu toe
+    assert gemaakt[0].teksten == ["patiënt heeft sinds drie dagen hoofdpijn",
+                                  "patiënt heeft sinds drie dagen hoofdpijn vooral 's ochtends"]
+    assert gemaakt[0].gestopt
+
+
+def test_dicteren_zonder_keuze_of_zonder_server_geen_suggesties(monkeypatch):
+    assert _dicteer({}, monkeypatch, cds=True) == []
+    assert _dicteer({"vraagsuggesties": True}, monkeypatch, cds=False) == []

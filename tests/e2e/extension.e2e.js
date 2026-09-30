@@ -107,7 +107,7 @@ function check(name, cond, extra) {
   await sw.evaluate(async () => {
     await chrome.storage.sync.set({ apiUrl: 'http://localhost:8002' });
     await chrome.storage.local.set({ apiKey: 'test' });
-    await chrome.storage.sync.set({ meedenken: true });
+    await chrome.storage.sync.set({ meedenken: true, vraagsuggesties: true });
   });
   const page = await ctx.newPage();
   await page.goto('https://test.bfrcloud.com/patient');
@@ -182,6 +182,36 @@ function check(name, cond, extra) {
   check('patiëntinstructie vraagt E+P en taal', piReq && piReq.body.p.includes('Amoxicilline') && piReq.body.taal === 'ar', piReq && piReq.body);
   check('B1 en vertaling getoond', (await panel.inputValue('#pi-nl')).includes('Uw medicijn') && (await panel.isVisible('#pi-tr')));
   check('mailknop verborgen zolang de praktijk hem niet aanzet', await panel.isHidden('#pi-mail'));
+
+  console.log('Vraagsuggesties bij dicteren');
+  const dauth = await panel.evaluate(async () => {
+    // A stand-in socket: records what the panel sends at the start.
+    window.WebSocket = class {
+      constructor(url) { this.url = url; this.sent = []; this.readyState = 0; window.__ws = this;
+        setTimeout(() => { this.readyState = 1; this.onopen && this.onopen(); }, 0); }
+      send(d) { this.sent.push(d); }
+      close() { this.readyState = 3; }
+    };
+    startDictation();
+    for (let i = 0; i < 50 && !(window.__ws && window.__ws.sent.length); i++) await new Promise((r) => setTimeout(r, 50));
+    const auth = window.__ws && window.__ws.sent[0] ? JSON.parse(window.__ws.sent[0]) : null;
+    teardown(); setState('idle');
+    return auth;
+  });
+  check('dicteren vraagt om vraagsuggesties als die aanstaan', dauth && dauth.type === 'auth' && dauth.vraagsuggesties === true, dauth);
+  await panel.evaluate(() => handleServerEvent({ type: 'suggesties', klacht: 'hoofdpijn', vragen: [{ tekst: 'misselijk?', alarm: false, waarom: 'past bij migraine' }, { tekst: 'nekstijfheid?', alarm: true, waarom: 'uitsluiten meningitis' }] }));
+  check('chips onder de microfoon, alarm in rood', await panel.isVisible('#dict-vragen')
+    && (await panel.textContent('#dict-klacht')).includes('hoofdpijn')
+    && (await panel.$$eval('#dict-chips .cv-chip.alarm', (b) => b.map((x) => x.textContent))).join() === 'nekstijfheid?');
+  await panel.hover('#dict-chips .cv-chip:nth-child(2)');
+  check('muis over een vraag toont waarom die ertoe doet', (await panel.textContent('#dict-waarom')) === 'Waarom: uitsluiten meningitis', await panel.textContent('#dict-waarom'));
+  await panel.hover('#dict-klacht');
+  check('muis weg: de uitleg verdwijnt', (await panel.textContent('#dict-waarom')) === '');
+  await panel.click('#dict-chips .cv-chip:first-child');
+  await panel.evaluate(() => handleServerEvent({ type: 'suggesties', klacht: 'hoofdpijn', vragen: [{ tekst: 'misselijk?', alarm: false }, { tekst: 'koorts?', alarm: false }] }));
+  check('aangetikte vraag blijft doorgestreept in de volgende ronde', (await panel.getAttribute('#dict-chips .cv-chip:first-child', 'class')).includes('gedaan'));
+  await panel.evaluate(() => { startDictation(); teardown(); setState('idle'); });
+  check('nieuw dictaat begint zonder oude suggesties', await panel.isHidden('#dict-vragen'));
 
   console.log('Brieven');
   await panel.click('.view-tab[data-view="letters"]');

@@ -78,6 +78,7 @@ function render(c) {
       var chip = document.createElement('span');
       chip.className = 'rec-vraag' + (v.alarm ? ' alarm' : '');
       chip.textContent = v.tekst;
+      if (v.waarom) chip.title = 'Waarom: ' + v.waarom;
       box.appendChild(chip);
     });
     box.classList.toggle('hidden', vragen.length === 0);

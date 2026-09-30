@@ -282,3 +282,6 @@ body.consult-running .consult { border-color: var(--rec); }
 .po-brief dd { margin: 0; }
 .po-acties { margin: 0; padding-left: 16px; }
 .view-tab { font-size: 12px; padding: 6px 4px; }
+.dict-vragen { border-top: 0; padding-top: 0; }
+.cv-waarom { margin: 0; min-height: 1.3em; font-size: 11px; color: var(--muted); font-style: italic; }
+.cv-waarom:empty::before { content: "Ga met de muis over een vraag om te zien waarom die ertoe doet."; opacity: .7; }

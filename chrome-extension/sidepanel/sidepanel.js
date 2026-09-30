@@ -220,11 +220,62 @@ function handleServerEvent(event) {
       els.interim.textContent = event.text;
       if (els.live.checked) queueLiveInterim(event.text);
     }
+  } else if (event.type === 'suggesties') {
+    toonDicteerVragen(event);
   } else if (event.type === 'error') {
     setStatus(event.message, true);
   } else if (event.type === 'closed') {
     teardown();
   }
+}
+
+// Question suggestions while dictating (clinical support, "Vraagsuggesties"
+// in Instellingen): short chips under the microphone. Tapping one marks it as
+// asked; it stays crossed out when the next round names it again.
+var dicteerGevraagd = {};
+
+// Hovering (or keyboard focus on) a chip shows why the question matters on the
+// line under the chips; a click still means "asked".
+function koppelWaarom(chip, vraag, regel) {
+  if (!vraag.waarom) return;
+  chip.setAttribute('aria-description', vraag.waarom);
+  var toon = function () { regel.textContent = 'Waarom: ' + vraag.waarom; };
+  var weg = function () { if (regel.textContent === 'Waarom: ' + vraag.waarom) regel.textContent = ''; };
+  chip.addEventListener('mouseenter', toon);
+  chip.addEventListener('focus', toon);
+  chip.addEventListener('mouseleave', weg);
+  chip.addEventListener('blur', weg);
+}
+
+function toonDicteerVragen(s) {
+  var blok = document.getElementById('dict-vragen');
+  var vragen = s && Array.isArray(s.vragen) ? s.vragen : [];
+  blok.classList.toggle('hidden', vragen.length === 0);
+  if (!vragen.length) return;
+  document.getElementById('dict-klacht').textContent = s.klacht ? ' · ' + s.klacht : '';
+  var chips = document.getElementById('dict-chips');
+  chips.textContent = '';
+  document.getElementById('dict-waarom').textContent = '';
+  vragen.forEach(function (v) {
+    var sleutel = String(v.tekst || '').toLowerCase();
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'cv-chip' + (v.alarm ? ' alarm' : '') + (dicteerGevraagd[sleutel] ? ' gedaan' : '');
+    b.textContent = v.tekst;
+    b.setAttribute('aria-label', v.tekst + (v.alarm ? ' (alarmsymptoom)' : '') + ', aantikken als gevraagd');
+    b.addEventListener('click', function () {
+      dicteerGevraagd[sleutel] = !dicteerGevraagd[sleutel];
+      b.classList.toggle('gedaan', dicteerGevraagd[sleutel]);
+    });
+    koppelWaarom(b, v, document.getElementById('dict-waarom'));
+    chips.appendChild(b);
+  });
+}
+function wisDicteerVragen() {
+  dicteerGevraagd = {};
+  document.getElementById('dict-chips').textContent = '';
+  document.getElementById('dict-waarom').textContent = '';
+  document.getElementById('dict-vragen').classList.add('hidden');
 }
 
 function sendOrBuffer(data) {
@@ -260,6 +311,7 @@ function startRecorder() {
 
 async function startDictation() {
   if (state !== 'idle') return;
+  wisDicteerVragen();
   setState('connecting');
   setStatus('');
   var config = await getConfig();
@@ -272,7 +324,9 @@ async function startDictation() {
 
   ws.onopen = async function () {
     var praktijk = await SVPraktijk.nummers();
-    ws.send(JSON.stringify({ type: 'auth', api_key: config.apiKey, praktijk: praktijk, keyterms: SVTextRules.keyterms(rules) }));
+    var keuze = await SVInstellingen.lees(['vraagsuggesties']).catch(function () { return {}; });
+    ws.send(JSON.stringify({ type: 'auth', api_key: config.apiKey, praktijk: praktijk, keyterms: SVTextRules.keyterms(rules),
+                             vraagsuggesties: keuze.vraagsuggesties === true }));
   };
   ws.onmessage = function (msg) {
     try { handleServerEvent(JSON.parse(msg.data)); } catch (e) { /* ignore malformed */ }
