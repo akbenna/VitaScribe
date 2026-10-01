@@ -17,6 +17,9 @@
   }
 
   var $ = function (id) { return document.getElementById(id); };
+  // Per section: enough for a long journal in view. Bricks lists the newest
+  // first, so a cut keeps the recent part; the section shows that it was cut.
+  var MAX_SECTIE = 20000;
   var DEFAULT_ON = ['journaal', 'medicatie', 'voorgeschied', 'lab', 'problemen', 'allergie', 'dossier', 'metingen'];
 
   var lt = {
@@ -89,9 +92,12 @@
   function setDossier(secties, naamRauw, bron, geboren) {
     lt.geboren = SVPrivacy.datum(geboren);
     lt.secties = {};
+    lt.ingekort = {};
     Object.keys(secties || {}).forEach(function (k) {
       var t = String(secties[k] || '').trim();
-      if (t.length >= 5) lt.secties[k] = t.slice(0, 8000);
+      if (t.length < 5) return;
+      lt.secties[k] = t.slice(0, MAX_SECTIE);
+      lt.ingekort[k] = t.length > MAX_SECTIE;
     });
     lt.naamRauw = naamRauw || '';
     lt.initialen = SVPrivacy.initialen(lt.naamRauw);
@@ -101,6 +107,26 @@
       lt.aan[k] = few || DEFAULT_ON.some(function (kw) { return k.toLowerCase().indexOf(kw) !== -1; });
     });
     renderDossier(bron);
+  }
+
+  // A PDF or screenshot (a specialist letter, an older journal page) adds to
+  // what was already fetched instead of replacing it: the patient stays the
+  // same, so the name filter from Bricks keeps working. Returns true if added.
+  function voegToe(secties, bron) {
+    if (!Object.keys(lt.secties).length) { setDossier(secties, '', bron); return false; }
+    var nieuw = {};
+    Object.keys(lt.secties).forEach(function (k) { nieuw[k] = lt.secties[k]; });
+    Object.keys(secties || {}).forEach(function (k) {
+      var naam = (k === 'Dossier' ? bron : k + ' (' + bron + ')');
+      nieuw[naam] = secties[k];
+    });
+    var aan = lt.aan, geboren = lt.geboren;
+    setDossier(nieuw, lt.naamRauw, 'Bricks + ' + bron);
+    lt.geboren = geboren;    // setDossier takes the text form; keep the date
+    Object.keys(aan).forEach(function (k) { if (k in lt.aan) lt.aan[k] = aan[k]; });
+    Object.keys(lt.aan).forEach(function (k) { if (!(k in aan)) lt.aan[k] = true; });
+    renderDossier('Bricks + ' + bron);
+    return true;
   }
 
   function renderDossier(bron) {
@@ -130,7 +156,8 @@
       var title = document.createElement('span'); title.textContent = k;
       var meta = document.createElement('span'); meta.className = 'meta';
       var n = lt.secties[k].length;
-      meta.textContent = n < 1000 ? n + ' tekens' : (Math.round(n / 100) / 10) + 'k tekens';
+      meta.textContent = (n < 1000 ? n + ' tekens' : (Math.round(n / 100) / 10) + 'k tekens')
+        + (lt.ingekort && lt.ingekort[k] ? ' · ingekort: alleen het bovenste deel' : '');
       row.append(cb, title, meta);
       box.appendChild(row);
     });
@@ -242,7 +269,7 @@
     if (!Object.keys(out.secties).length) {
       var main = document.querySelector('main,[role="main"]');
       var rest = main && zichtbaar(main) ? text(main) : pagina;
-      if (rest.length > 40) out.secties['Dossier (pagina)'] = rest.slice(0, maxPagina || 15000);
+      if (rest.length > 40) out.secties['Dossier (pagina)'] = rest.slice(0, maxPagina || 40000);
     }
     return out;
   }
@@ -253,7 +280,7 @@
     var tabs = await chrome.tabs.query({ active: true, currentWindow: true });
     var tab = tabs[0];
     if (!tab || !/^https?:/.test(tab.url || '')) throw new Error('Open eerst de patiënt in Bricks in dit venster.');
-    var results = await chrome.scripting.executeScript({ target: { tabId: tab.id, allFrames: true }, func: scrapeFrame, args: [maxPagina || 15000, !!breed] })
+    var results = await chrome.scripting.executeScript({ target: { tabId: tab.id, allFrames: true }, func: scrapeFrame, args: [maxPagina || 40000, !!breed] })
       .catch(function (e) { throw new Error('Geen toegang tot deze pagina (' + e.message + ').'); });
     var merged = {}, naam = '', geboren = '';
     (results || []).forEach(function (r) {
@@ -345,8 +372,8 @@
     var btn = this; btn.disabled = true; status('Schermafdruk lezen…');
     try {
       var tekst = await extractImage('dossier', lt.shot);
-      setDossier(parseSections(tekst), '', 'schermafdruk');
-      status('Schermafdruk gelezen. Controleer de onderdelen.');
+      var erbij = voegToe(parseSections(tekst), 'schermafdruk');
+      status('Schermafdruk gelezen' + (erbij ? ' en toegevoegd aan het opgehaalde dossier' : '') + '. Controleer de onderdelen.');
     } catch (e) {
       status(e.message, true);
     } finally { btn.disabled = false; }
@@ -391,8 +418,8 @@
     try {
       var tekst = await readPdf(file);
       if (tekst.replace(/\s/g, '').length < 30) throw new Error('Deze PDF bevat geen leesbare tekst (gescand?). Gebruik een schermafdruk.');
-      setDossier(parseSections(tekst), '', 'PDF ' + file.name);
-      status('PDF gelezen (' + Math.round(tekst.length / 1000) + 'k tekens).');
+      var erbij = voegToe(parseSections(tekst), 'PDF ' + file.name);
+      status('PDF gelezen (' + Math.round(tekst.length / 1000) + 'k tekens)' + (erbij ? ', toegevoegd aan het opgehaalde dossier.' : '.'));
     } catch (e) { status('PDF: ' + e.message, true); }
   });
 

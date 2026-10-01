@@ -50,6 +50,7 @@
     <li><a href="#brieven">Brieven</a></li>
     <li><a href="#dossiervraag">Dossiervraag</a></li>
     <li><a href="#post">Post &amp; lab</a></li>
+    <li><a href="#bronnen">Welke informatie VitaScribe meeneemt</a></li>
     <li><a href="#instellingen">Instellingen</a></li>
     <li><a href="#privacy">Privacy in het kort</a></li>
     <li><a href="#grenzen">Wat VitaScribe niet doet</a></li>
@@ -126,7 +127,7 @@
 
 <h2 id="brieven">6. Brieven</h2>
 <ol>
-  <li><strong>Dossier ophalen</strong>: open de patiënt in Bricks met de onderdelen die mee moeten (journaal, medicatie, voorgeschiedenis, lab) en klik <span class="knop">Ophalen uit Bricks</span>. Het kan ook uit een schermafdruk of een PDF-export.</li>
+  <li><strong>Dossier ophalen</strong>: open de patiënt in Bricks met de onderdelen die mee moeten (journaal, medicatie, voorgeschiedenis, lab) en klik <span class="knop">Ophalen uit Bricks</span>. VitaScribe neemt alleen mee wat op dat moment in beeld staat; hoe ver terug, bepaal jij met wat je in Bricks opent (zie <a href="#bronnen">hoofdstuk 9</a>). Een specialistenbrief of oudere journaalpagina voeg je daarna toe via het tabblad <em>PDF</em> of <em>Schermafdruk</em>: die komt bij het opgehaalde dossier, het vervangt niets.</li>
   <li>Kies per onderdeel wat meegaat. Onder <em>Toon precies wat er verstuurd wordt</em> zie je de tekst zonder naam, BSN, geboortedatum, adres en contactgegevens. Consultdatums gaan alleen mee als je dat aanvinkt.</li>
   <li><strong>Informatiebrief</strong>: kies de aanvrager, plak of laad de vraag, en bevestig dat er een gerichte vraag en schriftelijke toestemming van de patiënt is. De brief geeft volgens de KNMG-richtlijn alleen feiten, geen oordeel over beperkingen, arbeidsgeschiktheid of causaliteit.</li>
   <li><strong>Verwijzing</strong>: kies het specialisme, de urgentie en schrijf of neem de verwijsreden over uit je dictaat.</li>
@@ -157,7 +158,25 @@
 <p>Beide teksten kun je in het paneel eerst aanpassen. Tekst die al in het Bricks-veld staat, blijft staan; de nieuwe tekst komt eronder. Een bericht dat al beoordeeld is, komt bij terugklikken meteen uit het geheugen. Liever niet automatisch? Zet <em>Automatisch bij elk nieuw bericht</em> uit en gebruik <span class="knop">Beoordeel</span>.</p>
 <div class="let-op">Eerdere uitslagen neemt VitaScribe alleen mee als ze in het bericht of in de episodelijst staan. Een trend over maanden kan het dus meestal niet beoordelen; bij twijfel staat er "via aanvrager".</div>
 
-<h2 id="instellingen">9. Instellingen</h2>
+<h2 id="bronnen">9. Welke informatie VitaScribe meeneemt</h2>
+<p>VitaScribe heeft <strong>geen koppeling met de database van Bricks</strong>. Het leest alleen de tekst die op het moment van de klik <strong>in beeld staat</strong> in het Bricks-tabblad. Er is dus geen vaste termijn van "x jaar terug": VitaScribe ziet precies zo ver terug als jij in Bricks openzet. Wat verborgen is (een dichtgeklapt tabblad, een eerder geopende patiënt) of nog niet geladen is, gaat niet mee. Zo kan een antwoord nooit over een andere patiënt gaan, maar het betekent ook: <strong>wat je niet opent, kent VitaScribe niet</strong>.</p>
+<table>
+  <tr><th>Functie</th><th>Wat wordt gelezen</th><th>Hoe ver terug</th><th>Correspondentie</th><th>Wat niet</th></tr>
+  <tr><td>Consult opnemen, dicteren, SOEP</td><td>Alleen het gesprek of je dictaat. Het dossier wordt niet gelezen.</td><td>n.v.t.</td><td>Nee</td><td>Geen medicatie, voorgeschiedenis of eerdere consulten: noem in je dictaat wat ertoe doet.</td></tr>
+  <tr><td>Meedenken onder de SOEP</td><td>Alleen de SOEP die op het scherm staat.</td><td>n.v.t.</td><td>Nee</td><td>Het dossier: het advies kent bijvoorbeeld de nierfunctie niet, tenzij die in je SOEP staat.</td></tr>
+  <tr><td>Brieven</td><td>Onderdelen in beeld met een herkenbare kop: Journaal, Medicatie, Voorgeschiedenis, Lab, Metingen, Allergieën, Correspondentie. Herkent het geen koppen, dan de hele zichtbare pagina.</td><td>Zo ver als het journaal in beeld staat. Per onderdeel hooguit 20.000 tekens (enkele jaren journaal); is het meer, dan staat er <em>ingekort</em> en gaat het bovenste deel mee.</td><td>Alleen de tekst die zichtbaar is, zoals de lijst met brieven of een geopende brief. Een PDF-bijlage niet: voeg die toe via het tabblad <em>PDF</em>.</td><td>Onderdelen die je uitvinkt. Naam, BSN, geboortedatum, adres en contactgegevens.</td></tr>
+  <tr><td>Dossiervraag</td><td>Alles wat in beeld staat, als één tekst: journaal, episodes, medicatie, correspondentie, notities.</td><td>Zo ver als in beeld staat, tot 150.000 tekens (een dik dossier). Bij meer staat er <em>ingekort</em>.</td><td>Ja, als de tekst van de brief zichtbaar is. Een PDF in een aparte viewer niet.</td><td>Wat niet geopend of geladen is; dat staat dan in <em>Let op</em>.</td></tr>
+  <tr><td>Post &amp; lab</td><td>Het geopende bericht (vanaf <em>Afzender</em>), de leeftijd en de ICPC-episodes in beeld.</td><td>Alleen dit bericht. Eerdere uitslagen alleen als ze in het bericht of de episodelijst staan.</td><td>Ja: het bericht zelf.</td><td>Het journaal en eerdere labwaarden; daarom soms <em>via aanvrager</em>.</td></tr>
+</table>
+<h3>Zo stuur je hoe ver VitaScribe terugkijkt</h3>
+<ul>
+  <li><strong>Journaal</strong>: zet in Bricks de periode of het filter op wat je nodig hebt (bijvoorbeeld de hele periode of alleen de episode) en laat het volledig laden voordat je ophaalt of een vraag stelt.</li>
+  <li><strong>Op klacht</strong>: VitaScribe kiest niet zelf een periode op basis van de klacht, omdat je die bij het ophalen vaak nog niet weet. Open daarom de episode of het journaal ruim; het taalmodel selecteert daarna wat relevant is voor de vraag of de verwijsreden.</li>
+  <li><strong>Specialistenbrieven</strong>: open de brief zodat de tekst in beeld staat, of voeg de PDF toe bij Brieven. Een bijlage die alleen als bestand in de lijst staat, wordt niet gelezen.</li>
+  <li><strong>Controle</strong>: bij Brieven zie je onder <em>Toon precies wat er verstuurd wordt</em> letterlijk wat meegaat; bij Dossiervraag staat boven het antwoord welke onderdelen zijn ingelezen en hoeveel tekst.</li>
+</ul>
+
+<h2 id="instellingen">10. Instellingen</h2>
 <table>
   <tr><th>Instelling</th><th>Wat het doet</th></tr>
   <tr><td>Weergave</td><td>Wat een klik op het icoon opent: het zijpaneel (aanbevolen) of de compacte popup.</td></tr>
@@ -169,7 +188,7 @@
   <tr><td>Informatie delen met de patiënt</td><td>Of de mailknop bij de patiëntinstructie zichtbaar is (standaard uit).</td></tr>
 </table>
 
-<h2 id="privacy">10. Privacy in het kort</h2>
+<h2 id="privacy">11. Privacy in het kort</h2>
 <ul>
   <li>Naam, BSN, geboortedatum, adres, telefoon en e-mail worden in de browser uit dossiertekst, brieven en berichten gehaald, en op de server nog eens als vangnet. Bij Post gaat van de patiënt alleen de leeftijd mee.</li>
   <li>Spraak gaat naar Deepgram (EU). De tekstverwerking gebeurt door Claude (Anthropic). Geen van beide gebruikt de gegevens voor training.</li>
@@ -178,7 +197,7 @@
 </ul>
 <p>Alles in detail: <a href="../privacy/avg.html">VitaScribe en de AVG</a>.</p>
 
-<h2 id="grenzen">11. Wat VitaScribe niet doet</h2>
+<h2 id="grenzen">12. Wat VitaScribe niet doet</h2>
 <p>VitaScribe schrijft concepten en denkt mee, maar <strong>jij bent de arts</strong>. Controleer elk verslag, elke brief en elke samenvatting voordat je opslaat of verstuurt.</p>
 <ul>
   <li>VitaScribe verzint niets: staat iets niet in het gesprek, dictaat of dossier, dan staat het er niet in, of staat er <em>[?]</em>.</li>
@@ -187,7 +206,7 @@
   <li>VitaScribe slaat zelf niets op in Bricks: tekst komt pas in een veld als jij op invoegen of "Zet in …" klikt, en opslaan doe je zelf in Bricks.</li>
 </ul>
 
-<h2 id="problemen">12. Als iets niet werkt</h2>
+<h2 id="problemen">13. Als iets niet werkt</h2>
 <table>
   <tr><th>Wat je ziet</th><th>Wat je doet</th></tr>
   <tr><td>"Geen API-sleutel" of fout 401/403</td><td>Vul de sleutel in bij Instellingen of vraag de beheerder om een nieuwe.</td></tr>
