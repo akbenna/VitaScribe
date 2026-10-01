@@ -48,6 +48,14 @@ class LLMConfig:
     anthropic_soep_model: str = "claude-sonnet-5"
     # Thinking depth on Sonnet 5+: low | medium | high (latency vs. reasoning).
     anthropic_effort: str = "medium"
+    # Claude in Amazon Bedrock (AWS-run, EU region): the same models, but
+    # processed in the EU and without Anthropic in the chain. Credentials come
+    # from the standard AWS variables (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY).
+    # Model IDs carry the EU inference profile; check them in the Bedrock
+    # console of the region, they differ per model version.
+    bedrock_region: str = "eu-central-1"
+    bedrock_model: str = "eu.anthropic.claude-haiku-4-5"
+    bedrock_soep_model: str = "eu.anthropic.claude-sonnet-5"
     gemini_api_key: str = ""
     gemini_model: str = "gemini-2.0-flash"
     # OpenAI only runs on a practice's own key, and only for letters.
@@ -116,6 +124,9 @@ def get_config() -> AppConfig:
             anthropic_model=os.getenv("ANTHROPIC_MODEL", "claude-haiku-4-5-20251001"),
             anthropic_soep_model=os.getenv("ANTHROPIC_SOEP_MODEL", "claude-sonnet-5"),
             anthropic_effort=os.getenv("ANTHROPIC_EFFORT", "medium"),
+            bedrock_region=os.getenv("BEDROCK_REGION", "eu-central-1"),
+            bedrock_model=os.getenv("BEDROCK_MODEL", "eu.anthropic.claude-haiku-4-5"),
+            bedrock_soep_model=os.getenv("BEDROCK_SOEP_MODEL", "eu.anthropic.claude-sonnet-5"),
             gemini_api_key=os.getenv("GEMINI_API_KEY", ""),
             gemini_model=os.getenv("GEMINI_MODEL", "gemini-2.0-flash"),
             openai_model=os.getenv("OPENAI_LETTERS_MODEL", "gpt-4.1-mini"),

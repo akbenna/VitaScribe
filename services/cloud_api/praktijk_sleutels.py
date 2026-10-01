@@ -65,9 +65,12 @@ async def _eigen(praktijk_id: int, dienst: str) -> Optional[Tuple[str, str]]:
 async def kies_brieven(ident: licentie.Identiteit) -> Tuple[str, Optional[str]]:
     """(aanbieder, sleutel) voor een brief. Sleutel None = die van de server.
     Heeft de praktijk gekozen voor brieven in de EU, dan gaat die keuze voor:
-    ook een eigen sleutel bij een aanbieder in de VS wordt dan niet gebruikt."""
+    ook een eigen sleutel bij een aanbieder in de VS wordt dan niet gebruikt.
+    Draait de server de patiëntgegevens al in de EU (Bedrock), dan gaan de
+    brieven daar ook heen; anders naar Mistral."""
     if ident.brieven_in_eu:
-        return "mistral", None
+        eu = data_policy.phi_llm_provider()
+        return (eu if eu in data_policy.EU_PROVIDERS else "mistral"), None
     if ident.bron == "register" and ident.praktijk_id:
         eigen = await _eigen(ident.praktijk_id, "brieven")
         if eigen:

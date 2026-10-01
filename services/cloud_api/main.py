@@ -175,6 +175,16 @@ async def extension_package():
         return Response(content=f.read(), media_type="application/x-chrome-extension")
 
 
+def _bedrock_status(cfg) -> str:
+    """Route A (Claude in Bedrock, EU) ready to use? Checks the settings only:
+    the Bedrock endpoint has no model list to call for free."""
+    if not (os.getenv("AWS_ACCESS_KEY_ID") and os.getenv("AWS_SECRET_ACCESS_KEY")):
+        return "geen sleutel"
+    probleem = llm_service.bedrock_eu_problem(
+        cfg.llm.bedrock_region, cfg.llm.bedrock_model, cfg.llm.bedrock_soep_model)
+    return f"niet EU: {probleem}" if probleem else "ok"
+
+
 @app.get("/health/deep")
 async def health_deep(token: str = ""):
     """Checks the services dictation and letters depend on, without sending
@@ -221,6 +231,7 @@ async def health_deep(token: str = ""):
                                            "anthropic-version": "2023-06-01"}))
     else:
         checks["anthropic"] = "geen sleutel"
+    checks["bedrock"] = _bedrock_status(cfg)
 
     async def check_register():
         await register.fetchrow("SELECT 1")
@@ -444,6 +455,7 @@ async def list_providers(_api_key: str = Depends(verify_api_key)):
             "available": {
                 "mistral": bool(cfg.llm.mistral_api_key),
                 "anthropic": bool(cfg.llm.anthropic_api_key),
+                "bedrock": _bedrock_status(cfg) == "ok",
                 "gemini": bool(cfg.llm.gemini_api_key),
             },
         },

@@ -8,6 +8,8 @@ python-multipart>=0.0.6
 
 # HTTP client for provider APIs
 httpx>=0.24.0
+# Claude in Amazon Bedrock, EU (route A): SigV4 signing via the Anthropic SDK
+anthropic[bedrock]>=1.11,<2
 
 # Logging
 structlog>=23.1.0

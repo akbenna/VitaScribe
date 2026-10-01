@@ -2,8 +2,9 @@
 VitaScribe Cloud API - LLM Service
 
 Pluggable LLM with support for:
-  - Mistral Small (EU-based, AVG-friendly, default)
-  - Anthropic Claude Haiku (best quality)
+  - Anthropic Claude (Haiku 4.5, Sonnet 5 for SOEP), direct API (US)
+  - Claude in Amazon Bedrock, EU region (same models, AWS-run, EU processing)
+  - Mistral (EU)
   - Google Gemini Flash (cheapest)
 
 Compatible with Python 3.9+.
@@ -11,6 +12,7 @@ Compatible with Python 3.9+.
 
 from __future__ import annotations
 
+import json
 import re
 from typing import Optional
 
@@ -64,6 +66,11 @@ async def complete(
         )
     elif provider == "anthropic":
         return await _complete_anthropic(
+            system_prompt, user_prompt, json_mode, max_tokens, cache_system, quality,
+            json_schema,
+        )
+    elif provider == "bedrock":
+        return await _complete_bedrock(
             system_prompt, user_prompt, json_mode, max_tokens, cache_system, quality,
             json_schema,
         )
@@ -121,6 +128,11 @@ async def _complete_mistral(
 # sampling parameters with a 400; they take structured outputs instead.
 _MODERN_CLAUDE = re.compile(r"^claude-(sonnet-5|opus-5|opus-4-[6-9]|sonnet-4-[6-9]|fable|mythos)")
 
+
+def _is_modern(model: str) -> bool:
+    """Also for Bedrock IDs such as "eu.anthropic.claude-sonnet-5"."""
+    return bool(_MODERN_CLAUDE.match(model.rsplit("anthropic.", 1)[-1]))
+
 # Thinking counts towards max_tokens on modern models; leave room for it.
 MODERN_MIN_MAX_TOKENS = 8000
 
@@ -159,34 +171,8 @@ async def _complete_anthropic(
         raise ValueError("ANTHROPIC_API_KEY niet geconfigureerd.")
 
     model = config.llm.anthropic_soep_model if quality else config.llm.anthropic_model
-    modern = bool(_MODERN_CLAUDE.match(model))
-
-    # System-prompt als content-block, eventueel met cache_control. Onder de
-    # modeldrempel negeert Anthropic de cache; boven de drempel ~90% korting.
-    system_block = {"type": "text", "text": system_prompt}
-    if cache_system:
-        system_block["cache_control"] = {"type": "ephemeral"}
-
-    messages = [{"role": "user", "content": user_prompt}]
-    body = {
-        "model": model,
-        "max_tokens": max_tokens,
-        "system": [system_block],
-        "messages": messages,
-    }
-    prefilled = False
-    if modern:
-        body["max_tokens"] = max(max_tokens, MODERN_MIN_MAX_TOKENS)
-        output_config = {"effort": config.llm.anthropic_effort}
-        if json_mode and json_schema:
-            output_config["format"] = {"type": "json_schema", "schema": json_schema}
-        body["output_config"] = output_config
-    else:
-        body["temperature"] = config.llm.temperature
-        if json_mode:
-            # Prefill dwingt geldige JSON af; we plakken de "{" later terug.
-            messages.append({"role": "assistant", "content": "{"})
-            prefilled = True
+    body, prefilled = _claude_body(model, system_prompt, user_prompt, json_mode, max_tokens,
+                                   cache_system, json_schema, structured=True)
 
     async with httpx.AsyncClient(timeout=90.0) as client:
         response = await client.post(
@@ -221,6 +207,196 @@ async def _complete_anthropic(
         # De prefill "{" zit niet in de response; voeg terug toe.
         text = "{" + text
     return text
+
+
+def _claude_body(model: str, system_prompt: str, user_prompt: str, json_mode: bool,
+                 max_tokens: int, cache_system: bool, json_schema: Optional[dict],
+                 structured: bool) -> "tuple[dict, bool]":
+    """Messages API request body, shared by the direct API and Bedrock.
+
+    Returns (body, prefilled). structured: the endpoint supports structured
+    outputs; if not (Bedrock), the schema goes into the question as an
+    instruction and the caller trims the answer to the JSON object.
+    """
+    config = get_config()
+    # System-prompt als content-block, eventueel met cache_control. Onder de
+    # modeldrempel negeert Anthropic de cache; boven de drempel ~90% korting.
+    system_block = {"type": "text", "text": system_prompt}
+    if cache_system:
+        system_block["cache_control"] = {"type": "ephemeral"}
+
+    modern = _is_modern(model)
+    if json_mode and json_schema and modern and not structured:
+        user_prompt = (f"{user_prompt}\n\nAntwoord uitsluitend met één JSON-object volgens dit "
+                       f"JSON-schema, zonder toelichting en zonder codeblok:\n"
+                       f"{json.dumps(json_schema, ensure_ascii=False)}")
+    messages = [{"role": "user", "content": user_prompt}]
+    body = {
+        "model": model,
+        "max_tokens": max_tokens,
+        "system": [system_block],
+        "messages": messages,
+    }
+    prefilled = False
+    if modern:
+        body["max_tokens"] = max(max_tokens, MODERN_MIN_MAX_TOKENS)
+        output_config = {"effort": config.llm.anthropic_effort}
+        if json_mode and json_schema and structured:
+            output_config["format"] = {"type": "json_schema", "schema": json_schema}
+        body["output_config"] = output_config
+    else:
+        body["temperature"] = config.llm.temperature
+        if json_mode:
+            # Prefill dwingt geldige JSON af; we plakken de "{" later terug.
+            messages.append({"role": "assistant", "content": "{"})
+            prefilled = True
+    return body, prefilled
+
+
+def _json_object(text: str) -> str:
+    """The JSON object in an answer, without code fences or a preamble."""
+    start, end = text.find("{"), text.rfind("}")
+    return text[start:end + 1] if start != -1 and end > start else text
+
+
+# ── Claude in Amazon Bedrock (EU) ──
+
+# Inference profiles and routing prefixes that can leave the EU.
+_NON_EU_PREFIXES = ("global.", "us.", "us-gov.", "jp.", "apac.", "au.", "ca.")
+
+
+def bedrock_eu_problem(region: str, *models: str) -> Optional[str]:
+    """Why this Bedrock setting is not EU-only, or None when it is.
+
+    Fail closed: patient text only goes to Bedrock when the region is an EU
+    region and no model ID routes outside the EU."""
+    if not (region or "").startswith("eu-"):
+        return f"regio {region or '(leeg)'} ligt niet in de EU"
+    for m in models:
+        if not m:
+            return "geen model-ID ingesteld"
+        if m.lower().startswith(_NON_EU_PREFIXES):
+            return f"model-ID {m} routeert buiten de EU"
+    return None
+
+
+_bedrock_clients: dict = {}
+
+
+def _bedrock_client(region: str):
+    """One client per region (it keeps its connection pool). Credentials
+    come from the standard AWS variables or role."""
+    client = _bedrock_clients.get(region)
+    if client is None:
+        from anthropic import AsyncAnthropicBedrockMantle
+        client = AsyncAnthropicBedrockMantle(aws_region=region, timeout=120.0, max_retries=2)
+        _bedrock_clients[region] = client
+    return client
+
+
+def _bedrock_model(quality: bool) -> "tuple[str, str]":
+    """(region, model) after the EU check; raises when it is not EU-only."""
+    config = get_config()
+    region = config.llm.bedrock_region
+    model = config.llm.bedrock_soep_model if quality else config.llm.bedrock_model
+    probleem = bedrock_eu_problem(region, model)
+    if probleem:
+        logger.error("llm.bedrock.not_eu", reason=probleem)
+        raise ValueError(f"Bedrock is niet op de EU ingesteld ({probleem}); er is niets verstuurd.")
+    return region, model
+
+
+def _bedrock_kwargs(body: dict) -> dict:
+    """SDK arguments; sampling parameters go through extra_body."""
+    kwargs = {k: v for k, v in body.items() if k != "temperature"}
+    if "temperature" in body:
+        kwargs["extra_body"] = {"temperature": body["temperature"]}
+    return kwargs
+
+
+def _bedrock_error(exc: Exception) -> ValueError:
+    """SDK errors as the ValueError the endpoints already turn into a 502."""
+    import anthropic
+    if isinstance(exc, anthropic.APIStatusError):
+        logger.error("llm.bedrock.error", status=exc.status_code, body=str(exc)[:500])
+        return ValueError(f"Taalmodel gaf fout {exc.status_code}.")
+    logger.error("llm.bedrock.error", error=type(exc).__name__)
+    return ValueError("De AI-dienst (Bedrock EU) is niet bereikbaar.")
+
+
+async def _complete_bedrock(
+    system_prompt: str,
+    user_prompt: str,
+    json_mode: bool,
+    max_tokens: int,
+    cache_system: bool = False,
+    quality: bool = False,
+    json_schema: Optional[dict] = None,
+) -> str:
+    """Complete using Claude in Amazon Bedrock, EU region.
+
+    The same Messages API body as the direct API, with two differences:
+    Bedrock has no structured outputs (the schema becomes an instruction and
+    the answer is trimmed to its JSON object), and caching uses the explicit
+    breakpoint on the system prompt, which Bedrock supports.
+    """
+    import anthropic
+    region, model = _bedrock_model(quality)
+    body, prefilled = _claude_body(model, system_prompt, user_prompt, json_mode, max_tokens,
+                                   cache_system, json_schema, structured=False)
+    try:
+        message = await _bedrock_client(region).messages.create(**_bedrock_kwargs(body))
+    except anthropic.APIError as exc:
+        raise _bedrock_error(exc) from exc
+
+    usage = message.usage
+    logger.info(
+        "llm.bedrock.usage",
+        model=model,
+        region=region,
+        input_tokens=usage.input_tokens,
+        output_tokens=usage.output_tokens,
+        cache_read=getattr(usage, "cache_read_input_tokens", None),
+        cache_write=getattr(usage, "cache_creation_input_tokens", None),
+    )
+    if message.stop_reason == "refusal":
+        raise ValueError("Het taalmodel weigerde dit verzoek.")
+
+    text = next((b.text for b in message.content if b.type == "text"), "")
+    if prefilled:
+        text = "{" + text
+    elif json_mode:
+        text = _json_object(text)
+    return text
+
+
+async def stream_bedrock(system_prompt: str, user_content, max_tokens: int, quality: bool = False):
+    """Stream Claude's answer from Bedrock (EU) as text deltas."""
+    import anthropic
+    region, model = _bedrock_model(quality)
+    body = {
+        "model": model,
+        "max_tokens": max_tokens,
+        "system": system_prompt,
+        "messages": [{"role": "user", "content": user_content}],
+    }
+    if _is_modern(model):
+        body["max_tokens"] = max(max_tokens, MODERN_MIN_MAX_TOKENS)
+        body["output_config"] = {"effort": get_config().llm.anthropic_effort}
+    else:
+        body["temperature"] = get_config().llm.temperature
+    logger.info("llm.bedrock.stream", model=model, region=region)
+    try:
+        stream = await _bedrock_client(region).messages.create(stream=True, **_bedrock_kwargs(body))
+        async for event in stream:
+            if event.type == "content_block_delta":
+                if event.delta.type == "text_delta" and event.delta.text:
+                    yield event.delta.text
+            elif event.type == "message_delta":
+                if event.delta.stop_reason == "refusal":
+                    raise ValueError("Het taalmodel weigerde dit verzoek.")
+    except anthropic.APIError as exc:
+        raise _bedrock_error(exc) from exc
 
 
 async def _complete_gemini(
@@ -291,7 +467,7 @@ async def stream_anthropic(
         "system": system_prompt,
         "messages": [{"role": "user", "content": user_content}],
     }
-    if _MODERN_CLAUDE.match(model):
+    if _is_modern(model):
         body["max_tokens"] = max(max_tokens, MODERN_MIN_MAX_TOKENS)
         body["output_config"] = {"effort": config.llm.anthropic_effort}
     else:
@@ -442,16 +618,19 @@ def text_part(provider: str, text: str) -> dict:
 
 def stream_llm(provider: str, system_prompt: str, user_content, max_tokens: int, quality: bool = False,
                api_key: Optional[str] = None):
-    """Stream from the chosen provider (mistral | anthropic | openai).
+    """Stream from the chosen provider (mistral | bedrock | anthropic | openai).
 
     api_key is the practice's own key and is only accepted for anthropic and
-    openai (letters). Mistral handles identifiable data and always runs on the
-    server's key: a practice key there would be a way around the data policy.
+    openai (letters). The EU models (Mistral, Bedrock) handle identifiable data
+    and always run on the server's account: a practice key there would be a
+    way around the data policy.
     """
+    if provider in ("mistral", "bedrock") and api_key:
+        raise ValueError("Voor het EU-model geldt alleen de sleutel van de server.")
     if provider == "mistral":
-        if api_key:
-            raise ValueError("Voor het EU-model geldt alleen de sleutel van de server.")
         return stream_mistral(system_prompt, user_content, max_tokens=max_tokens, quality=quality)
+    if provider == "bedrock":
+        return stream_bedrock(system_prompt, user_content, max_tokens=max_tokens, quality=quality)
     if provider == "anthropic":
         return stream_anthropic(system_prompt, user_content, max_tokens=max_tokens, quality=quality,
                                 api_key=api_key)
