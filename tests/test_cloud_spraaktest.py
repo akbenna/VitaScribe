@@ -194,3 +194,27 @@ def test_spraaktest_page_allows_only_cookieless_youtube_frame():
     assert "script-src" not in csp and "default-src 'self'" in csp   # no YouTube script in the page
     # the other admin pages keep the strict policy
     assert "frame-src" not in api.get("/beheer").headers["content-security-policy"]
+
+
+def test_voxtral_english_fillers_become_dutch():
+    assert stt_service.nederlandse_vulwoorden("Yeah. Okay, goed. yep") == "Ja. Oké, goed. ja"
+    assert stt_service.nederlandse_vulwoorden("Okayish blijft") == "Okayish blijft"
+
+
+def test_voxtral_from_memory_and_fillers(monkeypatch):
+    seen = {}
+
+    def handler(request: httpx.Request):
+        seen["body"] = request.content
+        return httpx.Response(200, json={"text": "Yeah. Keelpijn.", "language": "nl", "usage": {"prompt_audio_seconds": 3},
+                                         "segments": [{"text": "Yeah.", "start": 0, "end": 1, "speaker_id": "speaker_0"},
+                                                      {"text": "Keelpijn.", "start": 1, "end": 2, "speaker_id": "speaker_1"}]})
+
+    echte = httpx.AsyncClient
+    monkeypatch.setattr(stt_service.httpx, "AsyncClient",
+                        lambda **kw: echte(transport=httpx.MockTransport(handler), **{k: v for k, v in kw.items() if k != "transport"}))
+    res = asyncio.run(stt_service.transcribe_bytes(b"OPNAME-IN-GEHEUGEN", "voxtral", language="nl"))
+    assert b"OPNAME-IN-GEHEUGEN" in seen["body"] and b'filename="consult.webm"' in seen["body"]
+    assert res.segments[0].text == "Ja." and res.raw_text == "Ja. Keelpijn."
+    with pytest.raises(ValueError):
+        asyncio.run(stt_service.transcribe_bytes(b"x", "deepgram"))

@@ -328,3 +328,98 @@ def test_prompt_vraagt_nederlandse_soep_bij_andere_taal():
     assert talen.prompt_regel(talen.kies("nl")) == ""
     regel = talen.prompt_regel(talen.kies("pl"))
     assert "Pools" in regel and "Nederlands" in regel and "tolk" in regel
+
+
+# === Voxtral-stand: opname in het geheugen, na stop naar Voxtral (EU) ===
+
+def _voxtral_app(monkeypatch, verwerkt, ontvangen, fout=None):
+    from services.cloud_api import stt_service
+    monkeypatch.setenv("ALLOWED_STT_PROVIDERS", "voxtral")
+    monkeypatch.setenv("MISTRAL_API_KEY", "mistral-test")
+    get_config.cache_clear()
+    app = FastAPI()
+
+    async def nooit_deepgram(url, api_key):
+        raise AssertionError("in de Voxtral-stand gaat er niets naar Deepgram")
+
+    async def fake_transcribeer(audio, provider, language=None):
+        ontvangen.append((audio, provider, language))
+        if fout:
+            raise fout
+        return stt_service.TranscriptResult(
+            raw_text="Wat kan ik doen? Keelpijn. Keel rood.", duration_secs=14.0, provider="voxtral",
+            segments=[stt_service.TranscriptSegment("Wat kan ik doen?", 0.0, 1.0, "spreker_speaker_0"),
+                      stt_service.TranscriptSegment("Keelpijn.", 1.2, 2.0, "spreker_speaker_1"),
+                      stt_service.TranscriptSegment("Keel rood.", 12.0, 13.0, "spreker_speaker_0")])
+
+    async def fake_verwerk(transcript, llm_provider=None, taal=None):
+        verwerkt.append(transcript)
+        return FakeResult(transcript)
+
+    @app.websocket("/ws")
+    async def route(ws: WebSocket):
+        await consult_live.volg_consult(ws, connect=nooit_deepgram, verwerk=fake_verwerk,
+                                        transcribeer=fake_transcribeer)
+    return app
+
+
+def test_voxtral_stand_stuurt_hele_opname_na_stop(monkeypatch):
+    verwerkt, ontvangen = [], []
+    client = TestClient(_voxtral_app(monkeypatch, verwerkt, ontvangen))
+    with client.websocket_connect("/ws") as ws:
+        ws.send_text(json.dumps(dict(AUTH, taal="nl")))
+        assert ws.receive_json() == {"type": "ready"}
+        ws.send_bytes(b"\x1aE\xdf\xa3kop")
+        ws.send_bytes(b"stuk-2")
+        ws.send_text(json.dumps({"type": "nadictaat", "vanaf": 10.0}))
+        ws.send_text(json.dumps({"type": "stop"}))
+        events = _tot_gesloten(ws)
+    assert [e["type"] for e in events] == ["verwerken", "result", "closed"]
+    # één aanroep met de aaneengesloten opname, uit het geheugen
+    assert ontvangen == [(b"\x1aE\xdf\xa3kopstuk-2", "voxtral", "nl")]
+    [t] = verwerkt
+    assert [s.speaker for s in t.segments] == ["spreker_speaker_0", "spreker_speaker_1", "nadictaat"]
+    assert events[1]["leeg"] is False
+
+
+def test_voxtral_stand_zonder_stop_verwerkt_niets(monkeypatch):
+    verwerkt, ontvangen = [], []
+    client = TestClient(_voxtral_app(monkeypatch, verwerkt, ontvangen))
+    with client.websocket_connect("/ws") as ws:
+        ws.send_text(json.dumps(AUTH))
+        assert ws.receive_json() == {"type": "ready"}
+        ws.send_bytes(b"stuk")
+    assert ontvangen == [] and verwerkt == []
+
+
+def test_voxtral_stand_fout_vraagt_om_terugval(monkeypatch):
+    client = TestClient(_voxtral_app(monkeypatch, [], [], fout=ValueError("Voxtral gaf fout 503")))
+    with client.websocket_connect("/ws") as ws:
+        ws.send_text(json.dumps(AUTH))
+        assert ws.receive_json() == {"type": "ready"}
+        ws.send_bytes(b"stuk")
+        ws.send_text(json.dumps({"type": "stop"}))
+        events = _tot_gesloten(ws)
+    fout = [e for e in events if e["type"] == "error"][0]
+    assert fout["terugval"] is True
+
+
+def test_voxtral_stand_zonder_sleutel(monkeypatch):
+    client = TestClient(_voxtral_app(monkeypatch, [], []))
+    monkeypatch.delenv("MISTRAL_API_KEY")
+    get_config.cache_clear()
+    with client.websocket_connect("/ws") as ws:
+        ws.send_text(json.dumps(AUTH))
+        e = ws.receive_json()
+    assert e["type"] == "error" and "Voxtral" in e["message"]
+
+
+def test_voxtral_stand_lege_opname(monkeypatch):
+    ontvangen = []
+    client = TestClient(_voxtral_app(monkeypatch, [], ontvangen))
+    with client.websocket_connect("/ws") as ws:
+        ws.send_text(json.dumps(AUTH))
+        assert ws.receive_json() == {"type": "ready"}
+        ws.send_text(json.dumps({"type": "stop"}))
+        events = _tot_gesloten(ws)
+    assert ontvangen == [] and [e for e in events if e["type"] == "result"][0]["leeg"] is True

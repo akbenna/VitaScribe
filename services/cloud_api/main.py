@@ -242,6 +242,8 @@ async def health_deep(token: str = ""):
         await run("register", check_register())
 
     needed = ["deepgram_eu", data_policy.phi_llm_provider(), data_policy.letters_llm_provider()]
+    if data_policy.stt_provider() == "voxtral":
+        needed.append("mistral")
     if register.actief():
         needed.append("register")
     ok = all(checks.get(n) == "ok" for n in needed)
@@ -321,7 +323,8 @@ async def process_consult(
             audio_path=audio_path,
             stt_provider=stt_provider,
             llm_provider=llm_provider,
-            deepgram_key=await kies_spraak(ident),
+            # Only Deepgram needs a key here; with Voxtral the practice's Deepgram setting does not apply.
+            deepgram_key=(await kies_spraak(ident)) if data_policy.stt_provider(stt_provider) == "deepgram" else None,
             nadictaat_vanaf=nadictaat_vanaf,
             taal=taal,
         )
