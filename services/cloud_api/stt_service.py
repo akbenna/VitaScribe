@@ -14,6 +14,7 @@ Compatible with Python 3.9+.
 from __future__ import annotations
 
 import os
+import re
 
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -260,7 +261,6 @@ async def _transcribe_deepgram(audio_path: Path, api_key: Optional[str] = None,
     logger.info(
         "deepgram.transcript",
         text_length=len(transcript_text),
-        text_preview=transcript_text[:200] if transcript_text else "(LEEG)",
         confidence=alternatives[0].get("confidence", 0) if alternatives else 0,
     )
 
@@ -340,7 +340,8 @@ def voxtral_context_bias() -> List[str]:
     termen: List[str] = []
     for bron in (MEDICATION_CORRECTIONS, MEDICAL_TERM_CORRECTIONS):
         for term in sorted(set(bron.values())):
-            if term and term not in termen and len(term) <= 40:
+            # Mistral refuses items with whitespace or commas ("vitamine D").
+            if term and term not in termen and len(term) <= 40 and not re.search(r"[\s,]", term):
                 termen.append(term)
     return termen[:MAX_CONTEXT_BIAS]
 
@@ -368,17 +369,29 @@ async def _transcribe_voxtral(audio_path: Path, language: Optional[str] = None) 
     if taal:
         data["language"] = taal
 
-    async with httpx.AsyncClient(timeout=300.0) as client:
-        with open(audio_path, "rb") as f:
-            response = await client.post(
-                os.getenv("VOXTRAL_URL", VOXTRAL_URL),
-                headers={"Authorization": f"Bearer {api_key}"},
-                files={"file": (audio_path.name, f, "application/octet-stream")},
-                data=data,
-            )
+    async def post(velden: dict) -> httpx.Response:
+        async with httpx.AsyncClient(timeout=300.0) as client:
+            with open(audio_path, "rb") as f:
+                return await client.post(
+                    os.getenv("VOXTRAL_URL", VOXTRAL_URL),
+                    headers={"Authorization": f"Bearer {api_key}"},
+                    files={"file": (audio_path.name, f, "application/octet-stream")},
+                    data=velden,
+                )
+
+    response = await post(data)
+    if response.status_code == 400 and "language" in data and "language" in response.text.lower():
+        # Some options cannot be combined with a fixed language; let Voxtral detect it.
+        logger.warning("voxtral.retry_without_language", body=response.text[:300])
+        data.pop("language")
+        response = await post(data)
     if response.status_code != 200:
         logger.error("voxtral.error", status=response.status_code, body=response.text[:500])
-    response.raise_for_status()
+        try:
+            melding = str(response.json().get("message") or "")[:200]
+        except ValueError:
+            melding = ""
+        raise ValueError(f"Voxtral gaf fout {response.status_code}" + (f": {melding}" if melding else "."))
     body = response.json()
 
     segments = []
