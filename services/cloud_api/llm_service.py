@@ -62,7 +62,7 @@ async def complete(
 
     if provider == "mistral":
         return await _complete_mistral(
-            system_prompt, user_prompt, json_mode, max_tokens, quality
+            system_prompt, user_prompt, json_mode, max_tokens, quality, json_schema
         )
     elif provider == "anthropic":
         return await _complete_anthropic(
@@ -84,14 +84,24 @@ async def complete(
 
 async def _complete_mistral(
     system_prompt: str, user_prompt, json_mode: bool, max_tokens: int,
-    quality: bool = False,
+    quality: bool = False, json_schema: Optional[dict] = None,
 ) -> str:
     """Complete using Mistral API (EU-based). user_prompt may be a list of
-    content parts (text and image_url) for the multimodal model."""
+    content parts (text and image_url) for the multimodal model.
+
+    json_schema: given to the model as an instruction (JSON mode guarantees
+    valid JSON, the instruction gives it the same shape as with Claude)."""
     config = get_config()
     api_key = config.llm.mistral_api_key
     if not api_key:
         raise ValueError("MISTRAL_API_KEY niet geconfigureerd.")
+    if json_mode and json_schema:
+        instructie = ("\n\nAntwoord uitsluitend met één JSON-object volgens dit JSON-schema, "
+                      "zonder toelichting en zonder codeblok:\n" + json.dumps(json_schema, ensure_ascii=False))
+        if isinstance(user_prompt, str):
+            user_prompt = user_prompt + instructie
+        elif isinstance(user_prompt, list):
+            user_prompt = list(user_prompt) + [{"type": "text", "text": instructie.strip()}]
 
     body = {
         "model": config.llm.mistral_quality_model if quality else config.llm.mistral_model,

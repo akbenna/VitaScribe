@@ -326,7 +326,7 @@ async function startDictation() {
     var praktijk = await SVPraktijk.nummers();
     var keuze = await SVInstellingen.lees(['vraagsuggesties']).catch(function () { return {}; });
     ws.send(JSON.stringify({ type: 'auth', api_key: config.apiKey, praktijk: praktijk, keyterms: SVTextRules.keyterms(rules),
-                             vraagsuggesties: keuze.vraagsuggesties === true }));
+                             vraagsuggesties: keuze.vraagsuggesties === true, modus: await SVModus.lees() }));
   };
   ws.onmessage = function (msg) {
     try { handleServerEvent(JSON.parse(msg.data)); } catch (e) { /* ignore malformed */ }

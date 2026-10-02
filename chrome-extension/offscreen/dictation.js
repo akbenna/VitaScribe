@@ -47,7 +47,8 @@ async function start(config, rules) {
 
   ws.onopen = async function () {
     var praktijk = await SVPraktijk.nummers();
-    ws.send(JSON.stringify({ type: 'auth', api_key: config.apiKey, praktijk: praktijk, keyterms: SVTextRules.keyterms(rules) }));
+    ws.send(JSON.stringify({ type: 'auth', api_key: config.apiKey, praktijk: praktijk, keyterms: SVTextRules.keyterms(rules),
+                             modus: config.modus || null }));
   };
   ws.onmessage = function (msg) {
     var event;

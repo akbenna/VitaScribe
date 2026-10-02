@@ -162,10 +162,10 @@
     <h2>Waar gaan de gegevens heen</h2>
     <p class="hint" id="policy-info">Dit bepaalt de server, niet de extensie (AVG-afspraak van de praktijk). Klik op "Test verbinding" om de actuele instelling te zien.</p>
     <ul class="hint" style="margin:6px 0 0 16px;padding:0">
-      <li>Consult (gesprek arts en patiënt): Voxtral van Mistral (Frankrijk, EU), na afloop, zonder opslag of training</li>
-      <li>Dicteren: Deepgram, EU-eindpunt, zonder opslag of training</li>
-      <li>Dictaat, SOEP, consultverslag, schermafdrukken, patiëntinstructie: Claude (Anthropic, VS; niet gebruikt voor training)</li>
+      <li><b>Claude-modus</b> (alle functies): spraak via Deepgram (EU-eindpunt, zonder opslag of training); dictaat, SOEP, consultverslag, schermafdrukken en patiëntinstructie via Claude (Anthropic, VS; niet gebruikt voor training)</li>
       <li id="policy-brieven">Brieven, na verwijdering van naam, BSN, adres en datums: Claude</li>
+      <li><b>EU-modus</b> (formeel): alleen Europese bedrijven. Het consult via Voxtral van Mistral (Frankrijk) na afloop, alle tekst via Mistral. Live dicteren en vraagsuggesties kunnen dan niet.</li>
+      <li>Wisselen kan met één klik bovenin het zijpaneel of de popup (Claude | EU). De server bepaalt of de EU-modus beschikbaar is.</li>
     </ul>
     <!-- Kept for compatibility; the server ignores these for patient data. -->
     <select id="sttProvider" hidden><option value="deepgram">Deepgram</option></select>
@@ -305,6 +305,7 @@
 
   <div id="toast" class="toast"></div>
 
+  <script src="../lib/modus.js"></script>
   <script src="../lib/praktijk.js"></script>
   <script src="../lib/instellingen.js"></script>
   <script src="options.js"></script>

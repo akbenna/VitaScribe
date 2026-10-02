@@ -36,6 +36,7 @@ function consultHeaders(config) {
   var headers = {};
   if (config.apiKey) headers['X-API-Key'] = config.apiKey;
   if (config.praktijk && config.praktijk.length) headers['X-Bricks-Praktijk'] = config.praktijk.join(',');
+  if (config.modus) headers['X-VitaScribe-Modus'] = config.modus;
   return headers;
 }
 
@@ -103,6 +104,7 @@ function consultStartLive(c) {
       apiUrl: c.config.apiUrl,
       apiKey: c.config.apiKey,
       praktijk: c.config.praktijk || [],
+      modus: c.config.modus || null,
       llmProvider: c.config.llmProvider,
       vraagsuggesties: c.config.vraagsuggesties === true,
       taal: c.config.taal || 'nl',

@@ -9,7 +9,7 @@
  * 4. RECORDER_AUDIO — legacy handler for recorder page
  */
 
-importScripts('../lib/praktijk.js', '../lib/instellingen.js');
+importScripts('../lib/modus.js', '../lib/praktijk.js', '../lib/instellingen.js');
 
 // ── Bricks-praktijknummer bijhouden (voor de licentie, zie lib/praktijk.js) ──
 // Alleen Bricks-adressen leveren een nummer op; van andere tabbladen wordt niets bewaard.
@@ -363,6 +363,7 @@ async function quickToggle(tabId) {
       apiUrl: (sync.apiUrl || 'http://localhost:8002').replace(/\/$/, ''),
       apiKey: (sync.apiKey || '').trim(),
       micDevice: sync.micDevice || '',
+      modus: await SVModus.lees(),
     },
     rules: local.svTextRules || null,
   });
@@ -534,6 +535,8 @@ async function consultConfig() {
     // Question suggestions during the consult (Instellingen); the server must allow them too.
     vraagsuggesties: cfg.vraagsuggesties === true,
     praktijk: await SVPraktijk.nummers(),
+    // Claude of EU, vastgelegd bij de start: een wissel tijdens het consult geldt voor het volgende.
+    modus: await SVModus.lees(),
   };
 }
 
@@ -543,6 +546,7 @@ async function consultConfig() {
 async function consultPreflight(config) {
   const headers = { 'X-API-Key': config.apiKey };
   if (config.praktijk.length) headers['X-Bricks-Praktijk'] = config.praktijk.join(',');
+  if (config.modus) headers[SVModus.KOP] = config.modus;
   let resp;
   try {
     resp = await fetch(config.apiUrl + '/api/v1/providers', { headers, signal: AbortSignal.timeout(CONSULT_PREFLIGHT_MS) });

@@ -40,6 +40,7 @@ function check(name, cond, extra) {
     args: [`--disable-extensions-except=${EXT}`, `--load-extension=${EXT}`, '--headless=new'],
   });
   const sent = [];
+  let euToegestaan = true;
   const POST = fs.readFileSync(path.join(HERE, 'bricks-post.html'), 'utf8');
   const DOSSIER = fs.readFileSync(path.join(HERE, 'bricks-dossier.html'), 'utf8');
   await ctx.route('https://test.bfrcloud.com/**', (r) => {
@@ -49,7 +50,12 @@ function check(name, cond, extra) {
   await ctx.route('http://localhost:8002/api/v1/**', async (r) => {
     const url = r.request().url();
     const body = r.request().postData() ? JSON.parse(r.request().postData()) : null;
-    sent.push({ url, body });
+    sent.push({ url, body, modus: r.request().headers()['x-vitascribe-modus'] || '' });
+    if (url.endsWith('/providers')) {
+      const gevraagd = r.request().headers()['x-vitascribe-modus'];
+      return r.fulfill({ contentType: 'application/json', body: JSON.stringify({
+        modus: gevraagd === 'eu' && euToegestaan ? 'eu' : 'claude', modi: euToegestaan ? ['claude', 'eu'] : ['claude'] }) });
+    }
     if (url.endsWith('/letters/extract')) return r.fulfill({ contentType: 'application/json', body: JSON.stringify({ text: 'Journaal\nHoofdpijn\nMedicatie\nParacetamol' }) });
     if (url.endsWith('/letters/generate')) return r.fulfill({ contentType: 'text/plain; charset=utf-8', body: LETTER });
     if (url.endsWith('/dictation/process')) return r.fulfill({ contentType: 'application/json', body: JSON.stringify({ mode: 'soep', soep: {
@@ -349,6 +355,34 @@ function check(name, cond, extra) {
   check('knop "Dossiervraag"', await pop.isVisible('#btn-dossier'));
   check('knop "Post & lab"', await pop.isVisible('#btn-post'));
   check('handleiding in de popup', (await pop.getAttribute('#link-help', 'href')) === '../help/handleiding.html');
+
+  console.log('Modus (Claude | EU)');
+  const aan = () => pop.$eval('#modus .aan', (b) => b.getAttribute('data-modus')).catch(() => '');
+  check('modusknop in de popup, standaard Claude', await aan() === 'claude');
+  await pop.click('#modus [data-modus="eu"]');
+  await sleep(600);
+  check('één klik zet de EU-modus aan', await aan() === 'eu');
+  check('toelichting noemt wat in de EU-modus niet kan', (await pop.textContent('#modus-uitleg')).includes('Live dicteren'));
+  check('de server wordt gevraagd met de kopregel EU', sent.some((x) => x.url.endsWith('/providers') && x.modus === 'eu'));
+  const opgeslagen = await pop.evaluate(() => chrome.storage.local.get('svModus'));
+  check('keuze bewaard op deze computer', opgeslagen.svModus === 'eu', opgeslagen);
+  const voor = sent.length;
+  await pop.evaluate(async () => {
+    const h = { 'X-API-Key': 'x' };
+    await SVPraktijk.metKop(h);
+    await fetch('http://localhost:8002/api/v1/thuisarts/test', { headers: h });
+  });
+  check('elke aanvraag krijgt de modus mee (via metKop)', sent.slice(voor).some((x) => x.modus === 'eu'), sent.slice(voor));
+  await pop.click('#modus [data-modus="claude"]');
+  await sleep(300);
+  check('één klik terug naar Claude', await aan() === 'claude' && await pop.isHidden('#modus-uitleg'));
+  euToegestaan = false;
+  await pop.click('#modus [data-modus="eu"]');
+  await sleep(800);
+  check('staat de server EU niet toe, dan springt de knop terug', await aan() === 'claude');
+  check('en zegt waarom', (await pop.textContent('#modus-uitleg')).includes('niet toe'));
+  euToegestaan = true;
+
   const popDicht = pop.waitForEvent('close', { timeout: 3000 }).then(() => true, () => false);
   await pop.click('#btn-expand');
   check('paneelknop in de popup sluit de popup', await popDicht);

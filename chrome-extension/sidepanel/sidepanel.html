@@ -14,6 +14,10 @@
       <h1>VitaScribe</h1>
     </div>
     <div class="header-right">
+      <div id="modus" class="modus" role="radiogroup" aria-label="Modus">
+        <button type="button" role="radio" data-modus="claude">Claude</button>
+        <button type="button" role="radio" data-modus="eu">EU</button>
+      </div>
       <span id="conn" class="conn" title="Verbinding">klaar</span>
       <button id="btn-minimaliseer" class="icon-btn" type="button"
               title="Minimaliseren: het paneel gaat dicht en het hele scherm is vrij. Klik op het VitaScribe-icoon om het terug te halen. Een consultopname loopt door."
@@ -24,6 +28,7 @@
       </button>
     </div>
   </header>
+  <p id="modus-uitleg" class="modus-uitleg" hidden></p>
 
   <nav class="views" role="tablist">
     <button class="view-tab active" data-view="dictate" role="tab" aria-selected="true" title="Dicteren &amp; SOEP">Dicteren</button>
@@ -397,6 +402,7 @@
     <a href="../privacy/avg.html" target="_blank" id="open-avg">AVG</a>
   </footer>
 
+  <script src="../lib/modus.js"></script>
   <script src="../lib/praktijk.js"></script>
   <script src="../lib/instellingen.js"></script>
   <script src="../lib/textrules.js"></script>
@@ -419,5 +425,6 @@
   <script src="patient-ui.js"></script>
   <script src="meedenken-ui.js"></script>
   <script src="consult-ui.js"></script>
+  <script src="modus-ui.js"></script>
 </body>
 </html>
