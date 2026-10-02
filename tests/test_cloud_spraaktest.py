@@ -62,6 +62,31 @@ def test_voxtral_request_and_speakers(monkeypatch, tmp_path):
         "Spreker 1: Waar komt u voor?", "Spreker 2: Ik heb al drie dagen hoofdpijn.", "Spreker 1: Neemt u paracetamol?"]
 
 
+def test_voxtral_context_bias_has_no_spaces_or_commas():
+    termen = stt_service.voxtral_context_bias()
+    assert termen and all(" " not in t and "," not in t for t in termen)
+
+
+def test_voxtral_error_is_readable_and_language_retry(monkeypatch, tmp_path):
+    calls = []
+
+    def handler(request: httpx.Request):
+        body = request.content.decode("latin-1")
+        calls.append('name="language"' in body)
+        if 'name="language"' in body:
+            return httpx.Response(400, json={"message": "language is not compatible with timestamp_granularities"})
+        return httpx.Response(401, json={"message": "Unauthorized"})
+
+    echte = httpx.AsyncClient
+    monkeypatch.setattr(stt_service.httpx, "AsyncClient",
+                        lambda **kw: echte(transport=httpx.MockTransport(handler), **{k: v for k, v in kw.items() if k != "transport"}))
+    audio = tmp_path / "a.webm"
+    audio.write_bytes(b"0" * 2000)
+    with pytest.raises(ValueError, match="Voxtral gaf fout 401: Unauthorized"):
+        asyncio.run(stt_service.transcribe(audio, provider="voxtral", language="nl"))
+    assert calls == [True, False]
+
+
 def test_voxtral_language_and_missing_key(monkeypatch, tmp_path):
     assert stt_service._voxtral_taal("multi") is None
     assert stt_service._voxtral_taal("en-GB") == "en"
