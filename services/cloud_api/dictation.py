@@ -34,7 +34,7 @@ from urllib.parse import urlencode
 import structlog
 from fastapi import WebSocket, WebSocketDisconnect
 
-from . import audit
+from . import audit, data_policy
 from . import licentie
 from .config import AppConfig, get_config
 from .medical_vocabulary import MEDICATION_CORRECTIONS, correct_transcript_full
@@ -240,6 +240,8 @@ async def _authenticate(ws: WebSocket):
         ident = await licentie.identificeer(str(message.get("api_key") or ""), praktijk if isinstance(praktijk, str) else None)
     except licentie.LicentieFout as fout:
         return None, fout.detail if fout.status == 403 and "Ongeldige" not in fout.detail else ongeldig
+    # A browser cannot set headers on a WebSocket either: the mode comes here too.
+    data_policy.zet_modus(message.get("modus"))
     return message, ident
 
 
@@ -262,6 +264,13 @@ async def relay_dictation(
     if auth is None:
         await _send_json(ws, {"type": "error", "message": ident})
         await ws.close(code=4401)
+        return
+
+    if data_policy.eu_modus():
+        # Live dictation needs Deepgram (US company); not in the formal EU mode.
+        await _send_json(ws, {"type": "error", "message": "Live dicteren kan niet in de EU-modus. "
+                              "Schakel bovenin naar de Claude-modus, of neem het consult op."})
+        await ws.close(code=4403)
         return
 
     from fastapi import HTTPException

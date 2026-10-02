@@ -68,7 +68,7 @@ async def kies_brieven(ident: licentie.Identiteit) -> Tuple[str, Optional[str]]:
     ook een eigen sleutel bij een aanbieder in de VS wordt dan niet gebruikt.
     Draait de server de patiëntgegevens al in de EU (Bedrock), dan gaan de
     brieven daar ook heen; anders naar Mistral."""
-    if ident.brieven_in_eu:
+    if ident.brieven_in_eu or data_policy.eu_modus():
         eu = data_policy.phi_llm_provider()
         return (eu if eu in data_policy.EU_PROVIDERS else "mistral"), None
     if ident.bron == "register" and ident.praktijk_id:

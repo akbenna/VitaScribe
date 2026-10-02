@@ -22,11 +22,26 @@ practice (24-09-2026, changed 28-09-2026):
 - The browser cannot override these choices; an unknown or non-allowed
   provider falls back to the configured one.
 
+Two modes (02-10-2026). The doctor switches per request from the extension
+(header X-VitaScribe-Modus, or "modus" in the WebSocket auth message); the
+server only honours a mode that ALLOWED_MODI lists:
+
+- "claude" (default): everything above, with all features (live dictation,
+  question suggestions).
+- "eu" (formal mode): nothing leaves EU companies. Patient text and letters go
+  to EU_LLM_PROVIDER (Mistral by default; bedrock also counts as EU), consults
+  to Voxtral after the consult. A practice's own US keys are not used. Live
+  dictation is refused (it needs Deepgram) and question suggestions cannot
+  run (they need text during the consult).
+
 Settings (environment):
   PHI_LLM_PROVIDER        default "anthropic"  (anthropic | bedrock | mistral)
   LETTERS_LLM_PROVIDER    default "anthropic"
   BEDROCK_REGION, BEDROCK_MODEL, BEDROCK_SOEP_MODEL and the AWS credentials
                           for route A (config.py)
+  ALLOWED_MODI            default "claude". "claude,eu": the doctor may switch;
+                          "eu": only the formal mode. The first is the default.
+  EU_LLM_PROVIDER         default "mistral" (mistral | bedrock), for the eu mode
   ALLOWED_STT_PROVIDERS   default "deepgram". "voxtral": consults (live and
                           uploaded) go to Mistral Voxtral (EU) after the consult;
                           dictation stays on Deepgram (needs live text).
@@ -40,22 +55,65 @@ Settings (environment):
 from __future__ import annotations
 
 import os
-from typing import Optional
+from contextvars import ContextVar, Token
+from typing import List, Optional
 
 import structlog
 
 logger = structlog.get_logger()
 
 EU_PROVIDERS = {"mistral", "bedrock"}
+MODI = ("claude", "eu")
+
+# The mode of the request being handled (set per HTTP request by middleware,
+# per WebSocket after authentication).
+_modus: ContextVar[Optional[str]] = ContextVar("vs_modus", default=None)
 
 
 def _env(name: str, default: str) -> str:
     return (os.getenv(name) or default).strip().lower()
 
 
+def toegestane_modi() -> List[str]:
+    modi = [m.strip() for m in _env("ALLOWED_MODI", "claude").split(",") if m.strip() in MODI]
+    return modi or ["claude"]
+
+
+def kies_modus(requested: Optional[str] = None) -> str:
+    """The requested mode if the server allows it, otherwise the default."""
+    toegestaan = toegestane_modi()
+    gevraagd = (requested or "").strip().lower()
+    if gevraagd in toegestaan:
+        return gevraagd
+    if gevraagd:
+        logger.info("policy.modus_niet_toegestaan", requested=gevraagd, used=toegestaan[0])
+    return toegestaan[0]
+
+
+def zet_modus(requested: Optional[str] = None) -> Token:
+    return _modus.set(kies_modus(requested))
+
+
+def herstel_modus(token: Token) -> None:
+    _modus.reset(token)
+
+
+def modus() -> str:
+    return _modus.get() or toegestane_modi()[0]
+
+
+def eu_modus() -> bool:
+    return modus() == "eu"
+
+
+def eu_llm_provider() -> str:
+    gekozen = _env("EU_LLM_PROVIDER", "mistral")
+    return gekozen if gekozen in EU_PROVIDERS else "mistral"
+
+
 def phi_llm_provider(requested: Optional[str] = None) -> str:
     """Language model for data that can identify a patient."""
-    configured = _env("PHI_LLM_PROVIDER", "anthropic")
+    configured = eu_llm_provider() if eu_modus() else _env("PHI_LLM_PROVIDER", "anthropic")
     if requested and requested.lower() != configured:
         logger.info("policy.provider_override_ignored", requested=requested, used=configured)
     return configured
@@ -63,11 +121,16 @@ def phi_llm_provider(requested: Optional[str] = None) -> str:
 
 def letters_llm_provider() -> str:
     """Language model for pseudonymised letters."""
+    if eu_modus():
+        return eu_llm_provider()
     return _env("LETTERS_LLM_PROVIDER", "anthropic")
 
 
 def stt_provider(requested: Optional[str] = None) -> str:
-    """Speech-to-text provider; only the allowed ones (default: Deepgram EU)."""
+    """Speech-to-text provider; only the allowed ones (default: Deepgram EU).
+    In the eu mode always Voxtral (Mistral, EU)."""
+    if eu_modus():
+        return "voxtral"
     allowed = [p.strip() for p in _env("ALLOWED_STT_PROVIDERS", "deepgram").split(",") if p.strip()]
     if requested and requested.lower() in allowed:
         return requested.lower()
@@ -88,6 +151,8 @@ def clinical_decision_support() -> bool:
 def summary() -> dict:
     """For /health and the settings page: where data goes."""
     return {
+        "modus": modus(),
+        "modi": toegestane_modi(),
         "patient_data_llm": phi_llm_provider(),
         "patient_data_llm_in_eu": phi_llm_provider() in EU_PROVIDERS,
         "letters_llm": letters_llm_provider(),

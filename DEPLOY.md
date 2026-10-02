@@ -357,6 +357,31 @@ elk filmpje apart op en zet de vergelijkingen in een tabel. Alleen voor die
 speler staat de pagina een frame van YouTube toe; er draait geen script van
 YouTube in de beheerpagina.
 
+### Twee modi: Claude en EU
+
+Bovenin het zijpaneel en de popup staat een knop **Claude | EU**. De arts wisselt
+met één klik; de keuze gaat met elke aanvraag mee (kopregel
+`X-VitaScribe-Modus`, of `modus` bij het aanmelden op een WebSocket).
+
+- **Claude** (standaard): alle functies. Spraak via Deepgram (EU-eindpunt),
+  tekst via `PHI_LLM_PROVIDER` (Claude).
+- **EU** (formeel): alleen Europese bedrijven. Het consult via Voxtral na
+  afloop, alle tekst (SOEP, brieven, dossiervraag, post, meedenken) via
+  `EU_LLM_PROVIDER` (standaard Mistral; `bedrock` mag ook). Eigen sleutels van
+  de praktijk bij een Amerikaanse aanbieder worden niet gebruikt. Live dicteren
+  weigert de server; vraagsuggesties kunnen niet.
+
+De server beslist welke modi mogen:
+
+```bash
+ALLOWED_MODI=claude,eu     # de arts kiest; de eerste is de standaard
+ALLOWED_MODI=eu            # alleen de formele modus
+```
+
+Zonder `ALLOWED_MODI` is alleen Claude toegestaan; de knop springt dan terug
+met een melding. Nodig voor EU: `MISTRAL_API_KEY` van een betaald account met
+verwerkersovereenkomst en zero data retention.
+
 ### Voxtral als spraakdienst voor consulten
 
 Met `ALLOWED_STT_PROVIDERS=voxtral` gaan alle consulten naar Mistral Voxtral

@@ -60,6 +60,8 @@ var SVPraktijk = (function () {
   async function metKop(headers) {
     var n = await nummers();
     if (n.length) headers['X-Bricks-Praktijk'] = n.join(',');
+    // De modus (claude of eu) gaat met elke aanvraag mee; zie lib/modus.js.
+    if (typeof SVModus !== 'undefined') await SVModus.metKop(headers);
     return headers;
   }
 

@@ -104,6 +104,20 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ── Mode per request (claude | eu), chosen in the extension ──
+# The server only honours a mode ALLOWED_MODI lists; the answer says which
+# mode was used, so the extension can show it.
+@app.middleware("http")
+async def modus_per_aanvraag(request: Request, call_next):
+    token = data_policy.zet_modus(request.headers.get("x-vitascribe-modus"))
+    try:
+        response = await call_next(request)
+        response.headers["X-VitaScribe-Modus"] = data_policy.modus()
+        return response
+    finally:
+        data_policy.herstel_modus(token)
+
+
 # ── Permissions-Policy header ──
 # Allow microphone access for pages served from this API (e.g. /debug).
 # This tells browsers that microphone usage is explicitly permitted.
@@ -447,6 +461,8 @@ async def list_providers(_api_key: str = Depends(verify_api_key)):
     """List available STT and LLM providers."""
     cfg = get_config()
     return {
+        "modus": data_policy.modus(),
+        "modi": data_policy.toegestane_modi(),
         "stt": {
             "default": cfg.stt.default_provider,
             "available": {
