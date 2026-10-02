@@ -349,6 +349,14 @@ echt consult (`PHI_LLM_PROVIDER`). Met **Blind beoordelen** heten de verslagen
 "A" en "B" in willekeurige volgorde, tot je op Onthul klikt. Kost twee
 SOEP-aanroepen per klik (enkele dollarcenten).
 
+Naast de microfoon kan de spraaktest het geluid van een ander tabblad opnemen
+(op Windows ook van de hele pc), eventueel met de microfoon erbij gemengd. Onder
+**Afspeellijst van YouTube** plak je een afspeellijst of losse filmpjes: de
+pagina speelt ze af in de speler zonder cookies (youtube-nocookie.com), neemt
+elk filmpje apart op en zet de vergelijkingen in een tabel. Alleen voor die
+speler staat de pagina een frame van YouTube toe; er draait geen script van
+YouTube in de beheerpagina.
+
 Voxtral als spraakdienst voor opgenomen consulten (na afloop verwerken, niet
 live) zet je aan met `ALLOWED_STT_PROVIDERS=voxtral`. Live meeschrijven en
 vraagsuggesties blijven op Deepgram tot Voxtral Realtime is ingebouwd.

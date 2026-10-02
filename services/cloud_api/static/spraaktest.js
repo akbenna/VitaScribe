@@ -109,22 +109,26 @@
   });
 
   // ── Vergelijken ──
+  async function vergelijk(blob, naam) {
+    var form = new FormData();
+    form.append('audio', blob, naam);
+    form.append('taal', $('taal').value);
+    var r = await fetch('/api/v1/beheer/spraaktest', { method: 'POST', headers: { 'X-Beheer-Sessie': sessie() }, body: form });
+    var body = await r.json().catch(function () { return {}; });
+    if (r.status === 401 || r.status === 403) throw new Error('Niet ingelogd. Log in op /beheer in dit tabblad.');
+    if (!r.ok) throw new Error(body.detail || ('Fout ' + r.status));
+    return body;
+  }
+
   $('vergelijk').addEventListener('click', async function () {
     if (!opname) return;
     var knop = this;
     knop.disabled = true;
     status('Bezig: beide diensten verwerken de opname tegelijk…');
     $('uitkomst').textContent = '';
-    var form = new FormData();
-    form.append('audio', opname.blob, opname.naam);
-    form.append('taal', $('taal').value);
     try {
-      var r = await fetch('/api/v1/beheer/spraaktest', { method: 'POST', headers: { 'X-Beheer-Sessie': sessie() }, body: form });
-      var body = await r.json().catch(function () { return {}; });
-      if (r.status === 401 || r.status === 403) throw new Error('Niet ingelogd. Log in op /beheer in dit tabblad.');
-      if (!r.ok) throw new Error(body.detail || ('Fout ' + r.status));
-      laatste = body;
-      toon(body);
+      laatste = await vergelijk(opname.blob, opname.naam);
+      toon(laatste);
       status('Klaar.');
     } catch (e) {
       status(e.message, true);
@@ -164,6 +168,7 @@
 
   function toon(b) {
     var u = $('uitkomst');
+    u.textContent = '';
     var samen = el('div', 'kaart');
     samen.appendChild(el('h2', '', 'Uitkomst'));
     samen.appendChild(el('p', '', b.overeenkomst === null ? 'Een van beide diensten gaf geen tekst.'
@@ -266,4 +271,205 @@
       uit.appendChild(onthul);
     }
   }
+  // ── Afspeellijst: elk filmpje een eigen opname en vergelijking ──
+  // The page talks to the cookieless YouTube player with messages only (the
+  // same messages YouTube's own iframe API uses); no YouTube script runs here.
+  var YT = 'https://www.youtube-nocookie.com';
+  var MIN_SEC = window.VS_MIN_SEC || 20;   // shorter pieces (an ad, a skipped video) are dropped
+  var lijst = { stream: null, huidig: null, videoId: '', nummer: 0 };
+  // The player only sends what changed, so remember what it told us.
+  var yt = { staat: null, id: '', titel: '', index: null, lengte: null, gehoord: false, roep: null };
+
+  function ytIds(tekst) {
+    var lijstId = (tekst.match(/[?&]list=([\w-]+)/) || [])[1];
+    var videos = [];
+    tekst.split(/\s+/).forEach(function (t) {
+      var m = t.match(/(?:v=|youtu\.be\/|\/embed\/|\/shorts\/)([\w-]{11})/);
+      if (m && videos.indexOf(m[1]) < 0) videos.push(m[1]);
+    });
+    return { lijst: lijstId, videos: videos };
+  }
+
+  function ytBron(ids) {
+    var p = 'enablejsapi=1&rel=0&playsinline=1&origin=' + encodeURIComponent(location.origin);
+    if (ids.lijst) return YT + '/embed/videoseries?list=' + ids.lijst + '&' + p;
+    return YT + '/embed/' + ids.videos[0] + '?' + p +
+      (ids.videos.length > 1 ? '&playlist=' + ids.videos.slice(1).join(',') : '');
+  }
+
+  function naarSpeler(bericht) {
+    var f = $('speler').querySelector('iframe');
+    if (f && f.contentWindow) f.contentWindow.postMessage(JSON.stringify(Object.assign({ id: 'vs', channel: 'widget' }, bericht)), YT);
+  }
+
+  function lijstStatus(t, fout) { $('lijststatus').textContent = t; $('lijststatus').className = 'status klein' + (fout ? ' fout' : ''); }
+
+  function nieuwDeel(titel, videoId) {
+    sluitDeel();
+    lijst.nummer += 1;
+    var deel = { nummer: lijst.nummer, titel: titel || ('Filmpje ' + lijst.nummer), videoId: videoId || '',
+                 start: Date.now(), stukken: [] };
+    var rec = new MediaRecorder(lijst.stream);
+    rec.ondataavailable = function (e) { if (e.data.size) deel.stukken.push(e.data); };
+    rec.onstop = function () {
+      deel.sec = Math.round((Date.now() - deel.start) / 1000);
+      if (deel.sec < MIN_SEC) return;
+      deel.blob = new Blob(deel.stukken, { type: 'audio/webm' });
+      deel.stukken = null;
+      wachtrij(deel);
+    };
+    rec.start(1000);
+    deel.rec = rec;
+    lijst.huidig = deel;
+    lijst.videoId = deel.videoId;
+    lijstStatus('Neemt op: ' + deel.titel);
+  }
+
+  function sluitDeel() {
+    var deel = lijst.huidig;
+    if (deel && deel.rec.state === 'recording') deel.rec.stop();
+    lijst.huidig = null;
+  }
+
+  // Messages from the player: a new video playing means a new recording.
+  window.addEventListener('message', function (e) {
+    if (e.origin !== YT || !lijst.stream) return;
+    var d; try { d = JSON.parse(e.data); } catch (x) { return; }
+    if (!d || !d.event) return;
+    if (!yt.gehoord) { yt.gehoord = true; clearInterval(yt.roep); }
+    var info = d.info;
+    if (info && typeof info === 'object') {
+      var v = info.videoData;
+      if (v && v.video_id) {
+        yt.id = v.video_id;
+        yt.titel = v.title || '';
+        var deel = lijst.huidig;
+        if (deel && deel.videoId === yt.id && v.title) { deel.titel = v.title; lijstStatus('Neemt op: ' + v.title); }
+      }
+      if (typeof info.playlistIndex === 'number') yt.index = info.playlistIndex;
+      if (Array.isArray(info.playlist)) yt.lengte = info.playlist.length;
+    }
+    var staat = d.event === 'onStateChange' ? info : (info && info.playerState);
+    if (typeof staat === 'number') yt.staat = staat;
+    // State and video can come in either order; start once both say "new video playing".
+    if (yt.staat === 1 && yt.id && yt.id !== lijst.videoId) nieuwDeel(yt.titel, yt.id);
+    if (staat === 0) {                     // ended: close this one; the next starts by itself
+      sluitDeel();
+      lijst.videoId = '';
+      yt.id = '';                          // wait for the next video's own data
+      if (yt.lengte === null || yt.index === null || yt.index >= yt.lengte - 1) stopLijst('De afspeellijst is klaar.');
+    }
+  });
+
+  async function startLijst() {
+    var ids = ytIds($('ytlink').value);
+    if (!ids.lijst && !ids.videos.length) { lijstStatus('Plak een link naar een YouTube-afspeellijst of naar filmpjes.', true); return; }
+    try {
+      // Record this tab: the player plays here. Chrome asks; choose "Dit tabblad".
+      var scherm = await navigator.mediaDevices.getDisplayMedia({
+        video: true, audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
+        preferCurrentTab: true, selfBrowserSurface: 'include'
+      });
+      scherm.getVideoTracks().forEach(function (t) { t.stop(); });
+      var geluid = scherm.getAudioTracks();
+      if (!geluid.length) { scherm.getTracks().forEach(function (t) { t.stop(); }); throw new Error('Er werd geen geluid gedeeld. Kies "Dit tabblad" en zet "Geluid delen" aan.'); }
+      geluid[0].addEventListener('ended', function () { stopLijst('Delen gestopt.'); });
+      lijst.stream = new MediaStream(geluid);
+    } catch (e) {
+      lijstStatus(e.name === 'NotAllowedError' ? 'Delen geannuleerd.' : e.message, true);
+      return;
+    }
+    lijst.nummer = 0; lijst.videoId = '';
+    yt = { staat: null, id: '', titel: '', index: null, lengte: null, gehoord: false, roep: null };
+    var f = document.createElement('iframe');
+    f.src = ytBron(ids);
+    f.allow = 'autoplay; encrypted-media';
+    f.title = 'YouTube';
+    f.addEventListener('load', function () {
+      // Ask the player to report its state until it answers, then start playing.
+      yt.gehoord = false;
+      clearInterval(yt.roep);
+      var keer = 0;
+      yt.roep = setInterval(function () {
+        if (++keer > 40) { clearInterval(yt.roep); lijstStatus('De speler antwoordt niet. Speel af en knip met "Volgend filmpje".', true); return; }
+        naarSpeler({ event: 'listening' });
+      }, 250);
+      naarSpeler({ event: 'listening' });
+      setTimeout(function () {
+        naarSpeler({ event: 'command', func: 'addEventListener', args: ['onStateChange'] });
+        naarSpeler({ event: 'command', func: 'playVideo', args: [] });
+      }, 600);
+    });
+    $('speler').textContent = '';
+    $('speler').appendChild(f);
+    $('lijststart').disabled = true;
+    $('lijstknip').disabled = $('lijststop').disabled = false;
+    lijstStatus('Speler geladen. Komt het filmpje niet vanzelf op gang, klik dan in de speler op afspelen.');
+  }
+
+  function stopLijst(reden) {
+    if (!lijst.stream) return;
+    sluitDeel();
+    lijst.stream.getTracks().forEach(function (t) { t.stop(); });
+    lijst.stream = null;
+    clearInterval(yt.roep);
+    naarSpeler({ event: 'command', func: 'pauseVideo', args: [] });
+    $('lijststart').disabled = false;
+    $('lijstknip').disabled = $('lijststop').disabled = true;
+    lijstStatus((reden ? reden + ' ' : '') + 'De laatste filmpjes worden nog vergeleken; zie de tabel.');
+  }
+
+  // ── Wachtrij: one comparison at a time, results in a table ──
+  var rij = [], rijBezig = false;
+  function wachtrij(deel) {
+    var tr = el('tr');
+    deel.cellen = {};
+    [['nr', String(deel.nummer)], ['titel', deel.titel], ['duur', Math.floor(deel.sec / 60) + ':' + String(deel.sec % 60).padStart(2, '0')],
+     ['sprekers', '…'], ['overeenkomst', '…'], ['tijd', '…'], ['actie', 'in de wachtrij']].forEach(function (c) {
+      var td = el('td', '', c[1]); deel.cellen[c[0]] = td; tr.appendChild(td);
+    });
+    $('lijsttabel').appendChild(tr);
+    $('lijstuitkomst').hidden = false;
+    rij.push(deel);
+    volgende();
+  }
+
+  async function volgende() {
+    if (rijBezig || !rij.length) return;
+    rijBezig = true;
+    var deel = rij.shift();
+    deel.cellen.actie.textContent = 'bezig…';
+    try {
+      var b = await vergelijk(deel.blob, 'filmpje-' + deel.nummer + '.webm');
+      var sp = function (x) { return x.fout ? 'fout' : String(x.sprekers); };
+      deel.cellen.sprekers.textContent = sp(b.deepgram) + ' / ' + sp(b.voxtral);
+      deel.cellen.overeenkomst.textContent = b.overeenkomst === null ? '—' : b.overeenkomst + '%';
+      var tijd = function (x) { return x.seconden + ' s'; };
+      deel.cellen.tijd.textContent = tijd(b.deepgram) + ' / ' + tijd(b.voxtral);
+      deel.cellen.actie.textContent = '';
+      var knop = el('button', '', 'Toon');
+      knop.addEventListener('click', function () {
+        laatste = b;
+        toon(b);
+        status('Filmpje ' + deel.nummer + ': ' + deel.titel);
+        $('uitkomst').scrollIntoView({ behavior: 'smooth' });
+      });
+      deel.cellen.actie.appendChild(knop);
+      deel.blob = null;
+    } catch (e) {
+      deel.cellen.actie.textContent = 'mislukt: ' + e.message;
+      deel.cellen.actie.className = 'fout';
+    } finally {
+      rijBezig = false;
+      volgende();
+    }
+  }
+
+  $('lijststart').addEventListener('click', startLijst);
+  $('lijststop').addEventListener('click', function () { stopLijst('Gestopt.'); });
+  $('lijstknip').addEventListener('click', function () {
+    // Manual cut, for when the player does not report a new video.
+    if (lijst.stream) nieuwDeel('', lijst.videoId);
+  });
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) $('lijststart').disabled = true;
 })();

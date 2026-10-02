@@ -42,7 +42,7 @@ from pydantic import BaseModel, Field
 
 from . import data_policy, pipeline, register, stt_service
 from .medical_vocabulary import correct_transcript_full
-from .beheer import _pagina, vereis_beheerder
+from .beheer import CSP, _pagina, vereis_beheerder
 
 logger = structlog.get_logger()
 router = APIRouter(tags=["spraaktest"])
@@ -52,6 +52,11 @@ TOEGESTAAN = (".webm", ".wav", ".mp3", ".m4a", ".ogg", ".flac", ".mp4")
 # Prijs per minuut in dollars: Deepgram Nova-3 (actie- tot lijstprijs) en
 # Voxtral Mini Transcribe V2. Bron: zie de business case (oktober 2026).
 MAX_TRANSCRIPT = 100_000           # tekens per transcript, ruim een uur gesprek
+# The test page may embed the cookieless YouTube player (playlist test), and
+# nothing else; no script from YouTube runs in this page. The embed needs the
+# page's origin as referrer.
+YOUTUBE = "https://www.youtube-nocookie.com"
+CSP_SPRAAKTEST = CSP + f"; frame-src {YOUTUBE}"
 PRIJS_PER_MINUUT = {"deepgram": (0.0048, 0.0077), "voxtral": (0.003, 0.003)}
 
 
@@ -108,7 +113,7 @@ async def _een(naam: str, pad: Path, taal: str) -> dict:
 
 @router.get("/beheer/spraaktest", include_in_schema=False)
 async def spraaktest_pagina():
-    return _pagina("spraaktest.html")
+    return _pagina("spraaktest.html", csp=CSP_SPRAAKTEST, referrer="strict-origin")
 
 
 @router.get("/beheer/spraaktest.js", include_in_schema=False)

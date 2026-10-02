@@ -221,12 +221,15 @@ async def uitloggen(sessie: Optional[str] = Header(default=None, alias="X-Beheer
     return {"ok": True}
 
 
-def _pagina(naam: str) -> FileResponse:
+CSP = "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'none'"
+
+
+def _pagina(naam: str, csp: str = CSP, referrer: str = "no-referrer") -> FileResponse:
     return FileResponse(STATIC / naam, headers={
         "Cache-Control": "no-store",
         "X-Frame-Options": "DENY",
-        "Referrer-Policy": "no-referrer",
-        "Content-Security-Policy": "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'none'",
+        "Referrer-Policy": referrer,
+        "Content-Security-Policy": csp,
     })
 
 
