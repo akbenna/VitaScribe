@@ -380,6 +380,20 @@ daar vooraf voor (`eu_probleem` in `/api/v1/providers`). Nodig voor EU:
 `MISTRAL_API_KEY` van een betaald account met verwerkersovereenkomst en zero
 data retention.
 
+### Testset en SOEP-test (Claude tegen Mistral)
+
+In `services/cloud_api/testset/` staan gespeelde consulten (acteurs, geen
+patiënten) met per consult de valkuilen (`index.json`). Op `/beheer/spraaktest`:
+
+- **Bewaar als testset** downloadt alle vergelijkingen van de sessie als JSON;
+  nieuwe consulten voeg je toe als `.txt` met een regel in `index.json`.
+- **SOEP-test: Claude tegen Mistral** maakt van één gesprek twee verslagen met
+  dezelfde SOEP-stap, blind te beoordelen. Onder elk verslag staat wat
+  verdacht is: een sterkte, bloeddruk, plaats of zijde die niet in het gesprek
+  staat, of "uitgesloten". **Hele testset** doet dat voor alle consulten en
+  zet de aantallen in een tabel. Kost per consult één Claude- en één
+  Mistral-verslag (enkele dollarcenten).
+
 ### Voxtral als spraakdienst voor consulten
 
 Met `ALLOWED_STT_PROVIDERS=voxtral` gaan alle consulten naar Mistral Voxtral
