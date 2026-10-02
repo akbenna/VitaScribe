@@ -46,6 +46,7 @@ Settings (environment):
                           uploaded) go to Mistral Voxtral (EU) after the consult;
                           dictation stays on Deepgram (needs live text).
   CLINICAL_DECISION_SUPPORT  default "false": no clinical suggestions (MDR).
+                          Only in the claude mode; never in the eu mode.
                           "true" on the practice's own server: red flags in the
                           report and question suggestions during the live
                           consult, the latter only for doctors who switch them
@@ -147,7 +148,10 @@ def clinical_decision_support() -> bool:
     topics) make the software a medical device (MDR rule 11). Off unless the
     server allows it; the doctor then still switches each one on in the
     extension. Without it only documentation completeness and the medication
-    name check are reported."""
+    name check are reported. Never in the eu mode: that is the formal mode,
+    documentation only (decided with the practice, 02-10-2026)."""
+    if eu_modus():
+        return False
     return _env("CLINICAL_DECISION_SUPPORT", "false") == "true"
 
 

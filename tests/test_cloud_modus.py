@@ -175,3 +175,17 @@ def test_mistral_gets_the_schema_as_instruction(monkeypatch):
     body = seen["body"]
     assert body["response_format"] == {"type": "json_object"}
     assert body["messages"][1]["content"].startswith("vraag") and '"required": ["s"]' in body["messages"][1]["content"]
+
+
+def test_clinical_support_only_in_claude_mode(monkeypatch):
+    monkeypatch.setenv("CLINICAL_DECISION_SUPPORT", "true")
+    assert data_policy.clinical_decision_support() is True
+    t = data_policy.zet_modus("eu")
+    try:
+        assert data_policy.clinical_decision_support() is False
+        from services.cloud_api import vraagsuggesties
+        assert vraagsuggesties.toegestaan({"vraagsuggesties": True}) is False
+    finally:
+        data_policy.herstel_modus(t)
+    monkeypatch.setenv("CLINICAL_DECISION_SUPPORT", "false")
+    assert data_policy.clinical_decision_support() is False

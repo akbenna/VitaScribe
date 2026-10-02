@@ -369,7 +369,9 @@ met één klik; de keuze gaat met elke aanvraag mee (kopregel
   afloop, alle tekst (SOEP, brieven, dossiervraag, post, meedenken) via
   `EU_LLM_PROVIDER` (standaard Mistral; `bedrock` mag ook). Eigen sleutels van
   de praktijk bij een Amerikaanse aanbieder worden niet gebruikt. Live dicteren
-  weigert de server; vraagsuggesties kunnen niet.
+  weigert de server; vraagsuggesties kunnen niet, en klinische ondersteuning
+  (`CLINICAL_DECISION_SUPPORT`) staat in deze modus altijd uit: de EU-modus is
+  alleen verslaglegging.
 
 De arts kiest; de server volgt die keuze altijd en verandert hem nooit. Kan
 de EU-modus niet werken (geen `MISTRAL_API_KEY`), dan mislukt de aanvraag met
