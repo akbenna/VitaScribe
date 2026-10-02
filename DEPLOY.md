@@ -333,6 +333,20 @@ EU als route A aan staat, anders Mistral), ook als de praktijk een eigen
 sleutel bij Anthropic of OpenAI heeft. Voor alle praktijken tegelijk zet je
 `LETTERS_LLM_PROVIDER=bedrock` (of `mistral`).
 
+### Spraaktest: Voxtral (EU) tegen Deepgram
+
+In `/beheer` staat rechtsboven **Spraaktest**. Neem daar een rollenspel op of
+upload een opname: dezelfde audio gaat tegelijk naar Deepgram en naar Mistral
+Voxtral Mini Transcribe (Frankrijk), en je ziet beide transcripten met sprekers,
+verwerkingstijd, herkende vaktermen en kosten naast elkaar. Er wordt niets
+bewaard. Nodig: `MISTRAL_API_KEY` (dezelfde sleutel als het taalmodel) en
+`DEEPGRAM_API_KEY`. Gebruik geen echte patiëntopnamen zolang er geen
+verwerkersovereenkomst met Mistral is.
+
+Voxtral als spraakdienst voor opgenomen consulten (na afloop verwerken, niet
+live) zet je aan met `ALLOWED_STT_PROVIDERS=voxtral`. Live meeschrijven en
+vraagsuggesties blijven op Deepgram tot Voxtral Realtime is ingebouwd.
+
 ### Route A: Claude in Amazon Bedrock (EU)
 
 Hetzelfde model (Haiku 4.5, Sonnet 5 voor SOEP), maar verwerkt door AWS in de

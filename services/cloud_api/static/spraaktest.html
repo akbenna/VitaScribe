@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>VitaScribe spraaktest</title>
+<link rel="icon" href="/vitascribe-logo.svg" type="image/svg+xml">
+<style>
+  :root{--groen:#059669;--groen-donker:#047857;--groen-licht:#ecfdf5;--tekst:#111827;--zacht:#6b7280;--rand:#e5e7eb;--achter:#f8fafc;--rood:#b91c1c;--rood-licht:#fef2f2;--amber-licht:#fffbeb;--amber:#b45309}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--achter);color:var(--tekst);font-size:15px;line-height:1.45}
+  header{display:flex;align-items:center;gap:10px;padding:14px 20px;background:#fff;border-bottom:1px solid var(--rand)}
+  header img{width:30px;height:30px}
+  header b{font-size:17px}
+  header .ruimte{flex:1}
+  header a{color:var(--groen-donker);font-size:14px}
+  main{max-width:1280px;margin:0 auto;padding:18px 20px 60px}
+  .kaart{background:#fff;border:1px solid var(--rand);border-radius:12px;padding:18px;margin-bottom:16px}
+  h2{font-size:17px;margin:0 0 10px}
+  h3{font-size:15px;margin:0 0 8px}
+  button{font:inherit;border-radius:8px;border:1px solid var(--rand);background:#fff;padding:7px 12px;cursor:pointer}
+  button.hoofd{background:var(--groen);border-color:var(--groen);color:#fff;font-weight:600}
+  button:disabled{opacity:.5;cursor:default}
+  button.opnemen{color:var(--rood)}
+  input,select{font:inherit;padding:7px 10px;border:1px solid var(--rand);border-radius:8px;background:#fff}
+  .rij{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+  .klein{font-size:13px;color:var(--zacht)}
+  .let-op{background:var(--amber-licht);color:#78350f;border-radius:8px;padding:10px 12px;font-size:14px;margin-bottom:12px}
+  .naast{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media(max-width:900px){.naast{grid-template-columns:1fr}}
+  table{width:100%;border-collapse:collapse;margin-bottom:10px}
+  td{padding:6px 4px;border-bottom:1px solid var(--rand);vertical-align:top;font-size:14px}
+  td:first-child{color:var(--zacht);width:45%}
+  pre{white-space:pre-wrap;margin:0;font-family:inherit;font-size:14px;background:#f9fafb;border:1px solid var(--rand);border-radius:8px;padding:10px;max-height:420px;overflow:auto}
+  .fout{color:var(--rood)}
+  .term{display:inline-block;font-size:12px;border-radius:999px;padding:2px 8px;margin:2px;background:var(--groen-licht);color:var(--groen-donker)}
+  .term.mist{background:var(--rood-licht);color:var(--rood)}
+  .status{margin-top:10px}
+  .tijd{font-variant-numeric:tabular-nums}
+</style>
+</head>
+<body>
+<header><img src="/vitascribe-logo.svg" alt=""><b>VitaScribe spraaktest</b><span class="ruimte"></span><a href="/beheer">Terug naar beheer</a></header>
+<main>
+  <div class="kaart">
+    <h2>Voxtral (Mistral, Frankrijk) tegen Deepgram</h2>
+    <div class="let-op">Gebruik een rollenspel of een opname zonder echte patiënt, tot er een verwerkersovereenkomst met Mistral is. Er wordt niets bewaard; het log noteert alleen dat er een test was.</div>
+    <div class="rij">
+      <button id="opnemen" class="opnemen">● Opnemen</button>
+      <span id="klok" class="tijd klein"></span>
+      <span class="klein">of</span>
+      <input type="file" id="bestand" accept=".webm,.wav,.mp3,.m4a,.ogg,.flac,.mp4,audio/*">
+      <label class="klein">Taal <select id="taal"><option value="nl">Nederlands</option><option value="multi">Meertalig</option><option value="en">Engels</option></select></label>
+      <button id="vergelijk" class="hoofd" disabled>Vergelijk</button>
+    </div>
+    <p id="status" class="status klein"></p>
+  </div>
+  <div id="uitkomst"></div>
+</main>
+<script src="/beheer/spraaktest.js"></script>
+</body>
+</html>
