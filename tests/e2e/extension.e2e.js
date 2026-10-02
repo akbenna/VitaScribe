@@ -54,7 +54,8 @@ function check(name, cond, extra) {
     if (url.endsWith('/providers')) {
       const gevraagd = r.request().headers()['x-vitascribe-modus'];
       return r.fulfill({ contentType: 'application/json', body: JSON.stringify({
-        modus: gevraagd === 'eu' && euToegestaan ? 'eu' : 'claude', modi: euToegestaan ? ['claude', 'eu'] : ['claude'] }) });
+        modus: gevraagd === 'eu' ? 'eu' : 'claude', modi: ['claude', 'eu'],
+        eu_probleem: euToegestaan ? null : 'Op de server is geen Mistral-sleutel ingesteld.' }) });
     }
     if (url.endsWith('/letters/extract')) return r.fulfill({ contentType: 'application/json', body: JSON.stringify({ text: 'Journaal\nHoofdpijn\nMedicatie\nParacetamol' }) });
     if (url.endsWith('/letters/generate')) return r.fulfill({ contentType: 'text/plain; charset=utf-8', body: LETTER });
@@ -379,8 +380,10 @@ function check(name, cond, extra) {
   euToegestaan = false;
   await pop.click('#modus [data-modus="eu"]');
   await sleep(800);
-  check('staat de server EU niet toe, dan springt de knop terug', await aan() === 'claude');
-  check('en zegt waarom', (await pop.textContent('#modus-uitleg')).includes('niet toe'));
+  check('de arts beslist: ook als de server niet klaar is blijft EU staan', await aan() === 'eu');
+  check('de server geeft alleen een waarschuwing', (await pop.textContent('#modus-uitleg')).includes('Let op: Op de server is geen Mistral-sleutel'));
+  await pop.click('#modus [data-modus="claude"]');
+  await sleep(300);
   euToegestaan = true;
 
   const popDicht = pop.waitForEvent('close', { timeout: 3000 }).then(() => true, () => false);

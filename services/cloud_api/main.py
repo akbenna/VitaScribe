@@ -104,9 +104,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ── Mode per request (claude | eu), chosen in the extension ──
-# The server only honours a mode ALLOWED_MODI lists; the answer says which
-# mode was used, so the extension can show it.
+# ── Mode per request (claude | eu), chosen by the doctor in the extension ──
+# The server follows the choice and never changes it; the answer repeats it.
 @app.middleware("http")
 async def modus_per_aanvraag(request: Request, call_next):
     token = data_policy.zet_modus(request.headers.get("x-vitascribe-modus"))
@@ -463,6 +462,8 @@ async def list_providers(_api_key: str = Depends(verify_api_key)):
     return {
         "modus": data_policy.modus(),
         "modi": data_policy.toegestane_modi(),
+        # Advice only: why the eu mode would fail right now (None = ready).
+        "eu_probleem": data_policy.eu_gereed(),
         "stt": {
             "default": cfg.stt.default_provider,
             "available": {

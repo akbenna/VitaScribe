@@ -7,10 +7,11 @@
  * consult via Voxtral na afloop. Live dicteren en vraagsuggesties kunnen dan
  * niet.
  *
- * De keuze staat per computer in chrome.storage.local en gaat met elke
- * aanvraag mee (kopregel X-VitaScribe-Modus, of "modus" bij het aanmelden op
- * een WebSocket). De server beslist: hij volgt de modus alleen als hij die
- * toestaat (ALLOWED_MODI) en meldt in zijn antwoord welke hij gebruikte.
+ * De arts kiest; de keuze staat per computer in chrome.storage.local en gaat
+ * met elke aanvraag mee (kopregel X-VitaScribe-Modus, of "modus" bij het
+ * aanmelden op een WebSocket). De server volgt die keuze altijd en verandert
+ * hem nooit; hij mag alleen adviseren. Kan de EU-modus niet werken, dan mislukt
+ * de aanvraag met een melding, zonder stil terug te vallen op Claude.
  * Zonder chrome.storage (offscreen-documenten) geeft de service worker de
  * modus mee in de config.
  */
