@@ -119,3 +119,82 @@ def test_pitfalls_score_the_first_run_reports():
     mistral_moe = [{"s": "moeheid", "e": "overspanning", "p": "controle 4-6 weken", "icpc_code": "P78", "icpc_titel": "overspanning"}]
     r = soeptest.toets_valkuilen(mistral_moe, idx["04-moeheid"]["toets"])
     assert any("psychisch label" in f for f in r["fout"]) and any("schildklier" in f for f in r["fout"])
+
+
+def test_undiscussed_topics_and_large_run_details():
+    moe = soeptest.gesprek_uit_testset("04-moeheid")
+    v = soeptest.verdacht([{"s": "moe", "o": "Geen suïcidegedachten."}], moe)
+    assert "onderwerp niet besproken: suïcidaliteit" in v or any("suïcidaliteit" in x for x in v)
+    assert not any("suïcidaliteit" in x for x in soeptest.verdacht([{"s": "moe"}], moe))
+    enkel = soeptest.gesprek_uit_testset("02-verzwikte-enkel")
+    assert any("lateralis" in x for x in soeptest.verdacht([{"o": "drukpijn malleolus lateralis"}], enkel))
+    idx = {c["id"]: c for c in soeptest.index()}
+    rug = [{"s": "rugpijn", "o": "Flexie: vingers tot halverwege de knie.", "e": "Lage rugpijn",
+            "p": "Paracetamol 6dd", "icpc_code": "L03", "icpc_titel": "Lage rugpijn"}]
+    r = soeptest.toets_valkuilen(rug, idx["01-lage-rugpijn"]["toets"])
+    assert r["gehaald"] < r["totaal"]
+    # "veel energie" in a normal sentence is not a psychological label
+    r = soeptest.toets_valkuilen([{"s": "heeft niet meer heel veel energie", "e": "Moeheid", "p": "bloedonderzoek",
+                                   "icpc_code": "A04", "icpc_titel": "Moeheid/zwakte"}], idx["04-moeheid"]["toets"])
+    assert not any("energie" in f for f in r["fout"])
+
+
+def test_soeptest_control_pass(monkeypatch):
+    async def fake_soep(gesprek, aanbieder=None, taal=None, model=None):
+        return pipeline.SOEPResult(problemen=[{"s": "rugpijn", "o": "PSIS-gebied drukpijn", "e": "Lage rugpijn",
+                                               "p": "Paracetamol 6dd500mg", "icpc_code": "L03", "icpc_titel": ""}])
+
+    gecontroleerd = []
+
+    async def fake_controle(gesprek, soep, llm_provider=None, model=None):
+        gecontroleerd.append((llm_provider, model, soep.problemen[0]["p"]))
+        return pipeline.SOEPResult(problemen=[{"s": "rugpijn", "o": "drukpijn", "e": "Lage rugpijn",
+                                               "p": "Paracetamol", "icpc_code": "L03", "icpc_titel": ""}])
+
+    async def log(*a, **k):
+        pass
+
+    monkeypatch.setattr(pipeline, "genereer_soep", fake_soep)
+    monkeypatch.setattr(pipeline, "controleer_soep", fake_controle)
+    monkeypatch.setattr(register, "log", log)
+    main.app.dependency_overrides[beheer.vereis_beheerder] = lambda: "test"
+    try:
+        api = TestClient(main.app)
+        d = api.post("/api/v1/beheer/soeptest", json={"id": "01-lage-rugpijn"}).json()
+        assert "eu_gecontroleerd" not in d and not gecontroleerd
+        d = api.post("/api/v1/beheer/soeptest", json={"id": "01-lage-rugpijn", "controle": True}).json()
+        assert gecontroleerd == [("mistral", None, "Paracetamol 6dd500mg")]
+        g = d["eu_gecontroleerd"]
+        assert d["eu"]["verdacht"] and g["verdacht"] == []
+        assert g["valkuilen"]["gehaald"] > d["eu"]["valkuilen"]["gehaald"]
+
+        async def kapot(*a, **k):
+            raise RuntimeError("weg")
+        monkeypatch.setattr(pipeline, "controleer_soep", kapot)
+        d = api.post("/api/v1/beheer/soeptest", json={"id": "01-lage-rugpijn", "controle": True}).json()
+        assert d["eu_gecontroleerd"]["fout"] == "RuntimeError" and "problemen" in d["eu"]
+    finally:
+        main.app.dependency_overrides.clear()
+
+
+def test_control_prompt_keeps_the_rules():
+    from services.cloud_api import prompts
+    t = prompts.SOEP_CONTROLE_SYSTEM_PROMPT.lower()
+    assert "schrap" in t and "hulpvraag" in t
+    prompts.SOEP_CONTROLE_USER_TEMPLATE.format(transcript="x", soep="{}")
+
+
+def test_pitfalls_score_the_medium_run_reports():
+    idx = {c["id"]: c for c in soeptest.index()}
+    rug = idx["01-lage-rugpijn"]["toets"]
+    r = soeptest.toets_valkuilen([{"s": "hernia; werken met kinderen", "o": "Drukpijn wervelkolom onderrug, re meer dan li.",
+                                   "p": "Paracetamol max 6 dd (3x2)"}], rug)
+    assert r["fout"] == ["drukpijn op de wervelkolom (die was juist niet pijnlijk; wel paravertebraal)"]
+    assert soeptest.toets_valkuilen([{"s": "hernia, werk", "p": "Paracetamol 4dd 2"}], rug)["fout"]
+    borst = soeptest.toets_valkuilen([{"o": "Drukpijn op ribben bij borstbeen links (3 punten)", "e": "Tietze-syndroom",
+                                       "p": "scan niet nodig; terugkomen bij zorgen"}], idx["03-pijn-op-de-borst"]["toets"])
+    assert any("zijde van de drukpunten" in f for f in borst["fout"]) and any("Tietze" in f for f in borst["fout"])
+    moe = idx["04-moeheid"]["toets"]
+    r = soeptest.toets_valkuilen([{"s": "bezorgd over oorzaak (schildklier, bloedarmoede, nieren)",
+                                   "o": "veel energie-kostende activiteiten", "p": "controle over 4-6 weken"}], moe)
+    assert r["fout"] == ["bloedarmoede of nieren als zorg van de patiënt (noemde de arts)"]

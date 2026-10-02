@@ -266,10 +266,14 @@
   // paren: [[naam, verslag], [naam, verslag]]; blind: namen pas na "Onthul".
   function toonSoep(uit, paren, blind) {
     paren = paren.slice();
-    if (blind && Math.random() < 0.5) paren.reverse();
-    var naast = el('div', 'naast');
+    if (blind) {   // random order (Fisher-Yates)
+      for (var j = paren.length - 1; j > 0; j--) {
+        var r = Math.floor(Math.random() * (j + 1)); var tmp = paren[j]; paren[j] = paren[r]; paren[r] = tmp;
+      }
+    }
+    var naast = el('div', paren.length > 2 ? 'naast drie' : 'naast');
     var koppen = paren.map(function (paar, i) {
-      var titel = blind ? 'Verslag ' + 'AB'[i] : paar[0];
+      var titel = blind ? 'Verslag ' + 'ABC'[i] : paar[0];
       var kol = soepKolom(titel, paar[1]);
       naast.appendChild(kol.kaart);
       return kol.kop;
@@ -278,7 +282,7 @@
     if (blind) {
       var onthul = el('button', '', 'Onthul welke welke is');
       onthul.addEventListener('click', function () {
-        koppen.forEach(function (kop, i) { kop.textContent = 'Verslag ' + 'AB'[i] + ': ' + paren[i][0]; });
+        koppen.forEach(function (kop, i) { kop.textContent = 'Verslag ' + 'ABC'[i] + ': ' + paren[i][0]; });
         onthul.remove();
       });
       uit.appendChild(onthul);
@@ -533,14 +537,20 @@
     });
     if (keuze) sel.value = keuze;
   }
+  var testsetFout = '';
   beheer('/api/v1/beheer/testset').then(function (d) { testset = d.consulten || []; vulBronnen(); })
-    .catch(function (e) { $('soepstatus').textContent = e.message; });
+    .catch(function (e) {
+      testsetFout = e.message + ' Daarna verschijnen de consulten van de testset hier.';
+      $('soepstatus').className = 'status klein fout';
+      $('soepstatus').textContent = testsetFout;
+    });
 
   function vraagVoor(waarde) {
     var model = $('soepmodel').value;
-    if (waarde.indexOf('id:') === 0) return { id: waarde.slice(3), taal: $('taal').value, eu_model: model };
+    var controle = $('soepcontrole').checked;
+    if (waarde.indexOf('id:') === 0) return { id: waarde.slice(3), taal: $('taal').value, eu_model: model, controle: controle };
     var c = bewaard[Number(waarde.slice(7))];
-    return { gesprek: c.voxtral || c.deepgram, taal: $('taal').value, eu_model: model };
+    return { gesprek: c.voxtral || c.deepgram, taal: $('taal').value, eu_model: model, controle: controle };
   }
 
   async function soepTest(waarde) {
@@ -557,12 +567,18 @@
       uit.appendChild(el('p', 'klein', 'Valkuilen in dit consult (waar een goed verslag op let):'));
       uit.appendChild(v);
     }
-    toonSoep(uit, [['Claude', d.claude], ['Mistral (' + d.eu_model + ')', d.eu]], $('soepblind').checked);
+    var paren = [['Claude', d.claude], ['Mistral (' + d.eu_model + ')', d.eu]];
+    if (d.eu_gecontroleerd) paren.push(['Mistral (' + d.eu_model + ') + controleronde', d.eu_gecontroleerd]);
+    toonSoep(uit, paren, $('soepblind').checked);
   }
 
   $('soepeen').addEventListener('click', async function () {
     var knop = this, uit = $('soepuit'), st = $('soepstatus');
-    if (!$('soepbron').value) return;
+    if (!$('soepbron').value) {
+      st.className = 'status klein fout';
+      st.textContent = testsetFout || 'Kies eerst een consult.';
+      return;
+    }
     knop.disabled = true; uit.textContent = ''; st.className = 'status klein';
     st.textContent = 'Bezig: Claude en Mistral schrijven elk een verslag (ongeveer een halve minuut)…';
     try {
@@ -575,17 +591,28 @@
 
   $('soepalles').addEventListener('click', async function () {
     var knop = this, uit = $('soepuit'), st = $('soepstatus');
+    if (!testset.length) {
+      st.className = 'status klein fout';
+      st.textContent = testsetFout || 'De testset is leeg of niet geladen. Ververs de pagina.';
+      return;
+    }
     knop.disabled = true; uit.textContent = ''; st.className = 'status klein';
     var t = el('table', 'lijst');
     var kop = el('tr');
-    ['Consult', 'Valkuilen Claude', 'Valkuilen Mistral', 'Verdacht Claude', 'Verdacht Mistral', 'Tijd Claude / Mistral', ''].forEach(function (x) { kop.appendChild(el('td', '', x)); });
+    var metControle = $('soepcontrole').checked;
+    var koppen = ['Consult', 'Valkuilen Claude', 'Valkuilen Mistral'];
+    if (metControle) koppen.push('Valkuilen Mistral + controle');
+    koppen = koppen.concat(['Verdacht Claude', 'Verdacht Mistral']);
+    if (metControle) koppen.push('Verdacht Mistral + controle');
+    koppen = koppen.concat(['Tijd Claude / Mistral', '']);
+    koppen.forEach(function (x) { kop.appendChild(el('td', '', x)); });
     t.appendChild(kop);
     uit.appendChild(t);
     var detail = el('div');
     uit.appendChild(detail);
     var aantal = function (x) { return x.fout ? 'fout' : String((x.verdacht || []).length); };
     var valk = function (x) { return x.fout || !x.valkuilen ? '—' : x.valkuilen.gehaald + '/' + x.valkuilen.totaal; };
-    var som = { claude: [0, 0], eu: [0, 0] };
+    var som = { claude: [0, 0], eu: [0, 0], eu_gecontroleerd: [0, 0] };
     for (var i = 0; i < testset.length; i++) {
       var c = testset[i];
       st.textContent = 'Bezig met ' + (i + 1) + ' van ' + testset.length + ': ' + c.titel + '…';
@@ -593,13 +620,16 @@
       tr.appendChild(el('td', '', c.titel));
       try {
         var d = await soepTest('id:' + c.id);
+        var g = d.eu_gecontroleerd;
         tr.appendChild(el('td', '', valk(d.claude)));
         tr.appendChild(el('td', '', valk(d.eu)));
-        ['claude', 'eu'].forEach(function (k) {
-          if (d[k].valkuilen) { som[k][0] += d[k].valkuilen.gehaald; som[k][1] += d[k].valkuilen.totaal; }
+        if (metControle) tr.appendChild(el('td', '', g ? valk(g) : '—'));
+        ['claude', 'eu', 'eu_gecontroleerd'].forEach(function (k) {
+          if (d[k] && d[k].valkuilen) { som[k][0] += d[k].valkuilen.gehaald; som[k][1] += d[k].valkuilen.totaal; }
         });
         tr.appendChild(el('td', '', aantal(d.claude)));
         tr.appendChild(el('td', '', aantal(d.eu)));
+        if (metControle) tr.appendChild(el('td', '', g ? aantal(g) : '—'));
         tr.appendChild(el('td', '', d.claude.seconden + ' s / ' + d.eu.seconden + ' s'));
         var toonKnop = el('button', '', 'Toon');
         (function (d, titel) {
@@ -607,12 +637,15 @@
         })(d, c.titel);
         var td = el('td'); td.appendChild(toonKnop); tr.appendChild(td);
       } catch (e) {
-        var f = el('td', 'fout', e.message); f.colSpan = 6; tr.appendChild(f);
+        var f = el('td', 'fout', e.message); f.colSpan = koppen.length - 1; tr.appendChild(f);
       }
       t.appendChild(tr);
     }
     var totaal = el('tr');
-    [ 'Totaal', som.claude[0] + '/' + som.claude[1], som.eu[0] + '/' + som.eu[1], '', '', '', ''].forEach(function (x) { totaal.appendChild(el('td', '', x)); });
+    var rijTotaal = ['Totaal', som.claude[0] + '/' + som.claude[1], som.eu[0] + '/' + som.eu[1]];
+    if (metControle) rijTotaal.push(som.eu_gecontroleerd[0] + '/' + som.eu_gecontroleerd[1]);
+    while (rijTotaal.length < koppen.length) rijTotaal.push('');
+    rijTotaal.forEach(function (x) { totaal.appendChild(el('td', '', x)); });
     totaal.style.fontWeight = '600';
     t.appendChild(totaal);
     st.textContent = 'Klaar (EU-model: ' + $('soepmodel').selectedOptions[0].textContent + '). "Valkuilen" telt de bekende valkuilen die het verslag ontweek; "Verdacht" wat erin staat maar niet in het gesprek. Lees de verslagen zelf voor het oordeel.';

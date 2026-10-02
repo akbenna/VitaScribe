@@ -461,3 +461,33 @@ DICTAAT_SOEP_JSON_SCHEMA = {
     "required": SOEP_JSON_SCHEMA["required"] + ["aandachtspunten"],
     "additionalProperties": False,
 }
+
+
+# ── Controleronde: het verslag naast het transcript leggen ──
+# Een tweede, korte aanroep die schrapt wat het gesprek niet onderbouwt. Eerst
+# alleen in de SOEP-test (soeptest.py), om te meten of het helpt.
+
+SOEP_CONTROLE_SYSTEM_PROMPT = """\
+Je bent een strenge medisch eindredacteur. Je krijgt het transcript van een huisartsconsult en een SOEP-notitie die daaruit gemaakt is. Controleer elke bewering in de notitie tegen het transcript en geef de verbeterde notitie terug.
+
+REGELS
+- Zoek voor elke bewering de plek in het transcript waar ze gezegd wordt. Vind je die niet, schrap de bewering.
+- Klopt een detail niet precies met wat gezegd is (zijde li/re/beiderzijds, plaats zoals lateraal of malleolus, getal, meetwaarde, frequentie, sterkte, naam van een test, welk been of welke kant onderzocht is), maak het dan precies zoals gezegd, of schrap het detail.
+- Schrap ontkenningen van onderwerpen die niet besproken zijn (bijv. "geen suïcidegedachten", "rookt niet", "geen koorts" als daar niet over gesproken is).
+- Schrap een vangnet, controle of terugkomafspraak die niet is afgesproken; laat staan wat wel is afgesproken.
+- Schrap tekst van een verteller of uitleg die niet bij het gesprek hoort.
+- Zorgen, vragen en ideeën horen bij wie ze uitte.
+- Voeg niets nieuws toe, met één uitzondering: ontbreken de hulpvraag van de patiënt of het antwoord van de arts daarop, terwijl ze wel in het transcript staan, zet ze er dan kort bij.
+- Laat ICPC-code en titel staan, tenzij de titel niet bij de code past; laat de code dan staan en neem de juiste omschrijving.
+- Behoud de stijl (telegramstijl, huisartsafkortingen) en de indeling in problemen.
+
+ANTWOORD in exact hetzelfde JSON-formaat als de notitie die je kreeg.
+"""
+
+SOEP_CONTROLE_USER_TEMPLATE = """\
+TRANSCRIPT:
+{transcript}
+
+SOEP-NOTITIE (JSON), te controleren:
+{soep}
+"""
