@@ -27,7 +27,9 @@ Settings (environment):
   LETTERS_LLM_PROVIDER    default "anthropic"
   BEDROCK_REGION, BEDROCK_MODEL, BEDROCK_SOEP_MODEL and the AWS credentials
                           for route A (config.py)
-  ALLOWED_STT_PROVIDERS   default "deepgram"
+  ALLOWED_STT_PROVIDERS   default "deepgram". "voxtral": consults (live and
+                          uploaded) go to Mistral Voxtral (EU) after the consult;
+                          dictation stays on Deepgram (needs live text).
   CLINICAL_DECISION_SUPPORT  default "false": no clinical suggestions (MDR).
                           "true" on the practice's own server: red flags in the
                           report and question suggestions during the live
@@ -90,6 +92,8 @@ def summary() -> dict:
         "patient_data_llm_in_eu": phi_llm_provider() in EU_PROVIDERS,
         "letters_llm": letters_llm_provider(),
         "stt": stt_provider(),
+        # Voxtral: an EU company in the EU; Deepgram: a US company, EU endpoint.
+        "stt_eu_provider": stt_provider() == "voxtral",
         "stt_eu_endpoint": True,
         "stt_training_opt_out": True,
         "clinical_decision_support": clinical_decision_support(),

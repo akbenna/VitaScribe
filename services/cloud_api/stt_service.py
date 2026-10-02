@@ -18,7 +18,7 @@ import re
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Union
 
 import httpx
 import structlog
@@ -353,7 +353,30 @@ def _voxtral_taal(language: Optional[str]) -> Optional[str]:
     return None if code in ("multi", "") else code
 
 
-async def _transcribe_voxtral(audio_path: Path, language: Optional[str] = None) -> TranscriptResult:
+# Voxtral sometimes writes Dutch fillers in English ("Yeah", "Okay"); in a
+# Dutch consult they go back to Dutch. Only whole words, nothing else.
+_ENGELS_VULWOORD = re.compile(r"\b(yeah|yep|okay)\b", re.IGNORECASE)
+_NL_VOOR = {"yeah": "ja", "yep": "ja", "okay": "oké"}
+
+
+def nederlandse_vulwoorden(tekst: str) -> str:
+    def vervang(m: "re.Match") -> str:
+        nl = _NL_VOOR[m.group(1).lower()]
+        return nl.capitalize() if m.group(1)[0].isupper() else nl
+    return _ENGELS_VULWOORD.sub(vervang, tekst)
+
+
+async def transcribe_bytes(audio: bytes, provider: str, language: Optional[str] = None,
+                           naam: str = "consult.webm") -> TranscriptResult:
+    """Transcribe a recording held in memory (live consult); never on disk."""
+    if provider != "voxtral":
+        raise ValueError(f"Alleen Voxtral verwerkt een opname uit het geheugen, niet {provider}.")
+    logger.info("stt.start", provider=provider, bytes=len(audio))
+    return await _transcribe_voxtral(audio, language, naam=naam)
+
+
+async def _transcribe_voxtral(audio_path: Union[Path, bytes], language: Optional[str] = None,
+                              naam: str = "consult.webm") -> TranscriptResult:
     """Transcribe using Mistral Voxtral Mini Transcribe, with speaker labels.
 
     Batch only: the recording is sent after the consult. Mistral keeps no
@@ -371,6 +394,11 @@ async def _transcribe_voxtral(audio_path: Path, language: Optional[str] = None) 
 
     async def post(velden: dict) -> httpx.Response:
         async with httpx.AsyncClient(timeout=300.0) as client:
+            if isinstance(audio_path, (bytes, bytearray)):
+                bestand = (naam, bytes(audio_path), "application/octet-stream")
+                return await client.post(os.getenv("VOXTRAL_URL", VOXTRAL_URL),
+                                         headers={"Authorization": f"Bearer {api_key}"},
+                                         files={"file": bestand}, data=velden)
             with open(audio_path, "rb") as f:
                 return await client.post(
                     os.getenv("VOXTRAL_URL", VOXTRAL_URL),
@@ -394,9 +422,11 @@ async def _transcribe_voxtral(audio_path: Path, language: Optional[str] = None) 
         raise ValueError(f"Voxtral gaf fout {response.status_code}" + (f": {melding}" if melding else "."))
     body = response.json()
 
+    nederlands = (taal or body.get("language") or "") == "nl"
+    netjes = nederlandse_vulwoorden if nederlands else (lambda t: t)
     segments = []
     for seg in body.get("segments") or []:
-        tekst = (seg.get("text") or "").strip()
+        tekst = netjes((seg.get("text") or "").strip())
         if not tekst:
             continue
         spreker = seg.get("speaker_id")
@@ -409,7 +439,7 @@ async def _transcribe_voxtral(audio_path: Path, language: Optional[str] = None) 
         ))
     usage = body.get("usage") or {}
     duur = float(usage.get("prompt_audio_seconds") or (segments[-1].end if segments else 0.0))
-    tekst = (body.get("text") or "").strip() or " ".join(s.text for s in segments)
+    tekst = netjes((body.get("text") or "").strip()) or " ".join(s.text for s in segments)
     logger.info("voxtral.result", chars=len(tekst), segments=len(segments),
                 sprekers=len({s.speaker for s in segments if s.speaker}), duration=duur)
     return TranscriptResult(raw_text=tekst, segments=segments, language=body.get("language") or taal or "nl",

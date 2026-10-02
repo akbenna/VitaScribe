@@ -357,9 +357,28 @@ elk filmpje apart op en zet de vergelijkingen in een tabel. Alleen voor die
 speler staat de pagina een frame van YouTube toe; er draait geen script van
 YouTube in de beheerpagina.
 
-Voxtral als spraakdienst voor opgenomen consulten (na afloop verwerken, niet
-live) zet je aan met `ALLOWED_STT_PROVIDERS=voxtral`. Live meeschrijven en
-vraagsuggesties blijven op Deepgram tot Voxtral Realtime is ingebouwd.
+### Voxtral als spraakdienst voor consulten
+
+Met `ALLOWED_STT_PROVIDERS=voxtral` gaan alle consulten naar Mistral Voxtral
+(EU), ook het live consult: de server houdt het geluid tijdens het consult in
+het werkgeheugen (nooit op schijf) en stuurt na "stop" de hele opname in één
+keer naar Voxtral. Er gaat dan niets naar Deepgram. Het terugvalpad (de
+extensie stuurt haar eigen kopie op) volgt dezelfde keuze. Engelse vulwoorden
+die Voxtral soms schrijft ("Yeah", "Okay") worden in Nederlandse consulten
+"ja" en "oké".
+
+Wat in deze stand niet verandert of niet kan:
+
+- Dicteren blijft live via Deepgram (EU-eindpunt): daarvoor is tekst tijdens
+  het spreken nodig, en Voxtral Realtime is nog niet ingebouwd.
+- Vraagsuggesties tijdens het consult werken niet in deze stand; ze hebben
+  tekst tijdens het gesprek nodig.
+- De extensie toont tijdens het consult alleen "Luistert mee", zonder aantal
+  stemmen.
+
+Nodig: `MISTRAL_API_KEY` van een betaald Mistral-account met
+verwerkersovereenkomst. `/health/deep` meldt dan ook de controle `mistral`.
+Terugzetten: `ALLOWED_STT_PROVIDERS=deepgram`.
 
 ### Route A: Claude in Amazon Bedrock (EU)
 
