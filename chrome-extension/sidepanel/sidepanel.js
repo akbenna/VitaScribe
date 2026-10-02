@@ -795,6 +795,12 @@ document.getElementById('open-settings').addEventListener('click', function (e) 
   e.preventDefault();
   chrome.runtime.openOptionsPage();
 });
+// Beheer: de beheerpagina van de eigen server (spraaktest, SOEP-test, licenties).
+document.getElementById('open-beheer').addEventListener('click', async function (e) {
+  e.preventDefault();
+  var config = await getConfig();
+  chrome.tabs.create({ url: config.apiUrl + '/beheer' });
+});
 
 chrome.storage.local.get('svLiveInsert').then(function (r) { els.live.checked = !!r.svLiveInsert; });
 els.live.addEventListener('change', function () {

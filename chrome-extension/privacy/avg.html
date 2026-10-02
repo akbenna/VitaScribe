@@ -28,6 +28,7 @@
   <tr><td>Verwerker</td><td>De beheerder van de VitaScribe-server.</td></tr>
   <tr><td>Subverwerkers</td><td>Afhankelijk van de modus die de arts kiest. <b>EU-modus</b>: alleen Mistral AI (Frankrijk; spraakherkenning van het consult met Voxtral en alle tekstverwerking, in de EU, niet gebruikt voor training). <b>Claude-modus</b>: Deepgram (spraak, EU-eindpunt, deelname aan modeltraining uitgezet), Anthropic (VS; dictaat, SOEP, consultverslag, meedenken onder de SOEP, schermafdrukken en patiëntinstructie, en gepseudonimiseerde brieven, dossiervragen en berichten uit de post; niet gebruikt voor training). De VitaScribe-server zelf draait bij Railway. Stelt de praktijk een eigen sleutel in, dan gaan brieven naar de eigen aanbieder van de praktijk (Anthropic of OpenAI) en dicteren naar het eigen Deepgram-account; de overeenkomst met die aanbieder sluit de praktijk zelf.</td></tr>
 </table>
+<p>Het advies om bij een bijzonder gevoelig dossier de EU-modus te kiezen, ontstaat volledig in de browser: de extensie leest wat van het dossier in beeld staat en zoekt naar ICPC-codes en woorden. Daarvoor gaat niets naar de server of een AI-dienst. De arts kiest zelf de modus.</p>
 <p>Met elke (sub)verwerker hoort een verwerkersovereenkomst te bestaan. Bij een aanbieder buiten de EER hoort daar een geldige doorgiftegrondslag bij. Controleer dit voordat de extensie in de praktijk wordt gebruikt.</p>
 
 <h2>Dicteren en SOEP</h2>

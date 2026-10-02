@@ -45,6 +45,7 @@ function check(name, cond, extra) {
   const DOSSIER = fs.readFileSync(path.join(HERE, 'bricks-dossier.html'), 'utf8');
   await ctx.route('https://test.bfrcloud.com/**', (r) => {
     const u = r.request().url();
+    if (u.endsWith('/gevoelig')) return r.fulfill({ contentType: 'text/html', body: DOSSIER.replace('P70<br>28-02-2025<br>Dementie', 'P76<br>28-02-2025<br>Depressie, verwezen naar GGZ') });
     return r.fulfill({ contentType: 'text/html', body: u.endsWith('/post') ? POST : u.endsWith('/dossier') ? DOSSIER : BRICKS });
   });
   await ctx.route('http://localhost:8002/api/v1/**', async (r) => {
@@ -295,6 +296,39 @@ function check(name, cond, extra) {
   check('initialen van de juiste patiënt', /Ingelezen \(A\.M\.\)/.test(await panel.textContent('#dv-bron')), await panel.textContent('#dv-bron'));
   check('antwoord met aanwijzingen gemarkeerd als "Alleen aanwijzingen"', (await panel.textContent('.dv-item:first-child .dv-zeker')) === 'Alleen aanwijzingen'
     && (await panel.getAttribute('.dv-item:first-child', 'class')).includes('indirect'));
+
+  console.log('Advies bij een gevoelig dossier');
+  check('gewoon dossier (dementie, incontinentie): geen advies', await panel.isHidden('#gevoelig-advies'));
+  await page.goto('https://test.bfrcloud.com/gevoelig');
+  await sleep(500);
+  await panel.bringToFront();
+  const voorAdvies = sent.length;
+  await panel.evaluate(() => SVGevoeligAdvies.kijk());
+  await sleep(800);
+  const advies = await panel.textContent('#gevoelig-advies');
+  check('gevoelig dossier: advies om de EU-modus te kiezen', await panel.isVisible('#gevoelig-advies') && advies.includes('psychiatrie') && advies.includes('EU-modus'), advies);
+  check('advies zegt dat er niets verstuurd is', advies.includes('niets verstuurd'));
+  check('voor het advies ging er niets naar de server', sent.length === voorAdvies, sent.slice(voorAdvies).map((x) => x.url));
+  await panel.click('#gevoelig-advies .gevoelig-eu');
+  await sleep(400);
+  check('één klik: EU-modus aan, advies weg', (await panel.evaluate(() => chrome.storage.local.get('svModus'))).svModus === 'eu' && await panel.isHidden('#gevoelig-advies'));
+  await panel.click('#modus [data-modus="claude"]');
+  await sleep(600);
+  await panel.evaluate(() => SVGevoeligAdvies.kijk());
+  await sleep(800);
+  check('terug in Claude: advies weer zichtbaar', await panel.isVisible('#gevoelig-advies'));
+  await panel.click('#gevoelig-advies button:not(.gevoelig-eu)');
+  await panel.evaluate(() => SVGevoeligAdvies.kijk());
+  await sleep(800);
+  check('"Niet voor deze patiënt" houdt het advies weg', await panel.isHidden('#gevoelig-advies'));
+  check('de modus blijft wat de arts koos (Claude)', (await panel.evaluate(() => chrome.storage.local.get('svModus'))).svModus === 'claude');
+  check('link naar Beheer in het zijpaneel', await panel.isVisible('#open-beheer'));
+  await panel.evaluate(() => { window.__geopend = []; chrome.tabs.create = async (o) => { window.__geopend.push(o.url); }; });
+  await panel.click('#open-beheer');
+  await sleep(300);
+  const geopend = await panel.evaluate(() => window.__geopend);
+  check('Beheer opent de beheerpagina van de eigen server', geopend[0] === 'http://localhost:8002/beheer', geopend);
+
   await page.goto('https://test.bfrcloud.com/patient');
   await sleep(300);
   await panel.click('.view-tab[data-view="dictate"]');
