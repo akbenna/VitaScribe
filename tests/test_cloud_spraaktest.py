@@ -185,3 +185,12 @@ def test_spraaktest_soep(monkeypatch):
 def test_spraaktest_soep_needs_admin():
     r = TestClient(main.app).post("/api/v1/beheer/spraaktest/soep", json={"deepgram": "x", "voxtral": "y"})
     assert r.status_code in (401, 403, 503)
+
+
+def test_spraaktest_page_allows_only_cookieless_youtube_frame():
+    api = TestClient(main.app)
+    csp = api.get("/beheer/spraaktest").headers["content-security-policy"]
+    assert "frame-src https://www.youtube-nocookie.com" in csp
+    assert "script-src" not in csp and "default-src 'self'" in csp   # no YouTube script in the page
+    # the other admin pages keep the strict policy
+    assert "frame-src" not in api.get("/beheer").headers["content-security-policy"]

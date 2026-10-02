@@ -40,6 +40,10 @@
   .term.mist{background:var(--rood-licht);color:var(--rood)}
   .status{margin-top:10px}
   .tijd{font-variant-numeric:tabular-nums}
+  textarea{font:inherit;width:100%;padding:7px 10px;border:1px solid var(--rand);border-radius:8px;margin-bottom:10px}
+  .speler iframe{width:100%;max-width:640px;aspect-ratio:16/9;border:0;border-radius:8px;margin-top:10px}
+  table.lijst td:first-child{width:auto}
+  table.lijst thead td{font-weight:600;color:var(--zacht)}
 </style>
 </head>
 <body>
@@ -49,14 +53,36 @@
     <h2>Voxtral (Mistral, Frankrijk) tegen Deepgram</h2>
     <div class="let-op">Gebruik een rollenspel of een opname zonder echte patiënt, tot er een verwerkersovereenkomst met Mistral is. Er wordt niets bewaard; het log noteert alleen dat er een test was.</div>
     <div class="rij">
-      <button id="opnemen" class="opnemen">● Opnemen</button>
+      <button id="opnemen" class="opnemen">● Microfoon</button>
+      <button id="tabopname" class="opnemen" title="Neem het geluid op van een ander tabblad (bijvoorbeeld een video of videoconsult) of, op Windows, van de hele pc">● Geluid van tabblad of pc</button>
+      <label class="klein" title="Bij een videoconsult: de patiënt uit het tabblad, jijzelf via de microfoon"><input type="checkbox" id="ookmic"> met microfoon erbij</label>
       <span id="klok" class="tijd klein"></span>
       <span class="klein">of</span>
       <input type="file" id="bestand" accept=".webm,.wav,.mp3,.m4a,.ogg,.flac,.mp4,audio/*">
       <label class="klein">Taal <select id="taal"><option value="nl">Nederlands</option><option value="multi">Meertalig</option><option value="en">Engels</option></select></label>
       <button id="vergelijk" class="hoofd" disabled>Vergelijk</button>
     </div>
+    <p class="klein">Geluid van een tabblad: kies in het venster dat opent het tabblad en zet <b>Geluid van tabblad delen</b> aan. Het geluid van de hele pc kan alleen op Windows (kies dan "Volledig scherm"). Stoppen kan hier of met "Delen stoppen" in de browserbalk.</p>
     <p id="status" class="status klein"></p>
+  </div>
+  <div class="kaart">
+    <h2>Afspeellijst van YouTube</h2>
+    <p class="klein">Plak een link naar een afspeellijst, of links naar losse filmpjes (één per regel). De filmpjes spelen hieronder af; elk filmpje wordt apart opgenomen en vergeleken. Chrome vraagt wat je deelt: kies <b>Dit tabblad</b> en zet <b>Geluid delen</b> aan. Laat dit tabblad open en op normale snelheid afspelen.</p>
+    <textarea id="ytlink" rows="2" placeholder="https://www.youtube.com/playlist?list=…"></textarea>
+    <div class="rij">
+      <button id="lijststart" class="hoofd">Start afspeellijst</button>
+      <button id="lijstknip" disabled title="Gebruik dit als de speler een nieuw filmpje niet vanzelf meldt">✂ Volgend filmpje</button>
+      <button id="lijststop" disabled>Stop</button>
+    </div>
+    <p id="lijststatus" class="status klein"></p>
+    <div id="speler" class="speler"></div>
+    <div id="lijstuitkomst" hidden>
+      <table class="lijst">
+        <thead><tr><td>#</td><td>Filmpje</td><td>Duur</td><td>Sprekers DG / VX</td><td>Overeenkomst</td><td>Tijd DG / VX</td><td></td></tr></thead>
+        <tbody id="lijsttabel"></tbody>
+      </table>
+      <p class="klein">Klik op <b>Toon</b> voor beide transcripten en de SOEP-vergelijking. Filmpjes korter dan 20 seconden (reclame) worden overgeslagen.</p>
+    </div>
   </div>
   <div id="uitkomst"></div>
 </main>
