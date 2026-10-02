@@ -221,6 +221,11 @@ function check(name, cond, extra) {
   check('onderdelen uit Bricks, ook uit ingebed frame', ['Journaal', 'Medicatie', 'Correspondentie', 'Lab'].every((s) => secs.includes(s)), secs);
   const prev = await panel.textContent('#lt-preview');
   check('preview zonder naam/BSN/telefoon/postcode/datums', !/Pieter|123456789|12345678|6041 AB|14-05-2024/.test(prev), prev.slice(0, 200));
+  await panel.setInputFiles('#lt-pdf-file', vraagPdf);
+  await sleep(1500);
+  const secs2 = await panel.$$eval('.lt-sec span:nth-child(2)', (e) => e.map((x) => x.textContent));
+  check('PDF komt bij het Bricks-dossier, vervangt het niet', secs2.includes('Journaal') && secs2.some((x) => x.startsWith('PDF ')), secs2);
+  check('naamfilter uit Bricks werkt ook op de PDF', !/Pieter|123456789/.test(await panel.textContent('#lt-preview')));
   await panel.setInputFiles('#lt-vraag-file', vraagPdf);
   await sleep(1500);
   check('vraag uit PDF', (await panel.inputValue('#lt-vraag')).includes('Welke diagnose'));
@@ -354,7 +359,7 @@ function check(name, cond, extra) {
   hl.on('pageerror', (e) => errs.push(e.message));
   await hl.goto(`chrome-extension://${id}/help/handleiding.html`);
   const hoofdstukken = await hl.$$eval('h2', (h) => h.map((x) => x.id));
-  check('handleiding met alle hoofdstukken', ['start', 'paneel', 'consult', 'dicteren', 'meedenken', 'brieven', 'dossiervraag', 'post', 'instellingen', 'privacy', 'grenzen', 'problemen'].every((h) => hoofdstukken.includes(h)), hoofdstukken);
+  check('handleiding met alle hoofdstukken', ['start', 'paneel', 'consult', 'dicteren', 'meedenken', 'brieven', 'dossiervraag', 'post', 'bronnen', 'instellingen', 'privacy', 'grenzen', 'problemen'].every((h) => hoofdstukken.includes(h)), hoofdstukken);
   const kapot = await hl.$$eval('nav a', (as) => as.filter((a) => !document.querySelector(a.getAttribute('href'))).map((a) => a.textContent));
   check('inhoudsopgave verwijst naar bestaande hoofdstukken', kapot.length === 0, kapot);
   await hl.click('a[href="../privacy/avg.html"]');

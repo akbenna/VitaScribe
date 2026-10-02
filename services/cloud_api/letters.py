@@ -29,7 +29,7 @@ from .praktijk_sleutels import kies_brieven
 logger = structlog.get_logger()
 router = APIRouter(prefix="/api/v1/letters", tags=["brieven"])
 
-MAX_DOSSIER_CHARS = 40000
+MAX_DOSSIER_CHARS = 160_000   # all sections in view; ~40k tokens at most
 MAX_TEXT_CHARS = 12000
 MAX_IMAGE_BYTES_B64 = 7_000_000   # ~5 MB image
 IMAGE_TYPES = ("image/png", "image/jpeg", "image/webp", "image/gif")
