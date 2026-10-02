@@ -343,6 +343,12 @@ bewaard. Nodig: `MISTRAL_API_KEY` (dezelfde sleutel als het taalmodel) en
 `DEEPGRAM_API_KEY`. Gebruik geen echte patiëntopnamen zolang er geen
 verwerkersovereenkomst met Mistral is.
 
+Onder de transcripten staat **Maak SOEP van beide**: van elk transcript maakt
+de server een SOEP met dezelfde woordenlijst en hetzelfde taalmodel als bij een
+echt consult (`PHI_LLM_PROVIDER`). Met **Blind beoordelen** heten de verslagen
+"A" en "B" in willekeurige volgorde, tot je op Onthul klikt. Kost twee
+SOEP-aanroepen per klik (enkele dollarcenten).
+
 Voxtral als spraakdienst voor opgenomen consulten (na afloop verwerken, niet
 live) zet je aan met `ALLOWED_STT_PROVIDERS=voxtral`. Live meeschrijven en
 vraagsuggesties blijven op Deepgram tot Voxtral Realtime is ingebouwd.

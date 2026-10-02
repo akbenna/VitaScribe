@@ -7,7 +7,7 @@ import httpx
 import pytest
 from fastapi.testclient import TestClient
 
-from services.cloud_api import beheer, main, register, spraaktest, stt_service
+from services.cloud_api import beheer, main, pipeline, register, spraaktest, stt_service
 from services.cloud_api.config import get_config
 
 
@@ -143,4 +143,45 @@ def test_spraaktest_endpoint(monkeypatch):
 def test_spraaktest_needs_admin():
     api = TestClient(main.app)
     r = api.post("/api/v1/beheer/spraaktest", files={"audio": ("x.webm", b"0" * 5000)})
+    assert r.status_code in (401, 403, 503)
+
+
+def test_spraaktest_soep(monkeypatch):
+    gezien = []
+
+    async def fake_soep(gesprek, aanbieder=None, taal=None):
+        gezien.append((gesprek, aanbieder))
+        if "Voxtral" in gesprek:
+            raise ValueError("limiet bereikt")
+        return pipeline.SOEPResult(s="Schouderklachten links.", e="Schouderklachten", icpc_code="L08",
+                                   problemen=[{"s": "Schouderklachten links.", "o": "", "e": "Schouderklachten",
+                                               "p": "", "icpc_code": "L08", "icpc_titel": "Schouderklachten"}])
+
+    logs = []
+
+    async def log(door, handeling, praktijk_id=None, **details):
+        logs.append((door, handeling, details))
+
+    monkeypatch.setattr(pipeline, "genereer_soep", fake_soep)
+    monkeypatch.setattr(register, "log", log)
+    main.app.dependency_overrides[beheer.vereis_beheerder] = lambda: "test-beheerder"
+    try:
+        api = TestClient(main.app)
+        r = api.post("/api/v1/beheer/spraaktest/soep",
+                     json={"deepgram": "Spreker 1: Wat brengt u hier?\nSpreker 2: Pijn in mijn schouder.",
+                           "voxtral": "Spreker 1: Voxtral tekst", "taal": "nl"})
+        assert r.status_code == 200, r.text
+        d = r.json()
+        assert d["deepgram"]["problemen"][0]["icpc_code"] == "L08"
+        assert "limiet" in d["voxtral"]["fout"]
+        # the production model for patient data, for both sides
+        assert {a for _, a in gezien} == {d["taalmodel"]}
+        assert logs and "schouder" not in json.dumps(logs).lower()
+        assert api.post("/api/v1/beheer/spraaktest/soep", json={"deepgram": " ", "voxtral": ""}).status_code == 400
+    finally:
+        main.app.dependency_overrides.clear()
+
+
+def test_spraaktest_soep_needs_admin():
+    r = TestClient(main.app).post("/api/v1/beheer/spraaktest/soep", json={"deepgram": "x", "voxtral": "y"})
     assert r.status_code in (401, 403, 503)
