@@ -18,7 +18,6 @@ def _env(monkeypatch):
     monkeypatch.setenv("API_KEYS", "geheim")
     monkeypatch.setenv("DEEPGRAM_API_KEY", "dg-test")
     monkeypatch.setenv("MISTRAL_API_KEY", "mistral-test")
-    monkeypatch.setenv("ALLOWED_MODI", "claude,eu")
     for naam in ("PHI_LLM_PROVIDER", "LETTERS_LLM_PROVIDER", "ALLOWED_STT_PROVIDERS", "EU_LLM_PROVIDER"):
         monkeypatch.delenv(naam, raising=False)
     get_config.cache_clear()
@@ -44,24 +43,39 @@ def test_modes_choose_providers():
         data_policy.herstel_modus(t)
 
 
-def test_server_decides_which_modes_are_allowed(monkeypatch):
-    monkeypatch.setenv("ALLOWED_MODI", "claude")
-    assert data_policy.kies_modus("eu") == "claude"
-    monkeypatch.setenv("ALLOWED_MODI", "eu")
-    assert data_policy.kies_modus("claude") == "eu" and data_policy.kies_modus(None) == "eu"
-    monkeypatch.setenv("ALLOWED_MODI", "onzin")
-    assert data_policy.toegestane_modi() == ["claude"]
+def test_the_doctor_decides_never_the_server(monkeypatch):
+    monkeypatch.setenv("ALLOWED_MODI", "claude")      # an old setting has no effect
+    assert data_policy.kies_modus("eu") == "eu"
+    assert data_policy.kies_modus("claude") == "claude"
+    assert data_policy.kies_modus(None) == "claude" and data_policy.kies_modus("onzin") == "claude"
     monkeypatch.setenv("EU_LLM_PROVIDER", "anthropic")      # not an EU provider: fail to Mistral
     assert data_policy.eu_llm_provider() == "mistral"
     monkeypatch.setenv("EU_LLM_PROVIDER", "bedrock")
     assert data_policy.eu_llm_provider() == "bedrock"
 
 
+def test_eu_without_key_fails_and_never_falls_back_to_claude(monkeypatch):
+    monkeypatch.delenv("MISTRAL_API_KEY")
+    get_config.cache_clear()
+    gezien = []
+
+    async def fake_anthropic(*a, **kw):
+        gezien.append("anthropic")
+        return "{}"
+    monkeypatch.setattr(llm_service, "_complete_anthropic", fake_anthropic)
+    api = TestClient(main.app)
+    r = api.get("/api/v1/providers", headers={"X-API-Key": "geheim", "X-VitaScribe-Modus": "eu"})
+    assert r.json()["modus"] == "eu" and "Mistral-sleutel" in r.json()["eu_probleem"]
+    r = api.post("/api/v1/dictation/process", headers={"X-API-Key": "geheim", "X-VitaScribe-Modus": "eu"},
+                 json={"text": "keelpijn", "mode": "clean"})
+    assert r.status_code >= 400 and gezien == []
+
+
 def test_header_sets_mode_per_request():
     api = TestClient(main.app)
     r = api.get("/api/v1/providers", headers={"X-API-Key": "geheim", "X-VitaScribe-Modus": "eu"})
     assert r.status_code == 200
-    assert r.json()["modus"] == "eu" and r.json()["modi"] == ["claude", "eu"]
+    assert r.json()["modus"] == "eu" and r.json()["modi"] == ["claude", "eu"] and r.json()["eu_probleem"] is None
     assert r.headers["x-vitascribe-modus"] == "eu"
     r = api.get("/api/v1/providers", headers={"X-API-Key": "geheim"})
     assert r.json()["modus"] == "claude" and r.headers["x-vitascribe-modus"] == "claude"

@@ -371,16 +371,12 @@ met één klik; de keuze gaat met elke aanvraag mee (kopregel
   de praktijk bij een Amerikaanse aanbieder worden niet gebruikt. Live dicteren
   weigert de server; vraagsuggesties kunnen niet.
 
-De server beslist welke modi mogen:
-
-```bash
-ALLOWED_MODI=claude,eu     # de arts kiest; de eerste is de standaard
-ALLOWED_MODI=eu            # alleen de formele modus
-```
-
-Zonder `ALLOWED_MODI` is alleen Claude toegestaan; de knop springt dan terug
-met een melding. Nodig voor EU: `MISTRAL_API_KEY` van een betaald account met
-verwerkersovereenkomst en zero data retention.
+De arts kiest; de server volgt die keuze altijd en verandert hem nooit. Kan
+de EU-modus niet werken (geen `MISTRAL_API_KEY`), dan mislukt de aanvraag met
+een melding; de server valt nooit stil terug op Claude. De knop waarschuwt
+daar vooraf voor (`eu_probleem` in `/api/v1/providers`). Nodig voor EU:
+`MISTRAL_API_KEY` van een betaald account met verwerkersovereenkomst en zero
+data retention.
 
 ### Voxtral als spraakdienst voor consulten
 

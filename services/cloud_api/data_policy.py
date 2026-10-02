@@ -22,9 +22,11 @@ practice (24-09-2026, changed 28-09-2026):
 - The browser cannot override these choices; an unknown or non-allowed
   provider falls back to the configured one.
 
-Two modes (02-10-2026). The doctor switches per request from the extension
-(header X-VitaScribe-Modus, or "modus" in the WebSocket auth message); the
-server only honours a mode that ALLOWED_MODI lists:
+Two modes (02-10-2026). The doctor chooses, per request, in the extension
+(header X-VitaScribe-Modus, or "modus" in the WebSocket auth message). The
+server always follows that choice and never changes it; it may only advise.
+If the eu mode cannot run (no Mistral key), the request fails with a message:
+it never falls back to Claude on its own. Without a choice: claude.
 
 - "claude" (default): everything above, with all features (live dictation,
   question suggestions).
@@ -39,8 +41,6 @@ Settings (environment):
   LETTERS_LLM_PROVIDER    default "anthropic"
   BEDROCK_REGION, BEDROCK_MODEL, BEDROCK_SOEP_MODEL and the AWS credentials
                           for route A (config.py)
-  ALLOWED_MODI            default "claude". "claude,eu": the doctor may switch;
-                          "eu": only the formal mode. The first is the default.
   EU_LLM_PROVIDER         default "mistral" (mistral | bedrock), for the eu mode
   ALLOWED_STT_PROVIDERS   default "deepgram". "voxtral": consults (live and
                           uploaded) go to Mistral Voxtral (EU) after the consult;
@@ -75,19 +75,22 @@ def _env(name: str, default: str) -> str:
 
 
 def toegestane_modi() -> List[str]:
-    modi = [m.strip() for m in _env("ALLOWED_MODI", "claude").split(",") if m.strip() in MODI]
-    return modi or ["claude"]
+    """Both modes, always: the doctor decides, not the server."""
+    return list(MODI)
 
 
 def kies_modus(requested: Optional[str] = None) -> str:
-    """The requested mode if the server allows it, otherwise the default."""
-    toegestaan = toegestane_modi()
+    """The doctor's choice; only an unknown value means the default (claude)."""
     gevraagd = (requested or "").strip().lower()
-    if gevraagd in toegestaan:
-        return gevraagd
-    if gevraagd:
-        logger.info("policy.modus_niet_toegestaan", requested=gevraagd, used=toegestaan[0])
-    return toegestaan[0]
+    return gevraagd if gevraagd in MODI else "claude"
+
+
+def eu_gereed() -> Optional[str]:
+    """None if the eu mode can run, otherwise why not (for advice, never to switch)."""
+    from .config import get_config
+    if eu_llm_provider() == "mistral" and not get_config().llm.mistral_api_key:
+        return "Op de server is geen Mistral-sleutel ingesteld; in de EU-modus mislukken aanvragen tot die er is."
+    return None
 
 
 def zet_modus(requested: Optional[str] = None) -> Token:
@@ -99,7 +102,7 @@ def herstel_modus(token: Token) -> None:
 
 
 def modus() -> str:
-    return _modus.get() or toegestane_modi()[0]
+    return _modus.get() or "claude"
 
 
 def eu_modus() -> bool:
