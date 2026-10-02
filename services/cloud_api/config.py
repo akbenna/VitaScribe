@@ -30,6 +30,9 @@ class STTConfig:
     deepgram_language: str = "nl"
     openai_api_key: str = ""
     openai_model: str = "whisper-1"
+    # Mistral Voxtral (France): batch transcription with speaker labels. Uses
+    # the Mistral key of the language model (MISTRAL_API_KEY).
+    voxtral_model: str = "voxtral-mini-latest"
 
 
 @dataclass(frozen=True)
@@ -114,6 +117,7 @@ def get_config() -> AppConfig:
             deepgram_language=os.getenv("DEEPGRAM_LANGUAGE", "nl"),
             openai_api_key=os.getenv("OPENAI_API_KEY", ""),
             openai_model=os.getenv("OPENAI_STT_MODEL", "whisper-1"),
+            voxtral_model=os.getenv("VOXTRAL_MODEL", "voxtral-mini-latest"),
         ),
         llm=LLMConfig(
             default_provider=os.getenv("LLM_PROVIDER", "anthropic"),

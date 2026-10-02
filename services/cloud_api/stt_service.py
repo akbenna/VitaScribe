@@ -5,6 +5,7 @@ Pluggable STT with support for:
   - Groq Whisper (free tier, fast)
   - Deepgram Nova-3 (best Dutch accuracy, default)
   - OpenAI Whisper API
+  - Mistral Voxtral Mini Transcribe (France, EU), with speaker labels
 
 All providers return a unified TranscriptResult.
 Compatible with Python 3.9+.
@@ -132,6 +133,8 @@ async def transcribe(audio_path: Path, provider: str = None,
         return await _transcribe_deepgram(audio_path, deepgram_key, language)
     elif provider == "openai":
         return await _transcribe_openai(audio_path)
+    elif provider == "voxtral":
+        return await _transcribe_voxtral(audio_path, language)
     else:
         raise ValueError(f"Onbekende STT provider: {provider}")
 
@@ -322,3 +325,79 @@ async def _transcribe_openai(audio_path: Path) -> TranscriptResult:
         duration_secs=data.get("duration", 0.0),
         provider="openai",
     )
+
+
+# ── Mistral Voxtral (EU) ──
+
+VOXTRAL_URL = "https://api.mistral.ai/v1/audio/transcriptions"
+MAX_CONTEXT_BIAS = 100   # Mistral accepts up to 100 words or phrases
+
+
+def voxtral_context_bias() -> List[str]:
+    """Medication names and terms from the vocabulary, so Voxtral spells them
+    the Dutch way (the same list Deepgram gets as keyterms in dictation)."""
+    from .medical_vocabulary import MEDICATION_CORRECTIONS, MEDICAL_TERM_CORRECTIONS
+    termen: List[str] = []
+    for bron in (MEDICATION_CORRECTIONS, MEDICAL_TERM_CORRECTIONS):
+        for term in sorted(set(bron.values())):
+            if term and term not in termen and len(term) <= 40:
+                termen.append(term)
+    return termen[:MAX_CONTEXT_BIAS]
+
+
+def _voxtral_taal(language: Optional[str]) -> Optional[str]:
+    """Deepgram language codes ("nl", "multi", "en-GB") to Voxtral's two
+    letters; "multi" means: let Voxtral detect the language."""
+    code = (language or "nl").split("-")[0].lower()
+    return None if code in ("multi", "") else code
+
+
+async def _transcribe_voxtral(audio_path: Path, language: Optional[str] = None) -> TranscriptResult:
+    """Transcribe using Mistral Voxtral Mini Transcribe, with speaker labels.
+
+    Batch only: the recording is sent after the consult. Mistral keeps no
+    audio for training on the API (verify the DPA before patient use)."""
+    config = get_config()
+    api_key = config.llm.mistral_api_key
+    if not api_key:
+        raise ValueError("MISTRAL_API_KEY niet geconfigureerd.")
+    # A list value is sent as a repeated form field (context_bias=…&context_bias=…).
+    data = {"model": config.stt.voxtral_model, "diarize": "true",
+            "timestamp_granularities": "segment", "context_bias": voxtral_context_bias()}
+    taal = _voxtral_taal(language)
+    if taal:
+        data["language"] = taal
+
+    async with httpx.AsyncClient(timeout=300.0) as client:
+        with open(audio_path, "rb") as f:
+            response = await client.post(
+                os.getenv("VOXTRAL_URL", VOXTRAL_URL),
+                headers={"Authorization": f"Bearer {api_key}"},
+                files={"file": (audio_path.name, f, "application/octet-stream")},
+                data=data,
+            )
+    if response.status_code != 200:
+        logger.error("voxtral.error", status=response.status_code, body=response.text[:500])
+    response.raise_for_status()
+    body = response.json()
+
+    segments = []
+    for seg in body.get("segments") or []:
+        tekst = (seg.get("text") or "").strip()
+        if not tekst:
+            continue
+        spreker = seg.get("speaker_id")
+        segments.append(TranscriptSegment(
+            text=tekst,
+            start=float(seg.get("start") or 0.0),
+            end=float(seg.get("end") or 0.0),
+            speaker=f"spreker_{spreker}" if spreker not in (None, "") else "",
+            confidence=float(seg.get("score") or 0.0),
+        ))
+    usage = body.get("usage") or {}
+    duur = float(usage.get("prompt_audio_seconds") or (segments[-1].end if segments else 0.0))
+    tekst = (body.get("text") or "").strip() or " ".join(s.text for s in segments)
+    logger.info("voxtral.result", chars=len(tekst), segments=len(segments),
+                sprekers=len({s.speaker for s in segments if s.speaker}), duration=duur)
+    return TranscriptResult(raw_text=tekst, segments=segments, language=body.get("language") or taal or "nl",
+                            duration_secs=duur, provider="voxtral")

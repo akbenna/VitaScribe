@@ -46,6 +46,7 @@ from .usage import router as usage_router
 from .praktijk_sleutels import kies_spraak, router as licentie_router
 from .beheer import router as beheer_router
 from .aanmelden import router as aanmelden_router
+from .spraaktest import router as spraaktest_router
 from . import register
 from . import audit, data_policy, llm_service
 from .medical_vocabulary import (
@@ -366,6 +367,7 @@ app.include_router(usage_router)
 app.include_router(licentie_router)
 app.include_router(beheer_router)
 app.include_router(aanmelden_router)
+app.include_router(spraaktest_router)
 
 
 @app.get("/vitascribe-logo.svg", include_in_schema=False)
