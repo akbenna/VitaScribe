@@ -293,3 +293,13 @@ body.consult-running .consult { border-color: var(--rec); }
 .dict-vragen { border-top: 0; padding-top: 0; }
 .cv-waarom { margin: 0; min-height: 1.3em; font-size: 11px; color: var(--muted); font-style: italic; }
 .cv-waarom:empty::before { content: "Ga met de muis over een vraag om te zien waarom die ertoe doet."; opacity: .7; }
+
+/* Advies bij een gevoelig dossier (sidepanel/gevoelig-ui.js) */
+.gevoelig-advies { margin: 0 0 8px; font-size: 12px; line-height: 1.4; color: #78350f; background: #fffbeb;
+                   border: 1px solid #fcd34d; border-radius: 8px; padding: 7px 9px; }
+.gevoelig-advies p { margin: 0 0 4px; }
+.gevoelig-advies .gevoelig-bron { color: #92400e; opacity: .85; font-size: 11px; }
+.gevoelig-knoppen { display: flex; gap: 6px; margin-top: 4px; }
+.gevoelig-knoppen button { font: inherit; font-size: 12px; border-radius: 6px; padding: 3px 8px; cursor: pointer;
+                           border: 1px solid #fcd34d; background: #fff; color: #78350f; }
+.gevoelig-knoppen .gevoelig-eu { background: #1d4ed8; border-color: #1d4ed8; color: #fff; font-weight: 600; }
