@@ -18,6 +18,8 @@ import structlog
 from . import data_policy, llm_service, stt_service, talen
 from .medical_vocabulary import correct_transcript_full, CorrectionStats
 from .prompts import (
+    SOEP_CONTROLE_SYSTEM_PROMPT,
+    SOEP_CONTROLE_USER_TEMPLATE,
     NAZORG_SYSTEM_PROMPT,
     NAZORG_USER_TEMPLATE,
     SOEP_JSON_SCHEMA,
@@ -136,6 +138,25 @@ async def genereer_soep(gesprek: str, llm_provider: Optional[str] = None,
     antwoord = await llm_service.complete(
         system_prompt=SOEP_SYSTEM_PROMPT,
         user_prompt=talen.prompt_regel(talen.kies(taal)) + SOEP_USER_TEMPLATE.format(transcript=gesprek),
+        provider=llm_provider,
+        json_mode=True,
+        max_tokens=SOEP_MAX_TOKENS,
+        quality=True,
+        json_schema=SOEP_JSON_SCHEMA,
+        model=model,
+    )
+    return SOEPResult(**soep_met_problemen(_parse_json_response(antwoord)))
+
+
+async def controleer_soep(gesprek: str, soep: SOEPResult, llm_provider: Optional[str] = None,
+                          model: Optional[str] = None) -> SOEPResult:
+    """Second pass: the report next to the transcript; what the conversation does
+    not support is removed. Raises on failure (the caller keeps the first report)."""
+    notitie = json.dumps({"s": soep.s, "o": soep.o, "e": soep.e, "p": soep.p, "icpc_code": soep.icpc_code,
+                          "icpc_titel": soep.icpc_titel, "problemen": soep.problemen}, ensure_ascii=False)
+    antwoord = await llm_service.complete(
+        system_prompt=SOEP_CONTROLE_SYSTEM_PROMPT,
+        user_prompt=SOEP_CONTROLE_USER_TEMPLATE.format(transcript=gesprek, soep=notitie),
         provider=llm_provider,
         json_mode=True,
         max_tokens=SOEP_MAX_TOKENS,

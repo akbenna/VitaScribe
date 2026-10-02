@@ -28,7 +28,8 @@
   .klein{font-size:13px;color:var(--zacht)}
   .let-op{background:var(--amber-licht);color:#78350f;border-radius:8px;padding:10px 12px;font-size:14px;margin-bottom:12px}
   .naast{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-  @media(max-width:900px){.naast{grid-template-columns:1fr}}
+  .naast.drie{grid-template-columns:1fr 1fr 1fr}
+  @media(max-width:900px){.naast,.naast.drie{grid-template-columns:1fr}}
   table{width:100%;border-collapse:collapse;margin-bottom:10px}
   td{padding:6px 4px;border-bottom:1px solid var(--rand);vertical-align:top;font-size:14px}
   td:first-child{color:var(--zacht);width:45%}
@@ -93,6 +94,7 @@
       <label class="klein">EU-model <select id="soepmodel"><option value="large">Mistral Large</option><option value="medium">Mistral Medium</option></select></label>
       <button id="soepeen" class="hoofd">Maak beide verslagen</button>
       <button id="soepalles">Hele testset</button>
+      <label class="klein" title="Het Mistral-verslag gaat nog een keer naar Mistral, naast het transcript; wat het gesprek niet onderbouwt, wordt geschrapt"><input type="checkbox" id="soepcontrole" checked> Controleronde (EU)</label>
       <label class="klein"><input type="checkbox" id="soepblind" checked> Blind beoordelen</label>
     </div>
     <p id="soepstatus" class="status klein"></p>

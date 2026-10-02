@@ -29,6 +29,18 @@
           {
             "regex": "beiderzijds|bilateraal|\\bbdz\\b",
             "uitleg": "'beiderzijds' terwijl één been is getest"
+          },
+          {
+            "regex": "(?<!max )(?<!max\\. )(?<!maximaal )\\b[4-9]\\s?dd\\b",
+            "uitleg": "frequentie verkeerd (ze nam 4 tabletten per dag, max 6; niet 4dd of 6dd)"
+          },
+          {
+            "regex": "vingers tot|halverwege|\\bcm\\b",
+            "uitleg": "meetwaarde bij bukken (niet genoemd)"
+          },
+          {
+            "regex": "(drukpijn|pijnlijk)[^.]{0,15}\\bwervelkolom|drukpijn (op de |ter hoogte van de )?wervel",
+            "uitleg": "drukpijn op de wervelkolom (die was juist niet pijnlijk; wel paravertebraal)"
           }
         ],
         "moet": [
@@ -61,7 +73,7 @@
       "toets": {
         "mag_niet": [
           {
-            "regex": "lateraal|laterale|mediaal|mediale",
+            "regex": "lateraal|laterale|lateralis|mediaal|mediale|medialis",
             "uitleg": "plaats van de drukpijn ingevuld (niet genoemd)"
           },
           {
@@ -69,7 +81,7 @@
             "uitleg": "test op tenen of hielen (niet gedaan)"
           },
           {
-            "regex": "(re|rechter|rechts)\\w*\\s+(been|enkel|zijde)?\\s*(wel|lukt|goed|normaal)",
+            "regex": "\\b(re|rechter|rechts)\\w*\\s+(been|enkel)[^.]{0,25}\\b(wel|lukt|goed|normaal)\\b",
             "uitleg": "uitkomst voor het rechterbeen (niet getest)"
           },
           {
@@ -122,6 +134,14 @@
           {
             "regex": "\\bL02\\b",
             "uitleg": "ICPC L02 (rugklachten) bij borstklachten"
+          },
+          {
+            "regex": "(drukpijn|drukpunt)[^.]{0,60}\\b(li|links|re|rechts)\\b",
+            "uitleg": "zijde van de drukpunten (niet genoemd)"
+          },
+          {
+            "regex": "tietze",
+            "uitleg": "label Tietze-syndroom (vraagt zwelling; die is niet genoemd)"
           }
         ],
         "moet": [
@@ -164,12 +184,16 @@
             "uitleg": "tekst van de verteller in het verslag"
           },
           {
-            "regex": "veel energie(?! kost| kosten)",
+            "regex": "\\b(pt|patiënt|ze|zij)\\s+(heeft|had|ervaart|voelt)\\b[^.]{0,20}\\bveel energie\\b|\\bveel energie (heeft|had|hebben)\\b",
             "uitleg": "de transcriptfout 'heel veel energie' overgenomen"
           },
           {
-            "regex": "(pt|patiënt|zorgen|onzeker)[^.]{0,80}(bloedarmoede|anemie|nier)",
+            "regex": "(pt|patiënt|zorgen|bezorgd|onzeker|vraagt)[^.]{0,80}(bloedarmoede|anemie|nier)",
             "uitleg": "bloedarmoede of nieren als zorg van de patiënt (noemde de arts)"
+          },
+          {
+            "regex": "suïcid|suicid|doodswens|zelfmoord",
+            "uitleg": "suïcidaliteit genoemd (niet besproken)"
           }
         ],
         "moet": [

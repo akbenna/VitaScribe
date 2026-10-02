@@ -47,8 +47,19 @@ MAX_GESPREK = 100_000
 # No \b before the number: "6dd500mg" must also be caught.
 _EENHEID = re.compile(r"(?<![\d.,])(\d+(?:[.,]\d+)?)\s?(mg|mcg|µg|microgram|gram|g|ml|ie|eh)\b", re.IGNORECASE)
 _BLOEDDRUK = re.compile(r"\b(\d{2,3})\s?/\s?(\d{2,3})\b")
-_PLAATS = ("lateraal", "laterale", "mediaal", "mediale", "dorsaal", "dorsale", "volair", "volaire",
-           "plantair", "plantaire", "proximaal", "distaal")
+_PLAATS = ("lateraal", "laterale", "lateralis", "mediaal", "mediale", "medialis", "dorsaal", "dorsale",
+           "volair", "volaire", "plantair", "plantaire", "proximaal", "distaal")
+# Topics a report may only mention (also as a denial: "geen suïcidegedachten") if they were discussed.
+_ONDERWERPEN = (
+    ("suïcidaliteit", r"suïcid|suicid|doodswens|zelfmoord", r"suïcid|suicid|zelfmoord|dood (willen|wil)|doodswens|leven (niet meer|beëindigen)"),
+    ("alcohol", r"\balcohol|\bbier\b|\bwijn\b", r"alcohol|\bbier|\bwijn|borrel|drank"),
+    ("drugs", r"\bdrugs|cannabis|blowen|cocaïne|cocaine", r"drugs|cannabis|blow|cocaïne|cocaine|wiet"),
+    ("roken", r"\broken\b|\brookt\b|sigaret|nicotine|packyears", r"\brook|roken|sigaret|nicotine"),
+    ("koorts", r"\bkoorts|temperatuur|\btemp\b", r"koorts|temperatuur|verhoging"),
+    ("gewichtsverlies", r"gewichtsverlies|afgevallen|gewicht", r"afgevallen|gewicht|kilo"),
+    ("nachtzweten", r"nachtzweten", r"nachtzweten|'s nachts (zweten|zweet)|nachts.{0,15}zwe"),
+    ("allergie", r"allergie|allergisch", r"allergi"),
+)
 _ZIJDE = {"links": ("links", "linker", "linkerkant", "li "), "rechts": ("rechts", "rechter", "rechterkant", "re ")}
 # Vertebral levels ("L4-L5", "ter hoogte van L5") and landmarks nobody may add.
 _WERVEL = re.compile(r"\b(?:L[1-5]|S1|C[1-7]|Th?1[0-2]|Th?[1-9])\s?[-–/]\s?(?:L[1-5]|S1|C[1-7]|Th?1[0-2]|Th?[1-9])\b"
@@ -121,6 +132,9 @@ def verdacht(problemen: List[dict], gesprek: str) -> List[str]:
         in_gesprek = any(v.strip() in bron for v in vormen[:3])
         if in_soep and not in_gesprek:
             uit.append(f"zijde niet in het gesprek: {zijde}")
+    for naam, in_soep, in_gesprek in _ONDERWERPEN:
+        if re.search(in_soep, laag) and not re.search(in_gesprek, bron):
+            uit.append(f"onderwerp niet besproken: {naam}")
     if _VANGNET_SOEP.search(soep) and not _VANGNET_GESPREK.search(gesprek):
         uit.append("vangnet of controle niet in het gesprek afgesproken")
     if re.search(r"\buitgesloten\b", laag):
@@ -146,6 +160,7 @@ class SoepTestVraag(BaseModel):
     gesprek: str = Field("", max_length=MAX_GESPREK)
     taal: Optional[str] = "nl"
     eu_model: Optional[str] = None          # "medium" | "large"; empty = the server setting
+    controle: bool = False                  # also run the EU report through the control pass
 
 
 async def _een(gesprek: str, aanbieder: str, taal: Optional[str], model: Optional[str] = None,
@@ -160,6 +175,28 @@ async def _een(gesprek: str, aanbieder: str, taal: Optional[str], model: Optiona
         return {"aanbieder": aanbieder, "fout": detail[:300], "seconden": round(time.monotonic() - start, 1)}
     delen = soep.problemen or [{k: getattr(soep, k) for k in pipeline.SOEP_VELDEN}]
     uit = {"aanbieder": aanbieder, "seconden": round(time.monotonic() - start, 1),
+           "problemen": delen, "verdacht": verdacht(delen, gesprek)}
+    if toets:
+        uit["valkuilen"] = toets_valkuilen(delen, toets)
+    return uit
+
+
+async def _gecontroleerd(gesprek: str, eerste: dict, aanbieder: str, model: Optional[str],
+                         toets: Optional[dict]) -> dict:
+    """The first EU report once more, through the control pass (pipeline.controleer_soep)."""
+    if "problemen" not in eerste:
+        return {"aanbieder": aanbieder, "fout": "Geen eerste verslag om te controleren.", "seconden": 0}
+    start = time.monotonic()
+    try:
+        verbeterd, _ = correct_transcript_full(gesprek)
+        soep = pipeline.SOEPResult(**pipeline.soep_met_problemen({"problemen": eerste["problemen"]}))
+        na = await pipeline.controleer_soep(verbeterd, soep, aanbieder, model=model)
+    except Exception as exc:
+        logger.warning("soeptest.controle_fout", error=type(exc).__name__)
+        detail = str(exc) if isinstance(exc, ValueError) else type(exc).__name__
+        return {"aanbieder": aanbieder, "fout": detail[:300], "seconden": round(time.monotonic() - start, 1)}
+    delen = na.problemen or [{k: getattr(na, k) for k in pipeline.SOEP_VELDEN}]
+    uit = {"aanbieder": aanbieder, "seconden": round(eerste.get("seconden", 0) + time.monotonic() - start, 1),
            "problemen": delen, "verdacht": verdacht(delen, gesprek)}
     if toets:
         uit["valkuilen"] = toets_valkuilen(delen, toets)
@@ -184,8 +221,12 @@ async def soeptest(vraag: SoepTestVraag, door: str = Depends(vereis_beheerder)):
     toets = consult.get("toets")
     claude, mistral = await asyncio.gather(_een(gesprek, "anthropic", vraag.taal, toets=toets),
                                            _een(gesprek, eu, vraag.taal, model=model, toets=toets))
+    gecontroleerd = await _gecontroleerd(gesprek, mistral, eu, model, toets) if vraag.controle else None
     await register.log(door, "beheer.soeptest", consult=vraag.id or "eigen", claude_ok="problemen" in claude,
                        eu_ok="problemen" in mistral, verdacht_claude=len(claude.get("verdacht", [])),
                        verdacht_eu=len(mistral.get("verdacht", [])))
     eu_naam = model or (get_config().llm.mistral_quality_model if eu == "mistral" else eu)
-    return {"claude": claude, "eu": mistral, "eu_model": eu_naam, "valkuilen": consult.get("valkuilen", [])}
+    uit = {"claude": claude, "eu": mistral, "eu_model": eu_naam, "valkuilen": consult.get("valkuilen", [])}
+    if gecontroleerd is not None:
+        uit["eu_gecontroleerd"] = gecontroleerd
+    return uit
