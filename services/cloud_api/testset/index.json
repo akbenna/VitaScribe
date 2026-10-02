@@ -1,0 +1,58 @@
+{
+  "uitleg": "Vaste testset van gespeelde consulten (acteurs, geen patiënten) voor de SOEP-vergelijking. Transcript: Voxtral (Mistral), 02-10-2026, met de Engelse vulwoorden omgezet zoals de server nu doet. Alleen voor interne kwaliteitstoetsing; niet delen buiten de praktijk.",
+  "consulten": [
+    {
+      "id": "01-lage-rugpijn",
+      "titel": "Lage rugklachten",
+      "bron": "YouTube, Huisartsopleiding AmsterdamUMC: BCT - Lagerug klachten",
+      "duur_seconden": 665,
+      "sprekers": {"Spreker 1": "arts", "Spreker 2": "patiënt"},
+      "valkuilen": [
+        "Een sterkte van paracetamol (bv. 500 mg) is niet genoemd: alleen aantallen (2 per keer, max 6 per dag, gebruikt max 4).",
+        "Drukpijn: op de wervelkolom niet pijnlijk, rechts paravertebraal wel, links ook gevoeld.",
+        "Lasègue niet met naam genoemd; been optillen gaat helemaal (geen uitstraling).",
+        "Uitstraling naar rechter bil en bovenbeen, niet naar onderbeen of voet."
+      ]
+    },
+    {
+      "id": "02-verzwikte-enkel",
+      "titel": "Verzwikte enkel, 3 weken",
+      "bron": "YouTube, Huisartsopleiding AmsterdamUMC: BCT - Consult verzwikte enkel 1",
+      "duur_seconden": 393,
+      "sprekers": {"Spreker 1": "arts", "Spreker 2": "patiënt"},
+      "valkuilen": [
+        "Linker enkel. Plaats van de drukpijn (lateraal, mediaal) is niet genoemd.",
+        "Geen test op tenen of hielen; wel staan op het linkerbeen, dat nog niet helemaal gaat.",
+        "Geen vangnet of controleafspraak genoemd.",
+        "Moeder heeft een kunstknie en artrose of reuma; de patiënt zelf niet."
+      ]
+    },
+    {
+      "id": "03-pijn-op-de-borst",
+      "titel": "Pijn op de borst, costosternaal",
+      "bron": "YouTube, Huisartsopleiding AmsterdamUMC: Voorbeeldconsult Effectief Geruststellen 2",
+      "duur_seconden": 856,
+      "sprekers": {"Spreker 1": "arts", "Spreker 2": "patiënt"},
+      "valkuilen": [
+        "Steken links op de borst sinds 15 juni; drukpijn op 2-3 punten, zijde van de drukpunten niet genoemd.",
+        "Bloeddruk 'perfect': geen waarde genoemd.",
+        "Tijgerbalsem: prettig, maar de volgende dag meer klachten (geen blijvende verlichting).",
+        "'Geen aanwijzingen voor' een cardiale oorzaak, niet 'uitgesloten'.",
+        "Terugkomen bij aanhoudende zorgen over 1-2 weken is wél genoemd."
+      ]
+    },
+    {
+      "id": "04-moeheid",
+      "titel": "Moeheid, energiemeter (met verteller)",
+      "bron": "YouTube: Moeheid (onderwijsvideo met verteller)",
+      "duur_seconden": 690,
+      "sprekers": {"Spreker 1": "verteller (geen deel van het consult)", "Spreker 2": "arts", "Spreker 3": "patiënt", "Spreker 4": "patiënt (zelfde persoon als 3)"},
+      "valkuilen": [
+        "De verteller hoort niet in het verslag.",
+        "De patiënt noemt alleen de schildklier; bloedarmoede en nieren noemt de arts.",
+        "Bloedonderzoek nu niet gedaan; kan altijd nog. Controle over 4-6 weken.",
+        "Transcriptfout van Voxtral: 'ik heb heel veel energie' (bedoeld: geen idee); mag niet in het verslag belanden als veel energie."
+      ]
+    }
+  ]
+}

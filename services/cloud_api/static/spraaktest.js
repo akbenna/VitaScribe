@@ -128,6 +128,8 @@
     $('uitkomst').textContent = '';
     try {
       laatste = await vergelijk(opname.blob, opname.naam);
+      bewaar({ titel: 'Eigen opname ' + new Date().toLocaleTimeString('nl-NL'), bron: 'eigen opname (rollenspel)',
+               duur: laatste.voxtral.duur_audio || laatste.deepgram.duur_audio }, laatste);
       toon(laatste);
       status('Klaar.');
     } catch (e) {
@@ -221,7 +223,7 @@
         var body = await r.json().catch(function () { return {}; });
         if (r.status === 401 || r.status === 403) throw new Error('Niet ingelogd. Log in op /beheer in dit tabblad.');
         if (!r.ok) throw new Error(body.detail || ('Fout ' + r.status));
-        toonSoep(uit, body, blind.checked);
+        toonSoep(uit, [['Deepgram', body.deepgram], ['Voxtral', body.voxtral]], blind.checked);
         stat.textContent = 'Klaar. Taalmodel: ' + body.taalmodel + '.';
       } catch (e) {
         stat.className = 'status klein fout';
@@ -247,12 +249,18 @@
       });
       k.appendChild(t);
     });
+    if (d.verdacht) {
+      var v = el('p', 'klein', d.verdacht.length ? 'Verdacht (staat niet in het gesprek): ' : 'Verdacht: niets gevonden.');
+      d.verdacht.forEach(function (x) { v.appendChild(el('span', 'term mist', x)); });
+      k.appendChild(v);
+    }
     k.appendChild(el('p', 'klein', 'Gemaakt in ' + d.seconden + ' s'));
     return { kaart: k, kop: kop };
   }
 
-  function toonSoep(uit, b, blind) {
-    var paren = [['Deepgram', b.deepgram], ['Voxtral', b.voxtral]];
+  // paren: [[naam, verslag], [naam, verslag]]; blind: namen pas na "Onthul".
+  function toonSoep(uit, paren, blind) {
+    paren = paren.slice();
     if (blind && Math.random() < 0.5) paren.reverse();
     var naast = el('div', 'naast');
     var koppen = paren.map(function (paar, i) {
@@ -263,7 +271,7 @@
     });
     uit.appendChild(naast);
     if (blind) {
-      var onthul = el('button', '', 'Onthul welke dienst welke is');
+      var onthul = el('button', '', 'Onthul welke welke is');
       onthul.addEventListener('click', function () {
         koppen.forEach(function (kop, i) { kop.textContent = 'Verslag ' + 'AB'[i] + ': ' + paren[i][0]; });
         onthul.remove();
@@ -456,6 +464,8 @@
       });
       deel.cellen.actie.appendChild(knop);
       deel.blob = null;
+      bewaar({ titel: deel.titel, duur: deel.sec,
+               bron: deel.videoId ? 'YouTube https://www.youtube.com/watch?v=' + deel.videoId : 'YouTube' }, b);
     } catch (e) {
       deel.cellen.actie.textContent = 'mislukt: ' + e.message;
       deel.cellen.actie.className = 'fout';
@@ -472,4 +482,123 @@
     if (lijst.stream) nieuwDeel('', lijst.videoId);
   });
   if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) $('lijststart').disabled = true;
+
+  // ── Bewaar als testset: alle vergelijkingen van deze pagina in één bestand ──
+  var bewaard = [];
+  function bewaar(meta, b) {
+    if (!b.voxtral.met_sprekers && !b.deepgram.met_sprekers) return;
+    bewaard.push({ titel: meta.titel, bron: meta.bron, duur_seconden: Math.round(meta.duur || 0),
+                   voxtral: b.voxtral.met_sprekers || '', deepgram: b.deepgram.met_sprekers || '' });
+    $('bewaar').disabled = false;
+    $('bewaar').textContent = 'Bewaar als testset (' + bewaard.length + ')';
+    vulBronnen();
+  }
+  $('bewaar').addEventListener('click', function () {
+    var inhoud = { uitleg: 'VitaScribe testset: alleen gespeelde consulten, geen patiënten.',
+                   gemaakt: new Date().toISOString(), consulten: bewaard };
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([JSON.stringify(inhoud, null, 2)], { type: 'application/json' }));
+    a.download = 'vitascribe-testset-' + new Date().toISOString().slice(0, 10) + '.json';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  });
+
+  // ── SOEP-test: hetzelfde gesprek naar Claude en naar het EU-model ──
+  async function beheer(url, opties) {
+    opties = opties || {};
+    opties.headers = Object.assign({ 'X-Beheer-Sessie': sessie() }, opties.headers || {});
+    var r = await fetch(url, opties);
+    var body = await r.json().catch(function () { return {}; });
+    if (r.status === 401 || r.status === 403) throw new Error('Niet ingelogd. Log in op /beheer in dit tabblad.');
+    if (!r.ok) throw new Error(body.detail || ('Fout ' + r.status));
+    return body;
+  }
+
+  var testset = [];
+  function vulBronnen() {
+    var sel = $('soepbron');
+    var keuze = sel.value;
+    sel.textContent = '';
+    testset.forEach(function (c) {
+      var o = el('option', '', 'Testset: ' + c.titel); o.value = 'id:' + c.id; sel.appendChild(o);
+    });
+    bewaard.forEach(function (c, i) {
+      var o = el('option', '', 'Deze sessie: ' + c.titel); o.value = 'sessie:' + i; sel.appendChild(o);
+    });
+    if (keuze) sel.value = keuze;
+  }
+  beheer('/api/v1/beheer/testset').then(function (d) { testset = d.consulten || []; vulBronnen(); })
+    .catch(function (e) { $('soepstatus').textContent = e.message; });
+
+  function vraagVoor(waarde) {
+    if (waarde.indexOf('id:') === 0) return { id: waarde.slice(3), taal: $('taal').value };
+    var c = bewaard[Number(waarde.slice(7))];
+    return { gesprek: c.voxtral || c.deepgram, taal: $('taal').value };
+  }
+
+  async function soepTest(waarde) {
+    var d = await beheer('/api/v1/beheer/soeptest', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(vraagVoor(waarde)) });
+    return d;
+  }
+
+  function toonSoepTest(uit, d, titel) {
+    uit.appendChild(el('h3', '', titel));
+    if ((d.valkuilen || []).length) {
+      var v = el('ul', 'klein');
+      d.valkuilen.forEach(function (x) { v.appendChild(el('li', '', x)); });
+      uit.appendChild(el('p', 'klein', 'Valkuilen in dit consult (waar een goed verslag op let):'));
+      uit.appendChild(v);
+    }
+    toonSoep(uit, [['Claude', d.claude], ['Mistral (' + d.eu_model + ')', d.eu]], $('soepblind').checked);
+  }
+
+  $('soepeen').addEventListener('click', async function () {
+    var knop = this, uit = $('soepuit'), st = $('soepstatus');
+    if (!$('soepbron').value) return;
+    knop.disabled = true; uit.textContent = ''; st.className = 'status klein';
+    st.textContent = 'Bezig: Claude en Mistral schrijven elk een verslag (ongeveer een halve minuut)…';
+    try {
+      var d = await soepTest($('soepbron').value);
+      toonSoepTest(uit, d, $('soepbron').selectedOptions[0].textContent);
+      st.textContent = 'Klaar.';
+    } catch (e) { st.className = 'status klein fout'; st.textContent = e.message; }
+    finally { knop.disabled = false; }
+  });
+
+  $('soepalles').addEventListener('click', async function () {
+    var knop = this, uit = $('soepuit'), st = $('soepstatus');
+    knop.disabled = true; uit.textContent = ''; st.className = 'status klein';
+    var t = el('table', 'lijst');
+    var kop = el('tr');
+    ['Consult', 'Verdacht Claude', 'Verdacht Mistral', 'Tijd Claude / Mistral', ''].forEach(function (x) { kop.appendChild(el('td', '', x)); });
+    t.appendChild(kop);
+    uit.appendChild(t);
+    var detail = el('div');
+    uit.appendChild(detail);
+    var aantal = function (x) { return x.fout ? 'fout' : String((x.verdacht || []).length); };
+    for (var i = 0; i < testset.length; i++) {
+      var c = testset[i];
+      st.textContent = 'Bezig met ' + (i + 1) + ' van ' + testset.length + ': ' + c.titel + '…';
+      var tr = el('tr');
+      tr.appendChild(el('td', '', c.titel));
+      try {
+        var d = await soepTest('id:' + c.id);
+        tr.appendChild(el('td', '', aantal(d.claude)));
+        tr.appendChild(el('td', '', aantal(d.eu)));
+        tr.appendChild(el('td', '', d.claude.seconden + ' s / ' + d.eu.seconden + ' s'));
+        var toonKnop = el('button', '', 'Toon');
+        (function (d, titel) {
+          toonKnop.addEventListener('click', function () { detail.textContent = ''; toonSoepTest(detail, d, titel); });
+        })(d, c.titel);
+        var td = el('td'); td.appendChild(toonKnop); tr.appendChild(td);
+      } catch (e) {
+        var f = el('td', 'fout', e.message); f.colSpan = 4; tr.appendChild(f);
+      }
+      t.appendChild(tr);
+    }
+    st.textContent = 'Klaar. "Verdacht" telt wat in het verslag staat maar niet in het gesprek; lees de verslagen zelf voor het oordeel.';
+    knop.disabled = false;
+  });
 })();

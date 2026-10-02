@@ -61,6 +61,7 @@
       <input type="file" id="bestand" accept=".webm,.wav,.mp3,.m4a,.ogg,.flac,.mp4,audio/*">
       <label class="klein">Taal <select id="taal"><option value="nl">Nederlands</option><option value="multi">Meertalig</option><option value="en">Engels</option></select></label>
       <button id="vergelijk" class="hoofd" disabled>Vergelijk</button>
+      <button id="bewaar" disabled title="Download alle vergelijkingen van deze pagina als testset (alleen gespeelde consulten)">Bewaar als testset</button>
     </div>
     <p class="klein">Geluid van een tabblad: kies in het venster dat opent het tabblad en zet <b>Geluid van tabblad delen</b> aan. Het geluid van de hele pc kan alleen op Windows (kies dan "Volledig scherm"). Stoppen kan hier of met "Delen stoppen" in de browserbalk.</p>
     <p id="status" class="status klein"></p>
@@ -83,6 +84,18 @@
       </table>
       <p class="klein">Klik op <b>Toon</b> voor beide transcripten en de SOEP-vergelijking. Filmpjes korter dan 20 seconden (reclame) worden overgeslagen.</p>
     </div>
+  </div>
+  <div class="kaart">
+    <h2>SOEP-test: Claude tegen Mistral (EU)</h2>
+    <p class="klein">Hetzelfde gesprek gaat door dezelfde SOEP-stap als een echt consult, één keer met Claude en één keer met het EU-model. Onder elk verslag staat wat verdacht is: een sterkte, waarde, zijde of plaats die niet in het gesprek staat, of "uitgesloten". Kies een consult uit de vaste testset of een vergelijking van deze sessie.</p>
+    <div class="rij">
+      <select id="soepbron"></select>
+      <button id="soepeen" class="hoofd">Maak beide verslagen</button>
+      <button id="soepalles">Hele testset</button>
+      <label class="klein"><input type="checkbox" id="soepblind" checked> Blind beoordelen</label>
+    </div>
+    <p id="soepstatus" class="status klein"></p>
+    <div id="soepuit"></div>
   </div>
   <div id="uitkomst"></div>
 </main>
