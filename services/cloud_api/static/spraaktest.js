@@ -249,6 +249,11 @@
       });
       k.appendChild(t);
     });
+    if (d.valkuilen) {
+      var vk = el('p', 'klein', 'Valkuilen ontweken: ' + d.valkuilen.gehaald + ' van ' + d.valkuilen.totaal + (d.valkuilen.fout.length ? '. Mis: ' : '.'));
+      d.valkuilen.fout.forEach(function (x) { vk.appendChild(el('span', 'term mist', x)); });
+      k.appendChild(vk);
+    }
     if (d.verdacht) {
       var v = el('p', 'klein', d.verdacht.length ? 'Verdacht (staat niet in het gesprek): ' : 'Verdacht: niets gevonden.');
       d.verdacht.forEach(function (x) { v.appendChild(el('span', 'term mist', x)); });
@@ -532,9 +537,10 @@
     .catch(function (e) { $('soepstatus').textContent = e.message; });
 
   function vraagVoor(waarde) {
-    if (waarde.indexOf('id:') === 0) return { id: waarde.slice(3), taal: $('taal').value };
+    var model = $('soepmodel').value;
+    if (waarde.indexOf('id:') === 0) return { id: waarde.slice(3), taal: $('taal').value, eu_model: model };
     var c = bewaard[Number(waarde.slice(7))];
-    return { gesprek: c.voxtral || c.deepgram, taal: $('taal').value };
+    return { gesprek: c.voxtral || c.deepgram, taal: $('taal').value, eu_model: model };
   }
 
   async function soepTest(waarde) {
@@ -572,12 +578,14 @@
     knop.disabled = true; uit.textContent = ''; st.className = 'status klein';
     var t = el('table', 'lijst');
     var kop = el('tr');
-    ['Consult', 'Verdacht Claude', 'Verdacht Mistral', 'Tijd Claude / Mistral', ''].forEach(function (x) { kop.appendChild(el('td', '', x)); });
+    ['Consult', 'Valkuilen Claude', 'Valkuilen Mistral', 'Verdacht Claude', 'Verdacht Mistral', 'Tijd Claude / Mistral', ''].forEach(function (x) { kop.appendChild(el('td', '', x)); });
     t.appendChild(kop);
     uit.appendChild(t);
     var detail = el('div');
     uit.appendChild(detail);
     var aantal = function (x) { return x.fout ? 'fout' : String((x.verdacht || []).length); };
+    var valk = function (x) { return x.fout || !x.valkuilen ? '—' : x.valkuilen.gehaald + '/' + x.valkuilen.totaal; };
+    var som = { claude: [0, 0], eu: [0, 0] };
     for (var i = 0; i < testset.length; i++) {
       var c = testset[i];
       st.textContent = 'Bezig met ' + (i + 1) + ' van ' + testset.length + ': ' + c.titel + '…';
@@ -585,6 +593,11 @@
       tr.appendChild(el('td', '', c.titel));
       try {
         var d = await soepTest('id:' + c.id);
+        tr.appendChild(el('td', '', valk(d.claude)));
+        tr.appendChild(el('td', '', valk(d.eu)));
+        ['claude', 'eu'].forEach(function (k) {
+          if (d[k].valkuilen) { som[k][0] += d[k].valkuilen.gehaald; som[k][1] += d[k].valkuilen.totaal; }
+        });
         tr.appendChild(el('td', '', aantal(d.claude)));
         tr.appendChild(el('td', '', aantal(d.eu)));
         tr.appendChild(el('td', '', d.claude.seconden + ' s / ' + d.eu.seconden + ' s'));
@@ -594,11 +607,15 @@
         })(d, c.titel);
         var td = el('td'); td.appendChild(toonKnop); tr.appendChild(td);
       } catch (e) {
-        var f = el('td', 'fout', e.message); f.colSpan = 4; tr.appendChild(f);
+        var f = el('td', 'fout', e.message); f.colSpan = 6; tr.appendChild(f);
       }
       t.appendChild(tr);
     }
-    st.textContent = 'Klaar. "Verdacht" telt wat in het verslag staat maar niet in het gesprek; lees de verslagen zelf voor het oordeel.';
+    var totaal = el('tr');
+    [ 'Totaal', som.claude[0] + '/' + som.claude[1], som.eu[0] + '/' + som.eu[1], '', '', '', ''].forEach(function (x) { totaal.appendChild(el('td', '', x)); });
+    totaal.style.fontWeight = '600';
+    t.appendChild(totaal);
+    st.textContent = 'Klaar (EU-model: ' + $('soepmodel').selectedOptions[0].textContent + '). "Valkuilen" telt de bekende valkuilen die het verslag ontweek; "Verdacht" wat erin staat maar niet in het gesprek. Lees de verslagen zelf voor het oordeel.';
     knop.disabled = false;
   });
 })();

@@ -189,3 +189,19 @@ def test_clinical_support_only_in_claude_mode(monkeypatch):
         data_policy.herstel_modus(t)
     monkeypatch.setenv("CLINICAL_DECISION_SUPPORT", "false")
     assert data_policy.clinical_decision_support() is False
+
+
+def test_mistral_model_override_reaches_the_request(monkeypatch):
+    seen = {}
+
+    def handler(request: httpx.Request):
+        seen["model"] = json.loads(request.content)["model"]
+        return httpx.Response(200, json={"choices": [{"message": {"content": "{}"}}]})
+
+    echte = httpx.AsyncClient
+    monkeypatch.setattr(llm_service.httpx, "AsyncClient",
+                        lambda **kw: echte(transport=httpx.MockTransport(handler), **{k: v for k, v in kw.items() if k != "transport"}))
+    asyncio.run(llm_service.complete("s", "u", provider="mistral", quality=True))
+    assert seen["model"] == "mistral-large-latest"          # the default for the report
+    asyncio.run(llm_service.complete("s", "u", provider="mistral", quality=True, model="mistral-medium-latest"))
+    assert seen["model"] == "mistral-medium-latest"

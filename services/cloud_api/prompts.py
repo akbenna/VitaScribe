@@ -65,11 +65,16 @@ slaapproblemen, rouw, verslaving, suïcidale gedachten):
   onderzoek of vragenlijstscores (bijv. 4DKL, PHQ-9) erna. Niets \
   beschreven: O leeg (ook bij een consultopname, dus niet "geen LO \
   beschreven"). Nooit een psychiatrisch onderzoek invullen.
-- E: werkhypothese in de NHG-term (bijv. depressieve klachten, \
-  angstklachten, overspanning, burn-out, slapeloosheid) met de passende \
-  P-code (P01 angstig gevoel, P02 acute stressreactie, P03 depressief \
-  gevoel, P06 slaapstoornis, P74 angststoornis, P76 depressie, P78 \
-  overspanning/surmenage). Een DSM-diagnose alleen als de arts die stelt.
+- E: alleen als de arts een psychische werkhypothese uitspreekt: die \
+  hypothese in de NHG-term (bijv. depressieve klachten, angstklachten, \
+  overspanning, burn-out, slapeloosheid) met de passende P-code (P01 \
+  angstig gevoel, P02 acute stressreactie, P03 depressief gevoel, P06 \
+  slaapstoornis, P74 angststoornis, P76 depressie, P78 \
+  overspanning/surmenage). Bespreekt de arts de klacht zonder psychisch \
+  label (bijv. belasting en belastbaarheid bij moeheid), dan geen P-code \
+  maar de klacht met de symptoomcode (bijv. A04 moeheid). Een psychisch \
+  label staat voor altijd in het dossier; kies het nooit zelf. Een \
+  DSM-diagnose alleen als de arts die stelt.
 - P: afspraken zoals besproken: psycho-educatie, begeleiding (POH-GGZ, \
   psycholoog, verwijzing GGZ), medicatie, veiligheidsafspraken, \
   werk/bedrijfsarts, controle en wanneer eerder contact."""
@@ -113,17 +118,45 @@ OPBOUW PER RUBRIEK
   -> aanvullend onderzoek. Alleen wat in de opname te horen is. Is er \
   geen onderzoek te horen, schrijf dan "geen LO beschreven" (onderzoek kan \
   ongezegd gebeurd zijn; de arts vult aan).
-- E: werkdiagnose in de NHG-term; eventuele differentiaaldiagnose zoals \
-  de arts die noemt.
-- P: medicatie (middel, sterkte, dosering, duur) -> aanvullend onderzoek \
-  -> verwijzing -> voorlichting/adviezen -> controle en vangnet.
+- E: de werkdiagnose zoals de arts die uitspreekt, in de NHG-term, en het \
+  antwoord van de arts op de hulpvraag (bijv. "geen aanwijzingen voor \
+  hernia"); eventuele differentiaaldiagnose zoals de arts die noemt. \
+  Spreekt de arts geen diagnose uit, dan de klacht zelf (bijv. \
+  "moeheid"), geen eigen label.
+- P: medicatie zoals genoemd (middel; sterkte, dosering en duur alleen als \
+  die gezegd zijn) -> aanvullend onderzoek -> verwijzing -> \
+  voorlichting/adviezen -> controle en vangnet, alleen zoals afgesproken.
 
 GRENZEN
 - Rapporteer ALLEEN wat in het transcript staat. NOOIT fabriceren: geen \
   bevindingen, waarden, ontkenningen, diagnoses, doseringen of beleid \
   toevoegen. Twijfel over een woord of getal: overnemen met [?].
+- Vul nooit aan wat "erbij hoort" maar niet gezegd is. In het bijzonder:
+  - geen sterkte, dosering, frequentie of duur die niet genoemd is. \
+    "Paracetamol 2 tabl per keer, max 6 per dag" blijft precies dat, \
+    zonder "500 mg" of "1 g".
+  - geen wervelniveau, anatomisch oriëntatiepunt of plaats (L4-L5, PSIS, \
+    lateraal, mediaal) als de arts alleen "hier" zegt of aanwijst; schrijf \
+    wat wel gezegd is ("drukpijn onderrug re").
+  - een zijde (li, re, beiderzijds) alleen als die gezegd is. Een \
+    onderzoek aan één kant is niet "beiderzijds"; wat niet onderzocht is, \
+    heeft geen uitkomst ("op re been staan lukt" alleen als dat getest is).
+  - in O alleen onderzoek dat hoorbaar gedaan is, met de uitkomst zoals \
+    gezegd; de naam van een test alleen als het onmiskenbaar die test is.
+  - geen vangnet, controle of terugkomafspraak als die niet gemaakt is.
+  - zorgen, vragen en ideeën alleen bij wie ze uitte: wat de arts noemt \
+    (bijv. "geen aanwijzingen voor bloedarmoede") is geen zorg van de \
+    patiënt.
+- Formuleer een conclusie zoals de arts: "geen aanwijzingen voor", niet \
+  "uitgesloten" (tenzij de arts dat letterlijk zegt).
+- De hulpvraag van de patiënt staat altijd in S, en het antwoord van de \
+  arts daarop in E of P. Laat die nooit weg.
+- Een verteller of uitleg die niet bij het gesprek hoort (bijv. in een \
+  onderwijsvideo), hoort niet in de notitie.
 - ICPC-2 alleen bij een eenduidige werkdiagnose; anders de symptoomcode \
-  van de hoofdklacht.
+  van de hoofdklacht. Alleen bestaande codes met hun officiële titel; \
+  twijfel je over de code, gebruik de klachtcode of laat leeg. Verzin \
+  nooit een titel bij een code.
 
 """ + MEDISCHE_TERMINOLOGIE + """
 
@@ -341,7 +374,8 @@ OPBOUW PER RUBRIEK
   die de arts noemt. Noemt de arts geen onderzoek, dan O leeg ("").
 - E: werkdiagnose in de NHG-term; daarna eventuele differentiaaldiagnose \
   zoals de arts die noemt.
-- P: beleid in de volgorde: medicatie (middel, sterkte, dosering, duur) -> \
+- P: beleid in de volgorde: medicatie (middel; sterkte, dosering en duur \
+  alleen zoals gedicteerd) -> \
   aanvullend onderzoek -> verwijzing -> voorlichting/adviezen -> \
   controle en vangnet (wanneer terugkomen).
 
