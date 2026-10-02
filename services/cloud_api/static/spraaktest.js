@@ -533,8 +533,13 @@
     });
     if (keuze) sel.value = keuze;
   }
+  var testsetFout = '';
   beheer('/api/v1/beheer/testset').then(function (d) { testset = d.consulten || []; vulBronnen(); })
-    .catch(function (e) { $('soepstatus').textContent = e.message; });
+    .catch(function (e) {
+      testsetFout = e.message + ' Daarna verschijnen de consulten van de testset hier.';
+      $('soepstatus').className = 'status klein fout';
+      $('soepstatus').textContent = testsetFout;
+    });
 
   function vraagVoor(waarde) {
     var model = $('soepmodel').value;
@@ -562,7 +567,11 @@
 
   $('soepeen').addEventListener('click', async function () {
     var knop = this, uit = $('soepuit'), st = $('soepstatus');
-    if (!$('soepbron').value) return;
+    if (!$('soepbron').value) {
+      st.className = 'status klein fout';
+      st.textContent = testsetFout || 'Kies eerst een consult.';
+      return;
+    }
     knop.disabled = true; uit.textContent = ''; st.className = 'status klein';
     st.textContent = 'Bezig: Claude en Mistral schrijven elk een verslag (ongeveer een halve minuut)…';
     try {
@@ -575,6 +584,11 @@
 
   $('soepalles').addEventListener('click', async function () {
     var knop = this, uit = $('soepuit'), st = $('soepstatus');
+    if (!testset.length) {
+      st.className = 'status klein fout';
+      st.textContent = testsetFout || 'De testset is leeg of niet geladen. Ververs de pagina.';
+      return;
+    }
     knop.disabled = true; uit.textContent = ''; st.className = 'status klein';
     var t = el('table', 'lijst');
     var kop = el('tr');
