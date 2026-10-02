@@ -33,8 +33,12 @@ async def complete(
     cache_system: bool = False,
     quality: bool = False,
     json_schema: Optional[dict] = None,
+    model: Optional[str] = None,
 ) -> str:
     """Send a prompt to the LLM and return the response text.
+
+    model: a specific Mistral model for this call (the SOEP test compares
+        Medium and Large); other providers ignore it.
 
     quality: use the stronger model for tasks that need medical reasoning
         (SOEP generation). Only affects Anthropic; other providers have one model.
@@ -62,7 +66,7 @@ async def complete(
 
     if provider == "mistral":
         return await _complete_mistral(
-            system_prompt, user_prompt, json_mode, max_tokens, quality, json_schema
+            system_prompt, user_prompt, json_mode, max_tokens, quality, json_schema, model
         )
     elif provider == "anthropic":
         return await _complete_anthropic(
@@ -84,7 +88,7 @@ async def complete(
 
 async def _complete_mistral(
     system_prompt: str, user_prompt, json_mode: bool, max_tokens: int,
-    quality: bool = False, json_schema: Optional[dict] = None,
+    quality: bool = False, json_schema: Optional[dict] = None, model: Optional[str] = None,
 ) -> str:
     """Complete using Mistral API (EU-based). user_prompt may be a list of
     content parts (text and image_url) for the multimodal model.
@@ -104,7 +108,7 @@ async def _complete_mistral(
             user_prompt = list(user_prompt) + [{"type": "text", "text": instructie.strip()}]
 
     body = {
-        "model": config.llm.mistral_quality_model if quality else config.llm.mistral_model,
+        "model": model or (config.llm.mistral_quality_model if quality else config.llm.mistral_model),
         "temperature": config.llm.temperature,
         "max_tokens": max_tokens,
         "messages": [

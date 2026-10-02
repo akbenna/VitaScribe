@@ -131,7 +131,7 @@ def _parse_json_response(text: str) -> dict:
 
 
 async def genereer_soep(gesprek: str, llm_provider: Optional[str] = None,
-                        taal: Optional[str] = None) -> SOEPResult:
+                        taal: Optional[str] = None, model: Optional[str] = None) -> SOEPResult:
     """One SOEP call on a (corrected) conversation per speaker. Raises on failure."""
     antwoord = await llm_service.complete(
         system_prompt=SOEP_SYSTEM_PROMPT,
@@ -141,6 +141,7 @@ async def genereer_soep(gesprek: str, llm_provider: Optional[str] = None,
         max_tokens=SOEP_MAX_TOKENS,
         quality=True,
         json_schema=SOEP_JSON_SCHEMA,
+        model=model,
     )
     return SOEPResult(**soep_met_problemen(_parse_json_response(antwoord)))
 

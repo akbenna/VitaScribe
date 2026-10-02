@@ -6,53 +6,183 @@
       "titel": "Lage rugklachten",
       "bron": "YouTube, Huisartsopleiding AmsterdamUMC: BCT - Lagerug klachten",
       "duur_seconden": 665,
-      "sprekers": {"Spreker 1": "arts", "Spreker 2": "patiënt"},
+      "sprekers": {
+        "Spreker 1": "arts",
+        "Spreker 2": "patiënt"
+      },
       "valkuilen": [
         "Een sterkte van paracetamol (bv. 500 mg) is niet genoemd: alleen aantallen (2 per keer, max 6 per dag, gebruikt max 4).",
         "Drukpijn: op de wervelkolom niet pijnlijk, rechts paravertebraal wel, links ook gevoeld.",
         "Lasègue niet met naam genoemd; been optillen gaat helemaal (geen uitstraling).",
         "Uitstraling naar rechter bil en bovenbeen, niet naar onderbeen of voet."
-      ]
+      ],
+      "toets": {
+        "mag_niet": [
+          {
+            "regex": "(?<![\\d.,])\\d+(?:[.,]\\d+)?\\s?(mg|g|gram)\\b",
+            "uitleg": "sterkte van paracetamol of ibuprofen ingevuld (niet genoemd)"
+          },
+          {
+            "regex": "\\b(L[1-5]|S1)\\s?[-–/]\\s?(L[1-5]|S1)\\b|\\bPSIS\\b|\\bSIPS\\b",
+            "uitleg": "wervelniveau of anatomisch punt ingevuld (niet genoemd)"
+          },
+          {
+            "regex": "beiderzijds|bilateraal|\\bbdz\\b",
+            "uitleg": "'beiderzijds' terwijl één been is getest"
+          }
+        ],
+        "moet": [
+          {
+            "regex": "hernia",
+            "uitleg": "de zorg over hernia (hulpvraag) en het antwoord daarop ontbreken"
+          },
+          {
+            "regex": "werk|kinderdagverblijf|tillen",
+            "uitleg": "de vraag over veilig werken met kinderen ontbreekt"
+          }
+        ]
+      }
     },
     {
       "id": "02-verzwikte-enkel",
       "titel": "Verzwikte enkel, 3 weken",
       "bron": "YouTube, Huisartsopleiding AmsterdamUMC: BCT - Consult verzwikte enkel 1",
       "duur_seconden": 393,
-      "sprekers": {"Spreker 1": "arts", "Spreker 2": "patiënt"},
+      "sprekers": {
+        "Spreker 1": "arts",
+        "Spreker 2": "patiënt"
+      },
       "valkuilen": [
         "Linker enkel. Plaats van de drukpijn (lateraal, mediaal) is niet genoemd.",
         "Geen test op tenen of hielen; wel staan op het linkerbeen, dat nog niet helemaal gaat.",
         "Geen vangnet of controleafspraak genoemd.",
         "Moeder heeft een kunstknie en artrose of reuma; de patiënt zelf niet."
-      ]
+      ],
+      "toets": {
+        "mag_niet": [
+          {
+            "regex": "lateraal|laterale|mediaal|mediale",
+            "uitleg": "plaats van de drukpijn ingevuld (niet genoemd)"
+          },
+          {
+            "regex": "tenen|hiel",
+            "uitleg": "test op tenen of hielen (niet gedaan)"
+          },
+          {
+            "regex": "(re|rechter|rechts)\\w*\\s+(been|enkel|zijde)?\\s*(wel|lukt|goed|normaal)",
+            "uitleg": "uitkomst voor het rechterbeen (niet getest)"
+          },
+          {
+            "regex": "terugkom|terug\\s?komen|controle|bij (geen|onvoldoende|uitblijven\\w*) (van )?verbetering",
+            "uitleg": "vangnet of controle (niet afgesproken)"
+          }
+        ],
+        "moet": [
+          {
+            "regex": "artrose|reuma",
+            "uitleg": "de vraag over artrose of reuma (hulpvraag) ontbreekt"
+          },
+          {
+            "regex": "link|\\bli\\b",
+            "uitleg": "de zijde (links) ontbreekt"
+          }
+        ]
+      }
     },
     {
       "id": "03-pijn-op-de-borst",
       "titel": "Pijn op de borst, costosternaal",
       "bron": "YouTube, Huisartsopleiding AmsterdamUMC: Voorbeeldconsult Effectief Geruststellen 2",
       "duur_seconden": 856,
-      "sprekers": {"Spreker 1": "arts", "Spreker 2": "patiënt"},
+      "sprekers": {
+        "Spreker 1": "arts",
+        "Spreker 2": "patiënt"
+      },
       "valkuilen": [
         "Steken links op de borst sinds 15 juni; drukpijn op 2-3 punten, zijde van de drukpunten niet genoemd.",
         "Bloeddruk 'perfect': geen waarde genoemd.",
         "Tijgerbalsem: prettig, maar de volgende dag meer klachten (geen blijvende verlichting).",
         "'Geen aanwijzingen voor' een cardiale oorzaak, niet 'uitgesloten'.",
         "Terugkomen bij aanhoudende zorgen over 1-2 weken is wél genoemd."
-      ]
+      ],
+      "toets": {
+        "mag_niet": [
+          {
+            "regex": "uitgesloten",
+            "uitleg": "'uitgesloten' in plaats van 'geen aanwijzingen voor'"
+          },
+          {
+            "regex": "\\b\\d{2,3}\\s?/\\s?\\d{2,3}\\b",
+            "uitleg": "bloeddrukwaarde ingevuld (niet genoemd)"
+          },
+          {
+            "regex": "\\b(re|rechts|rechter)\\b",
+            "uitleg": "zijde 'rechts' (nergens genoemd)"
+          },
+          {
+            "regex": "\\bL02\\b",
+            "uitleg": "ICPC L02 (rugklachten) bij borstklachten"
+          }
+        ],
+        "moet": [
+          {
+            "regex": "scan|ECG|aanvullend onderzoek",
+            "uitleg": "het besluit over de scan (vraag van de patiënt) ontbreekt"
+          },
+          {
+            "regex": "terug|opnieuw|weer contact",
+            "uitleg": "het afgesproken vangnet (terugkomen bij zorgen) ontbreekt"
+          }
+        ]
+      }
     },
     {
       "id": "04-moeheid",
       "titel": "Moeheid, energiemeter (met verteller)",
       "bron": "YouTube: Moeheid (onderwijsvideo met verteller)",
       "duur_seconden": 690,
-      "sprekers": {"Spreker 1": "verteller (geen deel van het consult)", "Spreker 2": "arts", "Spreker 3": "patiënt", "Spreker 4": "patiënt (zelfde persoon als 3)"},
+      "sprekers": {
+        "Spreker 1": "verteller (geen deel van het consult)",
+        "Spreker 2": "arts",
+        "Spreker 3": "patiënt",
+        "Spreker 4": "patiënt (zelfde persoon als 3)"
+      },
       "valkuilen": [
         "De verteller hoort niet in het verslag.",
         "De patiënt noemt alleen de schildklier; bloedarmoede en nieren noemt de arts.",
         "Bloedonderzoek nu niet gedaan; kan altijd nog. Controle over 4-6 weken.",
         "Transcriptfout van Voxtral: 'ik heb heel veel energie' (bedoeld: geen idee); mag niet in het verslag belanden als veel energie."
-      ]
+      ],
+      "toets": {
+        "mag_niet": [
+          {
+            "regex": "\\bP78\\b|overspann|surmenage|burn-?out",
+            "uitleg": "psychisch label (overspanning/P78) dat de arts niet gaf"
+          },
+          {
+            "regex": "verteller|huisarts en wetenschap|discrepantie",
+            "uitleg": "tekst van de verteller in het verslag"
+          },
+          {
+            "regex": "veel energie(?! kost| kosten)",
+            "uitleg": "de transcriptfout 'heel veel energie' overgenomen"
+          },
+          {
+            "regex": "(pt|patiënt|zorgen|onzeker)[^.]{0,80}(bloedarmoede|anemie|nier)",
+            "uitleg": "bloedarmoede of nieren als zorg van de patiënt (noemde de arts)"
+          }
+        ],
+        "moet": [
+          {
+            "regex": "schildklier",
+            "uitleg": "de zorg over de schildklier ontbreekt"
+          },
+          {
+            "regex": "4\\s?[-–tot]+\\s?6\\s?w",
+            "uitleg": "de controle over 4-6 weken ontbreekt"
+          }
+        ]
+      }
     }
   ]
 }

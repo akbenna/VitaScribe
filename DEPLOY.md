@@ -393,6 +393,14 @@ patiënten) met per consult de valkuilen (`index.json`). Op `/beheer/spraaktest`
   staat, of "uitgesloten". **Hele testset** doet dat voor alle consulten en
   zet de aantallen in een tabel. Kost per consult één Claude- en één
   Mistral-verslag (enkele dollarcenten).
+- **Valkuilen**: per testconsult staan in `index.json` onder `toets` wat er
+  niet in mag (`mag_niet`) en wat er in moet (`moet`), als regex met uitleg.
+  De tabel telt per model hoeveel valkuilen het verslag ontweek.
+- **EU-model** kiest Mistral Large (standaard, `MISTRAL_QUALITY_MODEL`) of
+  Medium voor deze test, zonder de serverinstelling te wijzigen.
+- De ICPC-titel wordt vergeleken met een kleine richttabel
+  (`icpc_controle.py`, door de arts te controleren); codes die daar niet in
+  staan worden niet beoordeeld.
 
 ### Voxtral als spraakdienst voor consulten
 

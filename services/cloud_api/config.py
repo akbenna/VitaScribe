@@ -43,7 +43,7 @@ class LLMConfig:
     mistral_api_key: str = ""
     mistral_model: str = "mistral-small-latest"
     # SOEP, letters and reading screenshots need the stronger (multimodal) model.
-    mistral_quality_model: str = "mistral-medium-latest"
+    mistral_quality_model: str = "mistral-large-latest"
     anthropic_api_key: str = ""
     anthropic_model: str = "claude-haiku-4-5-20251001"
     # SOEP generation needs medical reasoning (diagnosis naming, ICPC); the
@@ -123,7 +123,7 @@ def get_config() -> AppConfig:
             default_provider=os.getenv("LLM_PROVIDER", "anthropic"),
             mistral_api_key=os.getenv("MISTRAL_API_KEY", ""),
             mistral_model=os.getenv("MISTRAL_MODEL", "mistral-small-latest"),
-            mistral_quality_model=os.getenv("MISTRAL_QUALITY_MODEL", "mistral-medium-latest"),
+            mistral_quality_model=os.getenv("MISTRAL_QUALITY_MODEL", "mistral-large-latest"),
             anthropic_api_key=os.getenv("ANTHROPIC_API_KEY", ""),
             anthropic_model=os.getenv("ANTHROPIC_MODEL", "claude-haiku-4-5-20251001"),
             anthropic_soep_model=os.getenv("ANTHROPIC_SOEP_MODEL", "claude-sonnet-5"),
