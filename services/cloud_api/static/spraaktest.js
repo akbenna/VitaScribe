@@ -25,34 +25,82 @@
 
   if (!sessie()) status('Log eerst in op de beheerpagina in dit tabblad, en kom dan terug via "Spraaktest".', true);
 
-  // ── Opnemen in de browser ──
-  $('opnemen').addEventListener('click', async function () {
+  // ── Opnemen in de browser: microfoon, of geluid van een tabblad/de pc ──
+  var bronnen = [];       // every captured track and audio context, stopped together
+  function stopBronnen() {
+    bronnen.forEach(function (b) { try { b.stop ? b.stop() : b.close(); } catch (e) { /* already stopped */ } });
+    bronnen = [];
+  }
+
+  async function microfoon() {
+    var s = await navigator.mediaDevices.getUserMedia({ audio: true });
+    s.getTracks().forEach(function (t) { bronnen.push(t); });
+    return s;
+  }
+
+  async function tabGeluid() {
+    // Chrome/Edge only share audio together with a picture; the picture is dropped.
+    var scherm = await navigator.mediaDevices.getDisplayMedia({
+      video: true,
+      audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
+      systemAudio: 'include', selfBrowserSurface: 'exclude'
+    });
+    scherm.getTracks().forEach(function (t) { bronnen.push(t); });
+    scherm.getVideoTracks().forEach(function (t) { t.stop(); });
+    var geluid = scherm.getAudioTracks();
+    if (!geluid.length) {
+      stopBronnen();
+      throw new Error('Er werd geen geluid gedeeld. Kies een tabblad (of het hele scherm, op Windows) en zet "Geluid delen" aan.');
+    }
+    // The "Stop sharing" bar of the browser also ends the recording.
+    geluid[0].addEventListener('ended', function () { if (recorder && recorder.state === 'recording') recorder.stop(); });
+    if (!$('ookmic').checked) return new MediaStream(geluid);
+    // Mix in the microphone, e.g. for a video consult: patient from the tab, doctor from the mic.
+    var mic = await microfoon();
+    var ctx = new AudioContext();
+    bronnen.push(ctx);
+    var mix = ctx.createMediaStreamDestination();
+    ctx.createMediaStreamSource(new MediaStream(geluid)).connect(mix);
+    ctx.createMediaStreamSource(mic).connect(mix);
+    return mix.stream;
+  }
+
+  async function neemOp(knop, maakStroom) {
     if (recorder && recorder.state === 'recording') { recorder.stop(); return; }
+    var tekst = knop.textContent;
     try {
-      var stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      var stream = await maakStroom();
       stukken = [];
       recorder = new MediaRecorder(stream);
       recorder.ondataavailable = function (e) { if (e.data.size) stukken.push(e.data); };
       recorder.onstop = function () {
-        stream.getTracks().forEach(function (t) { t.stop(); });
+        stopBronnen();
         clearInterval(timer);
         opname = { blob: new Blob(stukken, { type: 'audio/webm' }), naam: 'opname.webm' };
-        $('opnemen').textContent = '● Opnemen';
+        knop.textContent = tekst;
+        $('opnemen').disabled = $('tabopname').disabled = false;
         status('Opname klaar (' + $('klok').textContent + '). Klik op Vergelijk.');
         klaar();
       };
       recorder.start(1000);
       startTijd = Date.now();
-      $('opnemen').textContent = '■ Stop';
+      knop.textContent = '■ Stop';
+      (knop === $('opnemen') ? $('tabopname') : $('opnemen')).disabled = true;
       timer = setInterval(function () {
         var s = Math.round((Date.now() - startTijd) / 1000);
         $('klok').textContent = Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
       }, 500);
       status('Bezig met opnemen…');
     } catch (e) {
-      status('De microfoon kon niet starten: ' + e.message, true);
+      stopBronnen();
+      if (e && e.name === 'NotAllowedError') status('Opnemen geannuleerd of niet toegestaan.', true);
+      else status('Opnemen kon niet starten: ' + (e && e.message || e), true);
     }
-  });
+  }
+
+  $('opnemen').addEventListener('click', function () { neemOp(this, microfoon); });
+  $('tabopname').addEventListener('click', function () { neemOp(this, tabGeluid); });
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) $('tabopname').disabled = true;
 
   $('bestand').addEventListener('change', function () {
     var f = this.files[0];

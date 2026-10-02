@@ -49,13 +49,16 @@
     <h2>Voxtral (Mistral, Frankrijk) tegen Deepgram</h2>
     <div class="let-op">Gebruik een rollenspel of een opname zonder echte patiënt, tot er een verwerkersovereenkomst met Mistral is. Er wordt niets bewaard; het log noteert alleen dat er een test was.</div>
     <div class="rij">
-      <button id="opnemen" class="opnemen">● Opnemen</button>
+      <button id="opnemen" class="opnemen">● Microfoon</button>
+      <button id="tabopname" class="opnemen" title="Neem het geluid op van een ander tabblad (bijvoorbeeld een video of videoconsult) of, op Windows, van de hele pc">● Geluid van tabblad of pc</button>
+      <label class="klein" title="Bij een videoconsult: de patiënt uit het tabblad, jijzelf via de microfoon"><input type="checkbox" id="ookmic"> met microfoon erbij</label>
       <span id="klok" class="tijd klein"></span>
       <span class="klein">of</span>
       <input type="file" id="bestand" accept=".webm,.wav,.mp3,.m4a,.ogg,.flac,.mp4,audio/*">
       <label class="klein">Taal <select id="taal"><option value="nl">Nederlands</option><option value="multi">Meertalig</option><option value="en">Engels</option></select></label>
       <button id="vergelijk" class="hoofd" disabled>Vergelijk</button>
     </div>
+    <p class="klein">Geluid van een tabblad: kies in het venster dat opent het tabblad en zet <b>Geluid van tabblad delen</b> aan. Het geluid van de hele pc kan alleen op Windows (kies dan "Volledig scherm"). Stoppen kan hier of met "Delen stoppen" in de browserbalk.</p>
     <p id="status" class="status klein"></p>
   </div>
   <div id="uitkomst"></div>
