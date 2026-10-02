@@ -14,7 +14,7 @@
 
   var ELKE_MS = window.VS_GEVOELIG_MS || 20000;
   // Same hosts as the Bricks content script in the manifest.
-  var BRICKS = /^https:\/\/([^/]+\.)?(bfrcloud\.com|bfrnet\.nl|bricks-huisarts\.nl|bfrw\.nl|bfrw\.cloud|brickshuisarts\.nl|bfrw-online\.nl|bricks\.nl|bricks-his\.nl)\/|^http:\/\/localhost:8002\//;
+  var BRICKS = /^https:\/\/([^/]+\.)?(bfrcloud\.com|bfrnet\.nl|bricks-huisarts\.nl|bfrw\.nl|bfrw\.cloud|brickshuisarts\.nl|bfrw-online\.nl|bricks\.nl|bricks-his\.nl)\//;
 
   var vak = document.getElementById('gevoelig-advies');
   if (!vak || typeof SVGevoelig === 'undefined' || typeof SVModus === 'undefined') return;
