@@ -11,6 +11,7 @@
   var $ = function (id) { return document.getElementById(id); };
   var opname = null;      // { blob, naam }
   var recorder = null, stukken = [], startTijd = 0, timer = null;
+  var laatste = null;     // the last comparison, for "Maak SOEP van beide"
 
   function sessie() { try { return sessionStorage.getItem(OPSLAG) || ''; } catch (e) { return ''; } }
   function status(t, fout) { $('status').textContent = t || ''; $('status').className = 'status klein' + (fout ? ' fout' : ''); }
@@ -74,6 +75,7 @@
       var body = await r.json().catch(function () { return {}; });
       if (r.status === 401 || r.status === 403) throw new Error('Niet ingelogd. Log in op /beheer in dit tabblad.');
       if (!r.ok) throw new Error(body.detail || ('Fout ' + r.status));
+      laatste = body;
       toon(body);
       status('Klaar.');
     } catch (e) {
@@ -131,5 +133,89 @@
     naast.appendChild(kolom('Deepgram (VS, EU-endpoint)', b.deepgram, b.alleen_deepgram || []));
     naast.appendChild(kolom('Voxtral (Mistral, Frankrijk)', b.voxtral, b.alleen_voxtral || []));
     u.appendChild(naast);
+    if (b.deepgram.met_sprekers || b.voxtral.met_sprekers) u.appendChild(soepKaart());
+  }
+
+  // ── SOEP van beide transcripten ──
+  function soepKaart() {
+    var k = el('div', 'kaart');
+    k.id = 'soep';
+    k.appendChild(el('h2', '', 'SOEP van beide transcripten'));
+    k.appendChild(el('p', 'klein', 'Hetzelfde taalmodel en dezelfde woordenlijst als bij een echt consult. ' +
+      'Blind beoordelen: je ziet "Verslag A" en "Verslag B" in willekeurige volgorde, en pas na je oordeel welke dienst welke is.'));
+    var rij = el('div', 'rij');
+    var label = el('label', 'klein');
+    var blind = el('input'); blind.type = 'checkbox'; blind.checked = true; blind.id = 'blind';
+    label.appendChild(blind); label.appendChild(document.createTextNode(' Blind beoordelen'));
+    var knop = el('button', 'hoofd', 'Maak SOEP van beide');
+    rij.appendChild(knop); rij.appendChild(label);
+    k.appendChild(rij);
+    var stat = el('p', 'status klein');
+    var uit = el('div');
+    k.appendChild(stat); k.appendChild(uit);
+    knop.addEventListener('click', async function () {
+      knop.disabled = true;
+      uit.textContent = '';
+      stat.className = 'status klein';
+      stat.textContent = 'Bezig: het taalmodel schrijft twee verslagen (ongeveer een halve minuut)…';
+      try {
+        var r = await fetch('/api/v1/beheer/spraaktest/soep', {
+          method: 'POST',
+          headers: { 'X-Beheer-Sessie': sessie(), 'Content-Type': 'application/json' },
+          body: JSON.stringify({ deepgram: laatste.deepgram.met_sprekers || '', voxtral: laatste.voxtral.met_sprekers || '',
+                                 taal: $('taal').value })
+        });
+        var body = await r.json().catch(function () { return {}; });
+        if (r.status === 401 || r.status === 403) throw new Error('Niet ingelogd. Log in op /beheer in dit tabblad.');
+        if (!r.ok) throw new Error(body.detail || ('Fout ' + r.status));
+        toonSoep(uit, body, blind.checked);
+        stat.textContent = 'Klaar. Taalmodel: ' + body.taalmodel + '.';
+      } catch (e) {
+        stat.className = 'status klein fout';
+        stat.textContent = e.message;
+      } finally {
+        knop.disabled = false;
+      }
+    });
+    return k;
+  }
+
+  function soepKolom(titel, d) {
+    var k = el('div', 'kaart');
+    var kop = el('h3', '', titel);
+    k.appendChild(kop);
+    if (d.fout) { k.appendChild(el('p', 'fout', 'Mislukt: ' + d.fout)); return { kaart: k, kop: kop }; }
+    (d.problemen || []).forEach(function (p, i) {
+      if ((d.problemen || []).length > 1) k.appendChild(el('p', 'klein', 'Probleem ' + (i + 1)));
+      var t = el('table');
+      [['S', p.s], ['O', p.o], ['E', p.e], ['P', p.p],
+       ['ICPC', [p.icpc_code, p.icpc_titel].filter(Boolean).join(' ')]].forEach(function (rij) {
+        var tr = el('tr'); tr.appendChild(el('td', '', rij[0])); tr.appendChild(el('td', 'soep', rij[1] || '—')); t.appendChild(tr);
+      });
+      k.appendChild(t);
+    });
+    k.appendChild(el('p', 'klein', 'Gemaakt in ' + d.seconden + ' s'));
+    return { kaart: k, kop: kop };
+  }
+
+  function toonSoep(uit, b, blind) {
+    var paren = [['Deepgram', b.deepgram], ['Voxtral', b.voxtral]];
+    if (blind && Math.random() < 0.5) paren.reverse();
+    var naast = el('div', 'naast');
+    var koppen = paren.map(function (paar, i) {
+      var titel = blind ? 'Verslag ' + 'AB'[i] : paar[0];
+      var kol = soepKolom(titel, paar[1]);
+      naast.appendChild(kol.kaart);
+      return kol.kop;
+    });
+    uit.appendChild(naast);
+    if (blind) {
+      var onthul = el('button', '', 'Onthul welke dienst welke is');
+      onthul.addEventListener('click', function () {
+        koppen.forEach(function (kop, i) { kop.textContent = 'Verslag ' + 'AB'[i] + ': ' + paren[i][0]; });
+        onthul.remove();
+      });
+      uit.appendChild(onthul);
+    }
   }
 })();

@@ -130,6 +130,21 @@ def _parse_json_response(text: str) -> dict:
     return json.loads(text)
 
 
+async def genereer_soep(gesprek: str, llm_provider: Optional[str] = None,
+                        taal: Optional[str] = None) -> SOEPResult:
+    """One SOEP call on a (corrected) conversation per speaker. Raises on failure."""
+    antwoord = await llm_service.complete(
+        system_prompt=SOEP_SYSTEM_PROMPT,
+        user_prompt=talen.prompt_regel(talen.kies(taal)) + SOEP_USER_TEMPLATE.format(transcript=gesprek),
+        provider=llm_provider,
+        json_mode=True,
+        max_tokens=SOEP_MAX_TOKENS,
+        quality=True,
+        json_schema=SOEP_JSON_SCHEMA,
+    )
+    return SOEPResult(**soep_met_problemen(_parse_json_response(antwoord)))
+
+
 async def process_consultation(
     audio_path: Path,
     stt_provider: str = None,
@@ -221,16 +236,7 @@ async def verwerk_transcript(
     # ── Step 2: SOEP Generation ──
     logger.info("pipeline.step", step="soep_generation")
     try:
-        soep_response = await llm_service.complete(
-            system_prompt=SOEP_SYSTEM_PROMPT,
-            user_prompt=talen.prompt_regel(talen.kies(taal)) + SOEP_USER_TEMPLATE.format(transcript=result.transcript),
-            provider=llm_provider,
-            json_mode=True,
-            max_tokens=SOEP_MAX_TOKENS,
-            quality=True,
-            json_schema=SOEP_JSON_SCHEMA,
-        )
-        result.soep = SOEPResult(**soep_met_problemen(_parse_json_response(soep_response)))
+        result.soep = await genereer_soep(result.transcript, llm_provider, taal)
         result.llm_provider = llm_provider or "default"
     except Exception as e:
         logger.error("pipeline.soep_error", error=str(e))
