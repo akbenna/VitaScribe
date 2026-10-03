@@ -41,6 +41,10 @@
           {
             "regex": "(drukpijn|pijnlijk)[^.]{0,15}\\bwervelkolom|drukpijn (op de |ter hoogte van de )?wervel",
             "uitleg": "drukpijn op de wervelkolom (die was juist niet pijnlijk; wel paravertebraal)"
+          },
+          {
+            "regex": "\\bL02\\b",
+            "uitleg": "ICPC L02 (rugklachten) bij lage rugpijn; hoort L03"
           }
         ],
         "moet": [
@@ -120,7 +124,7 @@
       "toets": {
         "mag_niet": [
           {
-            "regex": "uitgesloten",
+            "regex": "(?<!worden )(?<!kan )\\buitgesloten\\b",
             "uitleg": "'uitgesloten' in plaats van 'geen aanwijzingen voor'"
           },
           {

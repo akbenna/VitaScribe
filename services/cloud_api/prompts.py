@@ -468,21 +468,36 @@ DICTAAT_SOEP_JSON_SCHEMA = {
 # alleen in de SOEP-test (soeptest.py), om te meten of het helpt.
 
 SOEP_CONTROLE_SYSTEM_PROMPT = """\
-Je bent een strenge medisch eindredacteur. Je krijgt het transcript van een huisartsconsult en een SOEP-notitie die daaruit gemaakt is. Controleer elke bewering in de notitie tegen het transcript en geef de verbeterde notitie terug.
+Je bent een strenge medisch eindredacteur. Je krijgt het transcript van een huisartsconsult en een SOEP-notitie die daaruit gemaakt is. Je herschrijft de notitie NIET. Je geeft alleen aan welke stukjes tekst geschrapt moeten worden, omdat het transcript ze niet onderbouwt.
 
-REGELS
-- Zoek voor elke bewering de plek in het transcript waar ze gezegd wordt. Vind je die niet, schrap de bewering.
-- Klopt een detail niet precies met wat gezegd is (zijde li/re/beiderzijds, plaats zoals lateraal of malleolus, getal, meetwaarde, frequentie, sterkte, naam van een test, welk been of welke kant onderzocht is), maak het dan precies zoals gezegd, of schrap het detail.
-- Schrap ontkenningen van onderwerpen die niet besproken zijn (bijv. "geen suïcidegedachten", "rookt niet", "geen koorts" als daar niet over gesproken is).
-- Schrap een vangnet, controle of terugkomafspraak die niet is afgesproken; laat staan wat wel is afgesproken.
-- Schrap tekst van een verteller of uitleg die niet bij het gesprek hoort.
-- Zorgen, vragen en ideeën horen bij wie ze uitte.
-- Voeg niets nieuws toe, met één uitzondering: ontbreken de hulpvraag van de patiënt of het antwoord van de arts daarop, terwijl ze wel in het transcript staan, zet ze er dan kort bij.
-- Laat ICPC-code en titel staan, tenzij de titel niet bij de code past; laat de code dan staan en neem de juiste omschrijving.
-- Behoud de stijl (telegramstijl, huisartsafkortingen) en de indeling in problemen.
+WAT JE SCHRAPT
+- Elke bewering of elk detail waarvoor je in het transcript geen plek vindt waar het gezegd wordt.
+- Details die niet precies zo gezegd zijn: zijde (li/re/beiderzijds), plaats (lateraal, mediaal, malleolus, wervelniveau), getal, meetwaarde, frequentie, sterkte, de uitkomst bij een been of kant die niet onderzocht is.
+- Ontkenningen van onderwerpen die niet besproken zijn ("geen suïcidegedachten", "rookt niet", "geen koorts").
+- Een vangnet, controle of terugkomafspraak die niet is afgesproken.
+- Een diagnose of label dat de arts niet zelf gaf (bijv. "Tietze", "overspanning").
+- Tekst van een verteller of uitleg die niet bij het gesprek hoort.
 
-ANTWOORD in exact hetzelfde JSON-formaat als de notitie die je kreeg.
+HOE
+- Geef elk fragment EXACT zoals het in de notitie staat (letterlijk overgenomen, zo kort mogelijk: alleen het onjuiste deel, bijv. "malleolus lateralis" en niet de hele zin).
+- "veld" is s, o, e of p; "probleem" is het nummer van het probleem in de lijst (0 = het eerste).
+- Schrap nooit de hulpvraag of het antwoord van de arts daarop.
+- Ontbreekt de hulpvraag van de patiënt terwijl die wel in het transcript staat, geef die dan kort in "hulpvraag" (anders leeg laten).
+- Twijfel je, schrap dan niet. Klopt alles, geef dan een lege lijst.
+
+ANTWOORD als JSON: {"schrappen": [{"probleem": 0, "veld": "o", "tekst": "...", "reden": "..."}], "hulpvraag": ""}
 """
+
+SOEP_CONTROLE_JSON_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "schrappen": {"type": "array", "items": {"type": "object", "properties": {
+            "probleem": {"type": "integer"}, "veld": {"type": "string", "enum": ["s", "o", "e", "p"]},
+            "tekst": {"type": "string"}, "reden": {"type": "string"}}, "required": ["veld", "tekst"]}},
+        "hulpvraag": {"type": "string"},
+    },
+    "required": ["schrappen"],
+}
 
 SOEP_CONTROLE_USER_TEMPLATE = """\
 TRANSCRIPT:

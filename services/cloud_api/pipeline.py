@@ -9,6 +9,7 @@ Compatible with Python 3.9+.
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -18,6 +19,7 @@ import structlog
 from . import data_policy, llm_service, stt_service, talen
 from .medical_vocabulary import correct_transcript_full, CorrectionStats
 from .prompts import (
+    SOEP_CONTROLE_JSON_SCHEMA,
     SOEP_CONTROLE_SYSTEM_PROMPT,
     SOEP_CONTROLE_USER_TEMPLATE,
     NAZORG_SYSTEM_PROMPT,
@@ -148,12 +150,58 @@ async def genereer_soep(gesprek: str, llm_provider: Optional[str] = None,
     return SOEPResult(**soep_met_problemen(_parse_json_response(antwoord)))
 
 
+MAX_HULPVRAAG = 240
+
+
+def _tidy(tekst: str) -> str:
+    """Clean up the punctuation left behind after a fragment was cut out."""
+    t = re.sub(r"\(\s*\)", "", tekst)
+    t = re.sub(r"\s+([,;.:)])", r"\1", t)
+    t = re.sub(r"([,;:])\s*(?=[,;.:])", "", t)
+    t = re.sub(r"\(\s+", "(", t)
+    t = re.sub(r"[ \t]{2,}", " ", t)
+    t = re.sub(r"^[\s,;:.]+", "", t)
+    t = re.sub(r"(^|[.;]\s)([,;:]\s*)", r"\1", t)
+    t = re.sub(r"[\s,;:]+$", "", t)
+    return t.strip()
+
+
+def pas_schrappingen_toe(soep: SOEPResult, controle: dict) -> SOEPResult:
+    """Apply the control pass: it can only cut exact fragments out (plus add a
+    missing request for help). Fragments that are not found are ignored, so the
+    model has no way to put new text into the report."""
+    delen = [dict(d) for d in (soep.problemen or [{k: getattr(soep, k) for k in SOEP_VELDEN}])]
+    for item in controle.get("schrappen") or []:
+        if not isinstance(item, dict):
+            continue
+        veld, tekst = str(item.get("veld") or "").lower(), str(item.get("tekst") or "").strip()
+        try:
+            nr = int(item.get("probleem") or 0)
+        except (TypeError, ValueError):
+            nr = 0
+        if veld not in ("s", "o", "e", "p") or len(tekst) < 2 or not 0 <= nr < len(delen):
+            continue
+        if "hulpvraag" in tekst.lower():
+            continue  # never cut the request for help
+        oud = str(delen[nr].get(veld) or "")
+        nieuw = re.sub(re.escape(tekst), "", oud, count=1, flags=re.IGNORECASE)
+        if nieuw != oud:
+            delen[nr][veld] = _tidy(nieuw)
+    hulpvraag = str(controle.get("hulpvraag") or "").strip()[:MAX_HULPVRAAG]
+    if hulpvraag and "hulpvraag" not in str(delen[0].get("s") or "").lower():
+        s = str(delen[0].get("s") or "").rstrip()
+        delen[0]["s"] = (s + (" " if s.endswith(".") else ". " if s else "") + "Hulpvraag: " + hulpvraag).strip()
+    return SOEPResult(**soep_met_problemen({"problemen": delen}))
+
+
 async def controleer_soep(gesprek: str, soep: SOEPResult, llm_provider: Optional[str] = None,
                           model: Optional[str] = None) -> SOEPResult:
-    """Second pass: the report next to the transcript; what the conversation does
-    not support is removed. Raises on failure (the caller keeps the first report)."""
-    notitie = json.dumps({"s": soep.s, "o": soep.o, "e": soep.e, "p": soep.p, "icpc_code": soep.icpc_code,
-                          "icpc_titel": soep.icpc_titel, "problemen": soep.problemen}, ensure_ascii=False)
+    """Second pass: the report next to the transcript; the model names the
+    fragments the conversation does not support and the code cuts them out.
+    Raises on failure (the caller keeps the first report)."""
+    delen = soep.problemen or [{k: getattr(soep, k) for k in SOEP_VELDEN}]
+    notitie = json.dumps({"problemen": [{k: d.get(k, "") for k in ("s", "o", "e", "p", "icpc_code", "icpc_titel")}
+                                        for d in delen]}, ensure_ascii=False)
     antwoord = await llm_service.complete(
         system_prompt=SOEP_CONTROLE_SYSTEM_PROMPT,
         user_prompt=SOEP_CONTROLE_USER_TEMPLATE.format(transcript=gesprek, soep=notitie),
@@ -161,10 +209,10 @@ async def controleer_soep(gesprek: str, soep: SOEPResult, llm_provider: Optional
         json_mode=True,
         max_tokens=SOEP_MAX_TOKENS,
         quality=True,
-        json_schema=SOEP_JSON_SCHEMA,
+        json_schema=SOEP_CONTROLE_JSON_SCHEMA,
         model=model,
     )
-    return SOEPResult(**soep_met_problemen(_parse_json_response(antwoord)))
+    return pas_schrappingen_toe(soep, _parse_json_response(antwoord))
 
 
 async def process_consultation(
