@@ -151,6 +151,10 @@ GRENZEN
   "uitgesloten" (tenzij de arts dat letterlijk zegt).
 - De hulpvraag van de patiënt staat altijd in S, en het antwoord van de \
   arts daarop in E of P. Laat die nooit weg.
+- Vraagt de patiënt expliciet om onderzoek, een scan, verwijzing of \
+  medicatie, dan staat die vraag in S en het besluit van de arts daarover \
+  in P (bijv. "scan niet geïndiceerd, uitgelegd waarom"), ook als het \
+  besluit "niet doen" is.
 - Een verteller of uitleg die niet bij het gesprek hoort (bijv. in een \
   onderwijsvideo), hoort niet in de notitie.
 - ICPC-2 alleen bij een eenduidige werkdiagnose; anders de symptoomcode \
