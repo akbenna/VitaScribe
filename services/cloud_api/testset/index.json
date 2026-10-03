@@ -115,7 +115,7 @@
         "Spreker 2": "patiënt"
       },
       "valkuilen": [
-        "Steken links op de borst sinds 15 juni; drukpijn op 2-3 punten, zijde van de drukpunten niet genoemd.",
+        "Steken links op de borst sinds 15 juni; drukpijn op 2-3 punten links (in beeld; 'links' is goed).",
         "Bloeddruk 'perfect': geen waarde genoemd.",
         "Tijgerbalsem: prettig, maar de volgende dag meer klachten (geen blijvende verlichting).",
         "'Geen aanwijzingen voor' een cardiale oorzaak, niet 'uitgesloten'.",
@@ -138,10 +138,6 @@
           {
             "regex": "\\bL02\\b",
             "uitleg": "ICPC L02 (rugklachten) bij borstklachten"
-          },
-          {
-            "regex": "(drukpijn|drukpunt)[^.]{0,60}\\b(li|links|re|rechts)\\b",
-            "uitleg": "zijde van de drukpunten (niet genoemd)"
           },
           {
             "regex": "tietze",

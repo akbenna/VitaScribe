@@ -193,7 +193,8 @@ def test_pitfalls_score_the_medium_run_reports():
     assert soeptest.toets_valkuilen([{"s": "hernia, werk", "p": "Paracetamol 4dd 2"}], rug)["fout"]
     borst = soeptest.toets_valkuilen([{"o": "Drukpijn op ribben bij borstbeen links (3 punten)", "e": "Tietze-syndroom",
                                        "p": "scan niet nodig; terugkomen bij zorgen"}], idx["03-pijn-op-de-borst"]["toets"])
-    assert any("zijde van de drukpunten" in f for f in borst["fout"]) and any("Tietze" in f for f in borst["fout"])
+    # "links" is right here (visible in the video); Tietze is not
+    assert not any("zijde" in f for f in borst["fout"]) and any("Tietze" in f for f in borst["fout"])
     moe = idx["04-moeheid"]["toets"]
     r = soeptest.toets_valkuilen([{"s": "bezorgd over oorzaak (schildklier, bloedarmoede, nieren)",
                                    "o": "veel energie-kostende activiteiten", "p": "controle over 4-6 weken"}], moe)
@@ -248,3 +249,8 @@ async def test_controleer_soep_sends_the_report_and_applies_the_cuts(monkeypatch
     assert na.problemen[0]["o"] == "anteflexie beperkt" and na.icpc_code == "L03"
     assert gezien["model"] == "mistral-large-latest" and "schrappen" in json.dumps(gezien["json_schema"])
     assert "stopt halverwege" in gezien["user_prompt"]
+
+
+def test_soep_prompt_asks_for_the_decision_on_a_requested_test():
+    from services.cloud_api import prompts
+    assert "scan" in prompts.SOEP_SYSTEM_PROMPT and "besluit van de arts" in prompts.SOEP_SYSTEM_PROMPT
