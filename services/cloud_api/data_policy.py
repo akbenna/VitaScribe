@@ -176,7 +176,7 @@ def summary() -> dict:
 # ── Version of the extension that sent the request (for the logs and advice) ──
 # Features such as the speech check in EU mode need a minimum version; the side
 # panel warns when the installed extension is older.
-MIN_EXTENSIE_VERSIE = "2.15.3"
+MIN_EXTENSIE_VERSIE = "2.15.4"
 _versie: ContextVar[str] = ContextVar("vitascribe_versie", default="")
 
 

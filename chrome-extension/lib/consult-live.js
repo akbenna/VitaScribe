@@ -60,8 +60,8 @@ var SVConsultLive = (function () {
                                consent: true, llm_provider: opties.llmProvider || null,
                                vraagsuggesties: opties.vraagsuggesties === true,
                                taal: opties.taal || 'nl', modus: opties.modus || null,
-                               versie: (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getManifest)
-                                 ? chrome.runtime.getManifest().version : null }));
+                               // From the service worker: an offscreen document may not have getManifest.
+                               versie: opties.versie || null }));
     };
     ws.onmessage = function (bericht) {
       var e;

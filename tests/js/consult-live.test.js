@@ -163,3 +163,9 @@ test('EU-modus: de geluidscontrole van de server komt door (aantal woorden, geen
   ws.ontvang({ type: 'controle', seconden: 120, woorden: 48, goed: true });
   assert.deepEqual(controles, [{ seconden: 30, woorden: 2, goed: false }, { seconden: 120, woorden: 48, goed: true }]);
 });
+
+test('versie van de extensie gaat mee bij het aanmelden', () => {
+  const { ws } = start({ versie: '2.15.4' });
+  ws.open();
+  assert.equal(JSON.parse(ws.verstuurd[0]).versie, '2.15.4');
+});
