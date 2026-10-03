@@ -68,6 +68,8 @@ def controleer(code: str, titel: str) -> Optional[str]:
         return None
     omschrijving, woorden = TABEL[kern]
     laag = titel.lower()
+    if kern == "L02" and re.search(r"lage rug|lumba", laag):
+        return f'ICPC L02 is rugklachten (niet laag); "{titel}" is L03 (of L86 bij radiculaire uitstraling)'
     if any(w in laag for w in woorden):
         return None
     return f'ICPC {kern} is {omschrijving}; de titel "{titel}" past daar niet bij'

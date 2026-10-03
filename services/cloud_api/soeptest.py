@@ -56,7 +56,7 @@ _ONDERWERPEN = (
     ("drugs", r"\bdrugs|cannabis|blowen|cocaïne|cocaine", r"drugs|cannabis|blow|cocaïne|cocaine|wiet"),
     ("roken", r"\broken\b|\brookt\b|sigaret|nicotine|packyears", r"\brook|roken|sigaret|nicotine"),
     ("koorts", r"\bkoorts|temperatuur|\btemp\b", r"koorts|temperatuur|verhoging"),
-    ("gewichtsverlies", r"gewichtsverlies|afgevallen|gewicht", r"afgevallen|gewicht|kilo"),
+    ("gewichtsverlies", r"gewichtsverlies|gewichtsafname|afgevallen|kilo.{0,10}(kwijt|afgevallen)", r"afgevallen|gewicht|kilo"),
     ("nachtzweten", r"nachtzweten", r"nachtzweten|'s nachts (zweten|zweet)|nachts.{0,15}zwe"),
     ("allergie", r"allergie|allergisch", r"allergi"),
 )
@@ -137,7 +137,7 @@ def verdacht(problemen: List[dict], gesprek: str) -> List[str]:
             uit.append(f"onderwerp niet besproken: {naam}")
     if _VANGNET_SOEP.search(soep) and not _VANGNET_GESPREK.search(gesprek):
         uit.append("vangnet of controle niet in het gesprek afgesproken")
-    if re.search(r"\buitgesloten\b", laag):
+    if re.search(r"(?<!worden )(?<!kan )\buitgesloten\b", laag):
         uit.append('"uitgesloten": in een verslag liever "geen aanwijzingen voor"')
     uit.extend(icpc_controle.controleer_delen(problemen))
     return list(dict.fromkeys(uit))
