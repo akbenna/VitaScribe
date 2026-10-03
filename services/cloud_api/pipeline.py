@@ -166,11 +166,29 @@ def _tidy(tekst: str) -> str:
     return t.strip()
 
 
-def pas_schrappingen_toe(soep: SOEPResult, controle: dict) -> SOEPResult:
-    """Apply the control pass: it can only cut exact fragments out (plus add a
-    missing request for help). Fragments that are not found are ignored, so the
-    model has no way to put new text into the report."""
+# What the server may cut on its own: a short side, place, level or number,
+# never a negation and never in E. Everything else is only marked for the doctor.
+_DETAIL = re.compile(r"\b(li|re|links|rechts|linker\w*|rechter\w*|beiderzijds|bdz|bilateraal|lateraa?l\w*|"
+                     r"mediaa?l\w*|malleol\w*|dorsa\w*|volair\w*|plantair\w*|psis|sips|[LST]h?\d{1,2}|\d+)\b",
+                     re.IGNORECASE)
+_ONTKENNING = re.compile(r"\b(geen|zonder|niet|nooit|ontken\w*|negatief|uitgesloten|normaal|gb)\b", re.IGNORECASE)
+MAX_KNIP_WOORDEN = 4
+
+
+def mag_knippen(veld: str, tekst: str, oud: str) -> bool:
+    return (veld in ("s", "o", "p") and len(tekst.split()) <= MAX_KNIP_WOORDEN
+            and bool(_DETAIL.search(tekst)) and not _ONTKENNING.search(tekst)
+            and bool(_tidy(re.sub(re.escape(tekst), "", oud, count=1, flags=re.IGNORECASE))))
+
+
+def pas_controle_toe(soep: SOEPResult, controle: dict) -> tuple:
+    """Apply the control pass. Only a short, unambiguous detail (a side, place,
+    level or number, without a negation, outside E) is cut out by the server;
+    everything else becomes a marking the doctor decides on. Fragments that are
+    not in the report are dropped, so nothing new can enter the report.
+    Returns (SOEPResult, markeringen)."""
     delen = [dict(d) for d in (soep.problemen or [{k: getattr(soep, k) for k in SOEP_VELDEN}])]
+    markeringen: List[Dict] = []
     for item in controle.get("schrappen") or []:
         if not isinstance(item, dict):
             continue
@@ -181,24 +199,27 @@ def pas_schrappingen_toe(soep: SOEPResult, controle: dict) -> SOEPResult:
             nr = 0
         if veld not in ("s", "o", "e", "p") or len(tekst) < 2 or not 0 <= nr < len(delen):
             continue
-        if "hulpvraag" in tekst.lower():
-            continue  # never cut the request for help
         oud = str(delen[nr].get(veld) or "")
-        nieuw = re.sub(re.escape(tekst), "", oud, count=1, flags=re.IGNORECASE)
-        if nieuw != oud:
-            delen[nr][veld] = _tidy(nieuw)
+        if tekst.lower() not in oud.lower():
+            continue
+        reden = str(item.get("reden") or "")[:200]
+        geknipt = mag_knippen(veld, tekst, oud)
+        if geknipt:
+            delen[nr][veld] = _tidy(re.sub(re.escape(tekst), "", oud, count=1, flags=re.IGNORECASE))
+        markeringen.append({"probleem": nr, "veld": veld, "tekst": tekst, "reden": reden, "geknipt": geknipt})
     hulpvraag = str(controle.get("hulpvraag") or "").strip()[:MAX_HULPVRAAG]
-    if hulpvraag and "hulpvraag" not in str(delen[0].get("s") or "").lower():
-        s = str(delen[0].get("s") or "").rstrip()
-        delen[0]["s"] = (s + (" " if s.endswith(".") else ". " if s else "") + "Hulpvraag: " + hulpvraag).strip()
-    return SOEPResult(**soep_met_problemen({"problemen": delen}))
+    if hulpvraag:
+        markeringen.append({"probleem": 0, "veld": "s", "tekst": "", "geknipt": False,
+                            "reden": "hulpvraag ontbreekt mogelijk: " + hulpvraag})
+    return SOEPResult(**soep_met_problemen({"problemen": delen})), markeringen
 
 
 async def controleer_soep(gesprek: str, soep: SOEPResult, llm_provider: Optional[str] = None,
-                          model: Optional[str] = None) -> SOEPResult:
+                          model: Optional[str] = None) -> tuple:
     """Second pass: the report next to the transcript; the model names the
-    fragments the conversation does not support and the code cuts them out.
-    Raises on failure (the caller keeps the first report)."""
+    fragments the conversation does not support. Returns (SOEPResult,
+    markeringen), see pas_controle_toe. Raises on failure (the caller keeps
+    the first report)."""
     delen = soep.problemen or [{k: getattr(soep, k) for k in SOEP_VELDEN}]
     notitie = json.dumps({"problemen": [{k: d.get(k, "") for k in ("s", "o", "e", "p", "icpc_code", "icpc_titel")}
                                         for d in delen]}, ensure_ascii=False)
@@ -212,7 +233,7 @@ async def controleer_soep(gesprek: str, soep: SOEPResult, llm_provider: Optional
         json_schema=SOEP_CONTROLE_JSON_SCHEMA,
         model=model,
     )
-    return pas_schrappingen_toe(soep, _parse_json_response(antwoord))
+    return pas_controle_toe(soep, _parse_json_response(antwoord))
 
 
 async def process_consultation(

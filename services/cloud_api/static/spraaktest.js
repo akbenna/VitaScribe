@@ -254,6 +254,15 @@
       d.valkuilen.fout.forEach(function (x) { vk.appendChild(el('span', 'term mist', x)); });
       k.appendChild(vk);
     }
+    if (d.markeringen) {
+      var m = el('p', 'klein', d.markeringen.length ? 'Controleronde, voor de arts: ' : 'Controleronde: niets aangewezen.');
+      d.markeringen.forEach(function (x) {
+        var t = (x.geknipt ? 'weggehaald: ' : 'gemarkeerd: ') + (x.tekst ? '"' + x.tekst + '" (' + x.veld.toUpperCase() + ')' : '') +
+                (x.reden ? ' – ' + x.reden : '');
+        m.appendChild(el('span', 'term ' + (x.geknipt ? 'mist' : ''), t));
+      });
+      k.appendChild(m);
+    }
     if (d.verdacht) {
       var v = el('p', 'klein', d.verdacht.length ? 'Verdacht (staat niet in het gesprek): ' : 'Verdacht: niets gevonden.');
       d.verdacht.forEach(function (x) { v.appendChild(el('span', 'term mist', x)); });

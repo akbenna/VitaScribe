@@ -69,6 +69,8 @@ _ONDERWERPEN = (
     ("nachtzweten", r"nachtzweten", r"nachtzweten|'s nachts (zweten|zweet)|nachts.{0,15}zwe"),
     ("allergie", r"allergie|allergisch", r"allergi"),
 )
+_AFGEBROKEN = re.compile(r"\(\s*[,;]|[,;]\s*\)|:\s+(en|of|maar)\s|(?<!\.)\.\.(?!\.)|\b(met|en|of|voor|van|bij|naar)\s*[.;](?!\w)",
+                         re.IGNORECASE)
 _ZIJDE = {"links": ("links", "linker", "linkerkant", "li "), "rechts": ("rechts", "rechter", "rechterkant", "re ")}
 # Vertebral levels ("L4-L5", "ter hoogte van L5") and landmarks nobody may add.
 _WERVEL = re.compile(r"\b(?:L[1-5]|S1|C[1-7]|Th?1[0-2]|Th?[1-9])\s?[-–/]\s?(?:L[1-5]|S1|C[1-7]|Th?1[0-2]|Th?[1-9])\b"
@@ -148,6 +150,8 @@ def verdacht(problemen: List[dict], gesprek: str) -> List[str]:
         uit.append("vangnet of controle niet in het gesprek afgesproken")
     if re.search(r"(?<!worden )(?<!kan )\buitgesloten\b", laag):
         uit.append('"uitgesloten": in een verslag liever "geen aanwijzingen voor"')
+    if _AFGEBROKEN.search(_soep_tekst(problemen)):
+        uit.append("afgebroken zin (er is iets uit geknipt)")
     uit.extend(icpc_controle.controleer_delen(problemen))
     return list(dict.fromkeys(uit))
 
@@ -155,9 +159,16 @@ def verdacht(problemen: List[dict], gesprek: str) -> List[str]:
 def toets_valkuilen(problemen: List[dict], toets: dict) -> dict:
     """The known pitfalls of a test consult as hard checks: what must not and what must be in it."""
     soep = _soep_tekst(problemen) + "\n" + " ".join(f"{p.get('icpc_code', '')} {p.get('icpc_titel', '')}" for p in problemen)
-    fout = [r["uitleg"] for r in toets.get("mag_niet", []) if re.search(r["regex"], soep, re.IGNORECASE)]
-    fout += [r["uitleg"] for r in toets.get("moet", []) if not re.search(r["regex"], soep, re.IGNORECASE)]
-    totaal = len(toets.get("mag_niet", [])) + len(toets.get("moet", []))
+
+    def tekst(regel: dict) -> str:   # "veld": only that part of the report (e.g. E)
+        veld = regel.get("veld")
+        return "\n".join(str(p.get(veld) or "") for p in problemen) if veld else soep
+
+    fout = [r["uitleg"] for r in toets.get("mag_niet", []) if re.search(r["regex"], tekst(r), re.IGNORECASE)]
+    fout += [r["uitleg"] for r in toets.get("moet", []) if not re.search(r["regex"], tekst(r), re.IGNORECASE)]
+    if not any(str(p.get("e") or "").strip() for p in problemen):
+        fout.append("E is leeg")
+    totaal = len(toets.get("mag_niet", [])) + len(toets.get("moet", [])) + 1
     return {"gehaald": totaal - len(fout), "totaal": totaal, "fout": fout}
 
 
@@ -181,6 +192,7 @@ def _log_rapport(run: Optional[str], consult: str, rol: str, model: str, r: dict
     logger.info("soeptest.rapport", run=run or "", consult=consult, rol=rol, model=model,
                 seconden=r.get("seconden"), fout=r.get("fout", ""),
                 valkuilen=r.get("valkuilen", {}), verdacht=r.get("verdacht", []),
+                markeringen=r.get("markeringen", []),
                 verslag=json.dumps(r.get("problemen", []), ensure_ascii=False))
 
 
@@ -218,14 +230,14 @@ async def _gecontroleerd(gesprek: str, eerste: dict, aanbieder: str, model: Opti
     try:
         verbeterd, _ = correct_transcript_full(gesprek)
         soep = pipeline.SOEPResult(**pipeline.soep_met_problemen({"problemen": eerste["problemen"]}))
-        na = await pipeline.controleer_soep(verbeterd, soep, aanbieder, model=model)
+        na, markeringen = await pipeline.controleer_soep(verbeterd, soep, aanbieder, model=model)
     except Exception as exc:
         logger.warning("soeptest.controle_fout", error=type(exc).__name__)
         detail = str(exc) if isinstance(exc, ValueError) else type(exc).__name__
         return {"aanbieder": aanbieder, "fout": detail[:300], "seconden": round(time.monotonic() - start, 1)}
     delen = na.problemen or [{k: getattr(na, k) for k in pipeline.SOEP_VELDEN}]
     uit = {"aanbieder": aanbieder, "seconden": round(eerste.get("seconden", 0) + time.monotonic() - start, 1),
-           "problemen": delen, "verdacht": verdacht(delen, gesprek)}
+           "problemen": delen, "verdacht": verdacht(delen, gesprek), "markeringen": markeringen}
     if toets:
         uit["valkuilen"] = toets_valkuilen(delen, toets)
     return uit

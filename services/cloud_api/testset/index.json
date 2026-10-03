@@ -55,6 +55,16 @@
           {
             "regex": "werk|kinderdagverblijf|tillen",
             "uitleg": "de vraag over veilig werken met kinderen ontbreekt"
+          },
+          {
+            "veld": "e",
+            "regex": "aspecifiek|lage rugpijn|lumbago",
+            "uitleg": "de werkdiagnose ontbreekt in E"
+          },
+          {
+            "veld": "o",
+            "regex": "drukpijn",
+            "uitleg": "de drukpijnbevinding ontbreekt in O"
           }
         ]
       }
@@ -91,6 +101,11 @@
           {
             "regex": "terugkom|terug\\s?komen|controle|bij (geen|onvoldoende|uitblijven\\w*) (van )?verbetering",
             "uitleg": "vangnet of controle (niet afgesproken)"
+          },
+          {
+            "veld": "e",
+            "regex": "^(?!.*\\b(geen|zonder|niet)\\b).*\\b(artrose|reuma)",
+            "uitleg": "artrose of reuma als diagnose in E (de arts zag er juist geen aanwijzingen voor)"
           }
         ],
         "moet": [
@@ -101,6 +116,11 @@
           {
             "regex": "link|\\bli\\b",
             "uitleg": "de zijde (links) ontbreekt"
+          },
+          {
+            "veld": "e",
+            "regex": "distorsie|verzwik|verstuik|enkelband",
+            "uitleg": "de diagnose (verzwikking) ontbreekt in E"
           }
         ]
       }
@@ -147,11 +167,23 @@
         "moet": [
           {
             "regex": "scan|ECG|aanvullend onderzoek",
-            "uitleg": "het besluit over de scan (vraag van de patiënt) ontbreekt"
+            "uitleg": "het besluit over de scan (vraag van de patiënt) ontbreekt",
+            "veld": "p"
           },
           {
             "regex": "terug|opnieuw|weer contact",
-            "uitleg": "het afgesproken vangnet (terugkomen bij zorgen) ontbreekt"
+            "uitleg": "het afgesproken vangnet (terugkomen bij zorgen) ontbreekt",
+            "veld": "p"
+          },
+          {
+            "veld": "o",
+            "regex": "drukpijn|drukpunt",
+            "uitleg": "de drukpijnbevinding ontbreekt in O"
+          },
+          {
+            "veld": "e",
+            "regex": "costo|thoraxwand|borstwand|ribben|borstbeen",
+            "uitleg": "de werkdiagnose (thoraxwand) ontbreekt in E"
           }
         ]
       }
@@ -204,6 +236,11 @@
           {
             "regex": "4\\s?[-–tot]+\\s?6\\s?w",
             "uitleg": "de controle over 4-6 weken ontbreekt"
+          },
+          {
+            "veld": "p",
+            "regex": "bloed|lab",
+            "uitleg": "het besluit over bloedonderzoek ontbreekt in P"
           }
         ]
       }
