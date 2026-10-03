@@ -254,3 +254,55 @@ async def test_controleer_soep_sends_the_report_and_applies_the_cuts(monkeypatch
 def test_soep_prompt_asks_for_the_decision_on_a_requested_test():
     from services.cloud_api import prompts
     assert "scan" in prompts.SOEP_SYSTEM_PROMPT and "besluit van de arts" in prompts.SOEP_SYSTEM_PROMPT
+
+
+def test_testset_reports_go_to_the_log_but_own_conversations_do_not(monkeypatch):
+    from structlog.testing import capture_logs
+
+    async def fake_soep(gesprek, aanbieder=None, taal=None, model=None):
+        return pipeline.SOEPResult(problemen=[{"s": "rugpijn", "o": "", "e": "Lage rugpijn", "p": "Paracetamol",
+                                               "icpc_code": "L03", "icpc_titel": "Lage rugpijn"}])
+
+    async def log(*a, **k):
+        pass
+
+    monkeypatch.setattr(pipeline, "genereer_soep", fake_soep)
+    monkeypatch.setattr(register, "log", log)
+    main.app.dependency_overrides[beheer.vereis_beheerder] = lambda: "test"
+    try:
+        api = TestClient(main.app)
+        with capture_logs() as logs:
+            assert api.post("/api/v1/beheer/soeptest", json={"id": "01-lage-rugpijn", "run": "run-20261003T0100.1"}).status_code == 200
+        rap = [x for x in logs if x["event"] == "soeptest.rapport"]
+        assert [x["rol"] for x in rap] == ["claude", "eu"] and rap[0]["run"] == "run-20261003T0100.1"
+        assert "Paracetamol" in rap[0]["verslag"] and rap[0]["valkuilen"]["totaal"] > 0
+        with capture_logs() as logs:
+            api.post("/api/v1/beheer/soeptest", json={"gesprek": "Spreker 1: keelpijn sinds gisteren"})
+        assert not [x for x in logs if x["event"] == "soeptest.rapport"]
+        assert api.post("/api/v1/beheer/soeptest", json={"id": "01-lage-rugpijn", "run": "x; drop"}).status_code == 422
+    finally:
+        main.app.dependency_overrides.clear()
+
+
+def test_submission_goes_to_the_log_in_parts(monkeypatch):
+    from structlog.testing import capture_logs
+    audit = []
+
+    async def log(door, handeling, praktijk_id=None, **details):
+        audit.append(details)
+
+    monkeypatch.setattr(register, "log", log)
+    gesprek = "Spreker 1: " + "ik heb last van mijn knie. " * 300
+    api = TestClient(main.app)
+    assert api.post("/api/v1/beheer/testset/inzending", json={"titel": "Knie", "gesprek": gesprek}).status_code in (401, 403, 503)
+    main.app.dependency_overrides[beheer.vereis_beheerder] = lambda: "test"
+    try:
+        with capture_logs() as logs:
+            d = api.post("/api/v1/beheer/testset/inzending",
+                         json={"titel": "Knie", "bron": "https://youtu.be/x", "gesprek": gesprek}).json()
+        delen = [x for x in logs if x["event"] == "testset.inzending"]
+        assert d["delen"] == len(delen) > 1 and "".join(x["tekst"] for x in delen) == gesprek
+        assert all(x["inzending"] == d["id"] for x in delen) and "tekst" not in str(audit)
+        assert api.post("/api/v1/beheer/testset/inzending", json={"titel": "Kort", "gesprek": "te kort"}).status_code == 422
+    finally:
+        main.app.dependency_overrides.clear()

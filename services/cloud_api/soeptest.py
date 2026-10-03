@@ -16,7 +16,15 @@ niet in het gesprek. Dat is een eenvoudige, strenge controle, geen oordeel:
 
 Endpoints (beheerder):
   GET  /api/v1/beheer/testset      de consulten van de testset (zonder tekst)
-  POST /api/v1/beheer/soeptest     json: id of gesprek, taal?
+  POST /api/v1/beheer/soeptest     json: id of gesprek, taal?, run?
+  POST /api/v1/beheer/testset/inzending  json: titel, bron, gesprek
+
+Testset-runs (alleen de vaste, gespeelde consulten) komen met de volledige
+verslagen in het serverlog ("soeptest.rapport"), zodat de ontwikkelaar ze
+daar kan nalezen zonder kopiëren en plakken. Een inzending (een gespeeld
+consult uit de spraaktest) gaat in stukken naar het log ("testset.inzending")
+en wordt daarna met de hand aan de testset toegevoegd. Eigen gesprekken uit
+een sessie gaan nooit met tekst in het log.
 """
 
 from __future__ import annotations
@@ -25,6 +33,7 @@ import asyncio
 import json
 import re
 import time
+import uuid
 from pathlib import Path
 from typing import List, Optional
 
@@ -161,6 +170,25 @@ class SoepTestVraag(BaseModel):
     taal: Optional[str] = "nl"
     eu_model: Optional[str] = None          # "medium" | "large"; empty = the server setting
     controle: bool = False                  # also run the EU report through the control pass
+    run: Optional[str] = Field(None, max_length=60, pattern=r"^[\w:.-]*$")   # groups the rows of one testset run
+
+
+LOG_DEEL = 3000   # characters per log line for a submission
+
+
+def _log_rapport(run: Optional[str], consult: str, rol: str, model: str, r: dict) -> None:
+    """The full report of a testset consult (acted, no patient) into the log."""
+    logger.info("soeptest.rapport", run=run or "", consult=consult, rol=rol, model=model,
+                seconden=r.get("seconden"), fout=r.get("fout", ""),
+                valkuilen=r.get("valkuilen", {}), verdacht=r.get("verdacht", []),
+                verslag=json.dumps(r.get("problemen", []), ensure_ascii=False))
+
+
+class Inzending(BaseModel):
+    titel: str = Field(..., min_length=1, max_length=200)
+    bron: str = Field("", max_length=500)
+    duur_seconden: int = Field(0, ge=0, le=36000)
+    gesprek: str = Field(..., min_length=50, max_length=MAX_GESPREK)
 
 
 async def _een(gesprek: str, aanbieder: str, taal: Optional[str], model: Optional[str] = None,
@@ -229,4 +257,21 @@ async def soeptest(vraag: SoepTestVraag, door: str = Depends(vereis_beheerder)):
     uit = {"claude": claude, "eu": mistral, "eu_model": eu_naam, "valkuilen": consult.get("valkuilen", [])}
     if gecontroleerd is not None:
         uit["eu_gecontroleerd"] = gecontroleerd
+    if vraag.id:   # only the fixed testset: acted consults
+        _log_rapport(vraag.run, vraag.id, "claude", "claude", claude)
+        _log_rapport(vraag.run, vraag.id, "eu", eu_naam, mistral)
+        if gecontroleerd is not None:
+            _log_rapport(vraag.run, vraag.id, "eu+controle", eu_naam, gecontroleerd)
     return uit
+
+
+@router.post("/api/v1/beheer/testset/inzending")
+async def inzending(vraag: Inzending, door: str = Depends(vereis_beheerder)):
+    """An acted consult from the speech test, into the log in parts, to be added to the testset."""
+    ident = uuid.uuid4().hex[:8]
+    delen = [vraag.gesprek[i:i + LOG_DEEL] for i in range(0, len(vraag.gesprek), LOG_DEEL)]
+    for nr, tekst in enumerate(delen, 1):
+        logger.info("testset.inzending", inzending=ident, deel=nr, delen=len(delen), titel=vraag.titel,
+                    bron=vraag.bron, duur_seconden=vraag.duur_seconden, tekst=tekst)
+    await register.log(door, "beheer.testset_inzending", inzending=ident, delen=len(delen))
+    return {"id": ident, "delen": len(delen)}
