@@ -324,9 +324,17 @@ async def verwerk_transcript(
         if data_policy.eu_modus():
             try:
                 result.markeringen = await controleer_soep(result.transcript, result.soep, llm_provider)
-                logger.info("pipeline.controle", markeringen=len(result.markeringen))
-            except Exception as e:  # the report stands without markings
+            except Exception as e:  # the report stands without these markings
                 logger.warning("pipeline.controle_fout", error=type(e).__name__)
+            # The fixed check next to it: free, and it does not depend on the model.
+            from .soeptest import vaste_markeringen   # soeptest imports pipeline
+            delen = result.soep.problemen or [{k: getattr(result.soep, k) for k in SOEP_VELDEN}]
+            gezien = {m["tekst"].lower() for m in result.markeringen if m.get("tekst")}
+            for m in vaste_markeringen(delen, result.transcript):
+                if not m["tekst"] or m["tekst"].lower() not in gezien:
+                    result.markeringen.append(m)
+            logger.info("pipeline.controle", markeringen=len(result.markeringen),
+                        vast=sum(1 for m in result.markeringen if m.get("bron") == "vast"))
 
     # ── Step 3: Nazorg (decisief regel + rode vlaggen) in EEN call ──
     # Beide taken werken op de SOEP; samenvoegen scheelt een derde LLM-call.

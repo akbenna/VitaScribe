@@ -56,6 +56,7 @@ Settings (environment):
 from __future__ import annotations
 
 import os
+import re
 from contextvars import ContextVar, Token
 from typing import List, Optional
 
@@ -170,3 +171,23 @@ def summary() -> dict:
         "stt_training_opt_out": True,
         "clinical_decision_support": clinical_decision_support(),
     }
+
+
+# ── Version of the extension that sent the request (for the logs and advice) ──
+# Features such as the speech check in EU mode need a minimum version; the side
+# panel warns when the installed extension is older.
+MIN_EXTENSIE_VERSIE = "2.15.3"
+_versie: ContextVar[str] = ContextVar("vitascribe_versie", default="")
+
+
+def zet_versie(waarde: Optional[str]) -> Token:
+    schoon = str(waarde or "").strip()[:20]
+    return _versie.set(schoon if re.fullmatch(r"\d+(\.\d+){0,3}", schoon) else "")
+
+
+def herstel_versie(token: Token) -> None:
+    _versie.reset(token)
+
+
+def versie() -> str:
+    return _versie.get()

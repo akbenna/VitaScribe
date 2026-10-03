@@ -68,9 +68,17 @@ _ONDERWERPEN = (
     ("gewichtsverlies", r"gewichtsverlies|gewichtsafname|afgevallen|kilo.{0,10}(kwijt|afgevallen)", r"afgevallen|gewicht|kilo"),
     ("nachtzweten", r"nachtzweten", r"nachtzweten|'s nachts (zweten|zweet)|nachts.{0,15}zwe"),
     ("allergie", r"allergie|allergisch", r"allergi"),
+    ("cauda-equinasyndroom", r"cauda|mictiestoorn|defecatiestoorn|zadelanesthesie|mictie/defecatie",
+     r"cauda|plassen|mictie|ontlasting|zadel"),
 )
 _AFGEBROKEN = re.compile(r"\(\s*[,;]|[,;]\s*\)|:\s+(en|maar)\s|(?<!\.)\.\.(?!\.)|\b(met|en|of|bij|naar|zonder)\s*[;](?!\w)|\b(en|of|zonder)\s*\.(?!\w)",
                          re.IGNORECASE)
+# A strength score ("kracht 5/5") and the name of a physical test are typical
+# of an exam filled in from a template rather than heard.
+_KRACHT = re.compile(r"\b[0-5]\s?/\s?5\b")
+_TESTNAMEN = ("lasègue", "lasegue", "lachman", "schuiflade", "mcmurray", "thessaly", "apley", "phalen", "tinel",
+              "finkelstein", "hawkins", "neer", "jobe", "murphy", "kernig", "brudzinski", "romberg", "babinski",
+              "fabere", "patrick", "homans", "trendelenburg")
 _ZIJDE = {"links": ("links", "linker", "linkerkant", "li "), "rechts": ("rechts", "rechter", "rechterkant", "re ")}
 # Vertebral levels ("L4-L5", "ter hoogte van L5") and landmarks nobody may add.
 _WERVEL = re.compile(r"\b(?:L[1-5]|S1|C[1-7]|Th?1[0-2]|Th?[1-9])\s?[-–/]\s?(?:L[1-5]|S1|C[1-7]|Th?1[0-2]|Th?[1-9])\b"
@@ -136,6 +144,12 @@ def verdacht(problemen: List[dict], gesprek: str) -> List[str]:
     for woord in _PLAATS:
         if re.search(rf"\b{woord}\b", laag) and woord[:5] not in bron:
             uit.append(f"plaats niet in het gesprek: {woord}")
+    for m in _KRACHT.finditer(soep):
+        if m.group(0).replace(" ", "") not in bron_kort:
+            uit.append(f"kracht of score niet in het gesprek: {m.group(0)}")
+    for naam in _TESTNAMEN:
+        if re.search(rf"\b{naam}\b", laag) and naam[:5] not in bron:
+            uit.append(f"naam van een test niet in het gesprek: {naam.capitalize()}")
     if re.search(r"\b(beiderzijds|bilateraal|bdz)\b", laag) and not re.search(r"beiderzijds|bilateraal|beide kanten|allebei|aan beide", bron):
         uit.append("beiderzijds niet in het gesprek")
     for zijde, vormen in _ZIJDE.items():
@@ -284,3 +298,29 @@ async def inzending(vraag: Inzending, door: str = Depends(vereis_beheerder)):
                     bron=vraag.bron, duur_seconden=vraag.duur_seconden, tekst=tekst)
     await register.log(door, "beheer.testset_inzending", inzending=ident, delen=len(delen))
     return {"id": ident, "delen": len(delen)}
+
+
+def vaste_markeringen(problemen: List[dict], gesprek: str) -> List[dict]:
+    """The fixed check (verdacht) as markings for the doctor, next to the
+    language model's: free, deterministic, and in the test runs rarely wrong.
+    Where the finding names a fragment that is in the report, it is marked in
+    the text; otherwise it is only listed."""
+    uit: List[dict] = []
+    for melding in verdacht(problemen, gesprek):
+        if melding.startswith("afgebroken zin"):
+            continue   # only meaningful after cutting, which the live path never does
+        term = melding.rsplit(": ", 1)[1] if ": " in melding else ""
+        plek = None
+        if term:
+            for nr, deel in enumerate(problemen):
+                for veld in ("s", "o", "e", "p"):
+                    if term.lower() in str(deel.get(veld) or "").lower():
+                        plek = (nr, veld)
+                        break
+                if plek:
+                    break
+        if plek:
+            uit.append({"probleem": plek[0], "veld": plek[1], "tekst": term, "reden": melding, "bron": "vast"})
+        else:
+            uit.append({"probleem": 0, "veld": "", "tekst": "", "reden": melding, "bron": "vast"})
+    return uit

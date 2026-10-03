@@ -59,7 +59,9 @@ var SVConsultLive = (function () {
       ws.send(JSON.stringify({ type: 'auth', api_key: opties.apiKey || '', praktijk: opties.praktijk || '',
                                consent: true, llm_provider: opties.llmProvider || null,
                                vraagsuggesties: opties.vraagsuggesties === true,
-                               taal: opties.taal || 'nl', modus: opties.modus || null }));
+                               taal: opties.taal || 'nl', modus: opties.modus || null,
+                               versie: (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getManifest)
+                                 ? chrome.runtime.getManifest().version : null }));
     };
     ws.onmessage = function (bericht) {
       var e;

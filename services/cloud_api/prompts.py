@@ -151,6 +151,11 @@ GRENZEN
   "uitgesloten" (tenzij de arts dat letterlijk zegt).
 - De hulpvraag van de patiënt staat altijd in S, en het antwoord van de \
   arts daarop in E of P. Laat die nooit weg.
+- Een opname kan midden in het consult ophouden. Staat het onderzoek, de \
+  conclusie of het beleid NIET in het transcript, schrijf dan in die \
+  rubriek alleen "niet in de opname". Vul NOOIT aan wat er in een \
+  gewoon consult over deze klacht zou gebeuren (geen standaardonderzoek, \
+  geen kracht/sensibiliteit/Lasègue, geen standaardbeleid of -medicatie).
 - Vraagt de patiënt expliciet om onderzoek, een scan, verwijzing of \
   medicatie, dan staat die vraag in S en het besluit van de arts daarover \
   in P (bijv. "scan niet geïndiceerd, uitgelegd waarom"), ook als het \

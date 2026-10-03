@@ -17,7 +17,24 @@ var SVModusKnop = (function () {
     var r = await fetch(url + '/api/v1/providers', { headers: headers, signal: AbortSignal.timeout(5000) });
     if (!r.ok) throw new Error('server ' + r.status);
     var d = await r.json();
-    return { modus: SVModus.geldig(d.modus), probleem: d.eu_probleem || '' };
+    return { modus: SVModus.geldig(d.modus), probleem: d.eu_probleem || teOud(d.min_versie) };
+  }
+
+  // "2.15.2" < "2.15.3": the EU mode relies on features of newer versions.
+  function ouder(a, b) {
+    var x = String(a).split('.').map(Number), y = String(b).split('.').map(Number);
+    for (var i = 0; i < Math.max(x.length, y.length); i++) {
+      if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) < (y[i] || 0);
+    }
+    return false;
+  }
+
+  function teOud(min) {
+    if (!min || typeof chrome === 'undefined' || !chrome.runtime || !chrome.runtime.getManifest) return '';
+    var eigen = chrome.runtime.getManifest().version;
+    return ouder(eigen, min)
+      ? 'werk VitaScribe bij (nu ' + eigen + ', nodig ' + min + '). Oudere versies tonen de geluidscontrole en de markeringen niet.'
+      : '';
   }
 
   /** knoppen: element met twee knoppen [data-modus]; uitleg: element voor de toelichting. */
@@ -58,7 +75,12 @@ var SVModusKnop = (function () {
     knoppen.querySelectorAll('[data-modus]').forEach(function (b) {
       b.addEventListener('click', function () { kies(b.getAttribute('data-modus')); });
     });
-    SVModus.lees().then(function (m) { toon(m); });
+    SVModus.lees().then(function (m) {
+      toon(m);
+      // Already in EU mode when the panel opens: check once whether the server and this version are ready.
+      if (m === 'eu') serverModus('eu').then(function (s) { if (s.probleem && huidig === 'eu') toon('eu', s.probleem); })
+        .catch(function () { /* geen verbinding */ });
+    });
     SVModus.bijWijziging(function (m) { if (m !== huidig) toon(m); });
   }
 
