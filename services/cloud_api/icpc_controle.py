@@ -37,7 +37,7 @@ TABEL: Dict[str, Tuple[str, Tuple[str, ...]]] = {
     "L08": ("schouderklachten", ("schouder",)),
     "L15": ("knieklachten", ("knie",)),
     "L16": ("enkelklachten", ("enkel",)),
-    "L77": ("verstuiking/distorsie enkel", ("enkel",)),
+    "L77": ("verstuiking/distorsie enkel", ("enkel", "distorsie", "verstuik", "verzwik")),
     "L86": ("lumbosacraal radiculair syndroom/hernia", ("hernia", "radiculair", "uitstraling")),
     "L90": ("artrose knie", ("artrose", "gonartrose", "knie")),
     "L92": ("schoudersyndroom", ("schouder",)),

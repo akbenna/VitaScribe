@@ -69,7 +69,7 @@ _ONDERWERPEN = (
     ("nachtzweten", r"nachtzweten", r"nachtzweten|'s nachts (zweten|zweet)|nachts.{0,15}zwe"),
     ("allergie", r"allergie|allergisch", r"allergi"),
 )
-_AFGEBROKEN = re.compile(r"\(\s*[,;]|[,;]\s*\)|:\s+(en|of|maar)\s|(?<!\.)\.\.(?!\.)|\b(met|en|of|voor|van|bij|naar)\s*[.;](?!\w)",
+_AFGEBROKEN = re.compile(r"\(\s*[,;]|[,;]\s*\)|:\s+(en|maar)\s|(?<!\.)\.\.(?!\.)|\b(met|en|of|bij|naar|zonder)\s*[;](?!\w)|\b(en|of|zonder)\s*\.(?!\w)",
                          re.IGNORECASE)
 _ZIJDE = {"links": ("links", "linker", "linkerkant", "li "), "rechts": ("rechts", "rechter", "rechterkant", "re ")}
 # Vertebral levels ("L4-L5", "ter hoogte van L5") and landmarks nobody may add.

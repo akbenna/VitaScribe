@@ -485,7 +485,8 @@ WAT JE AANWIJST
 HOE
 - Geef elk fragment EXACT zoals het in de notitie staat (letterlijk overgenomen, zo kort mogelijk: alleen het onjuiste deel, bijv. "malleolus lateralis" en niet de hele zin).
 - Wijs nooit een ontkenning aan die wél gezegd is ("geen aanwijzingen voor fractuur"), en knip nooit "geen" of "zonder" los van wat erbij hoort: dat draait de betekenis om.
-- Wijs niets aan wat wél in het transcript staat, ook als het anders verwoord is (bijv. de diagnose, een bevinding, een afgesproken vangnet).
+- Wijs niets aan wat wél in het transcript staat, ook als het anders verwoord is (bijv. de diagnose, een bevinding, een afgesproken vangnet). Een samenvatting, parafrase of huisartsterm voor wat gezegd is ("in rust" voor "als ik zit of lig", "RR" voor "bloeddruk", "li" voor "aan deze kant, links") is GEEN fout.
+- Wijs alleen aan wat inhoudelijk niet klopt of nergens gezegd is. Liever drie terechte aanwijzingen dan tien twijfelachtige: de arts moet elke aanwijzing nalezen.
 - "veld" is s, o, e of p; "probleem" is het nummer van het probleem in de lijst (0 = het eerste).
 - Wijs nooit de hulpvraag of het antwoord van de arts daarop aan.
 - Ontbreekt de hulpvraag van de patiënt terwijl die wel in het transcript staat, geef die dan kort in "hulpvraag" (anders leeg laten).
