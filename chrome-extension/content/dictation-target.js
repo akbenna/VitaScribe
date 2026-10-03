@@ -752,7 +752,9 @@
       tick();
       cTimer = setInterval(tick, 1000);
       var nad = /nadicteren/i.test(cState.label || '');
-      cPill.text.textContent = cState.stil ? 'geen geluid: microfoon?' : (nad ? 'nadicteren' : '');
+      // EU mode: the speech check heard the conversation (a count, no text).
+      cPill.text.textContent = cState.stil ? (/spraak gehoord/.test(cState.label || '') ? 'geen gesprek gehoord: microfoon?' : 'geen geluid: microfoon?')
+        : (nad ? 'nadicteren' : (cState.gehoord ? '✓ gehoord · ' + cState.gehoord + ' woorden' : ''));
       if (cState.stil) cPill.root.className = 'c warn';
       show(nad ? ['stop'] : ['nadictaat', 'stop']);
     } else if (st === 'processing') {

@@ -488,6 +488,7 @@ function consultPillState(c) {
     parts: soepParts.length, next: Math.min(c.inserted || 0, Math.max(0, soepParts.length - 1)),
     message: c.state === 'error' ? (c.message || '') : '', code: c.code || '', retry: !!c.retry,
     stil: c.state === 'recording' && !!c.stil,
+    gehoord: c.state === 'recording' ? (c.gehoord || 0) : 0,
   };
 }
 
@@ -601,11 +602,12 @@ function handleConsultEvent(msg) {
   switch (msg.type) {
     case 'recording':
       // Keep the chosen language: consultStart already stored it.
-      return consultUpdate({ state: 'recording', startedAt: msg.startedAt, label: msg.label, nadictaat: false });
+      return consultUpdate({ state: 'recording', startedAt: msg.startedAt, label: msg.label, nadictaat: false, stil: false, gehoord: 0 });
     case 'suggesties':
       // Shown in the side panel and popup only; never on the page pill.
       return consultUpdate({ suggesties: { klacht: msg.klacht || '', vragen: msg.vragen || [], at: Date.now() } });
     case 'label':
+      if ('gehoord' in msg) return consultUpdate({ label: msg.label, stil: !!msg.stil, gehoord: msg.gehoord || 0 });
       if ('stil' in msg) return consultUpdate({ label: msg.label, stil: !!msg.stil });
       return consultUpdate(msg.nadictaat ? { label: msg.label, nadictaat: true } : { label: msg.label });
     case 'processing':

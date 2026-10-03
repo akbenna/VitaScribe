@@ -315,7 +315,10 @@ async def test_eu_mode_marks_what_the_conversation_does_not_support():
         assert complete_mock.await_count == verwacht
         assert out["o"] == "drukpijn laterale malleolus"          # nothing removed
         if modus == "eu":
-            assert out["markeringen"] == [{"probleem": 0, "veld": "o", "tekst": "laterale malleolus", "reden": "niet gezegd"}]
+            assert out["markeringen"][0] == {"probleem": 0, "veld": "o", "tekst": "laterale malleolus", "reden": "niet gezegd"}
+            # the fixed check adds its own findings, marked as such
+            assert {m["tekst"] for m in out["markeringen"][1:]} >= {"malleolus", "laterale"}
+            assert all(m["bron"] == "vast" for m in out["markeringen"][1:])
         else:
             assert "markeringen" not in out
 
@@ -351,3 +354,28 @@ async def test_te_weinig_spraak_geeft_geen_verslag():
     assert complete_mock.await_count == 0
     assert out["soep"]["s"] == "" and out["soep"]["e"] == ""
     assert "Te weinig spraak herkend (4 woorden in 3.7 min opname)" in out["decisief"]
+
+
+
+@pytest.mark.asyncio
+async def test_eu_mode_fixed_check_marks_a_template_exam():
+    """The real failure from a test: the recording stopped before the exam and
+    the report filled one in. The fixed check marks it without any model."""
+    from services.cloud_api import data_policy
+    soep_json = json.dumps({"s": "rugpijn re", "o": "Lasègue neg. Kracht re been 5/5.", "e": "Aspecifieke lage rugpijn",
+                            "p": "ibuprofen 3dd 400 mg", "icpc_code": "L03", "icpc_titel": "Lage rugpijn"})
+    nazorg_json = json.dumps({"decisief": "x", "rode_vlaggen": [], "ontbrekende_info": []})
+    transcript = MagicMock(raw_text="pijn in mijn rug rechts sinds de verhuizing", duration_secs=240.0, provider="voxtral")
+    complete_mock = AsyncMock(side_effect=[soep_json, RuntimeError("controle weg"), nazorg_json])
+    token = data_policy.zet_modus("eu")
+    try:
+        with patch.object(pipeline.llm_service, "complete", new=complete_mock), \
+             patch.object(pipeline.stt_service, "met_sprekers", return_value="Spreker 2: pijn in mijn rug rechts sinds de verhuizing"), \
+             patch.object(pipeline, "correct_transcript_full",
+                          return_value=("Spreker 2: pijn in mijn rug rechts sinds de verhuizing", MagicMock(total_corrections=0))):
+            out = (await pipeline.verwerk_transcript(transcript)).to_dict()["soep"]
+    finally:
+        data_policy.herstel_modus(token)
+    teksten = {m["tekst"] for m in out["markeringen"]}
+    assert {"Lasègue", "5/5", "400 mg"} <= teksten
+    assert out["o"] == "Lasègue neg. Kracht re been 5/5."      # marked, not removed

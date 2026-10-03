@@ -128,8 +128,8 @@ function consultStartLive(c) {
         if (c.nadictaatVanaf !== null) return;
         var min = r.seconden >= 60 ? Math.round(r.seconden / 60) + ' min' : Math.round(r.seconden) + ' s';
         c.controle = r.goed
-          ? { label: 'Luistert mee · gesprek gehoord (' + r.woorden + ' woorden na ' + min + ')', stil: false }
-          : { label: 'Na ' + min + ' bijna geen spraak gehoord (' + r.woorden + ' woorden): controleer de microfoon', stil: true };
+          ? { label: 'Luistert mee · gesprek gehoord (' + r.woorden + ' woorden na ' + min + ')', stil: false, gehoord: r.woorden }
+          : { label: 'Na ' + min + ' bijna geen spraak gehoord (' + r.woorden + ' woorden): controleer de microfoon', stil: true, gehoord: 0 };
         consultEmit('label', c.controle);
       },
       onFout: function (melding, terugval) {

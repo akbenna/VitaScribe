@@ -240,6 +240,55 @@
           }
         ]
       }
+    },
+    {
+      "id": "05-lage-rugpijn-afgebroken",
+      "titel": "Lage rugklachten, opname stopt vóór het onderzoek",
+      "bron": "YouTube, Huisartsopleiding AmsterdamUMC: BCT - Lagerug klachten",
+      "duur_seconden": 312,
+      "sprekers": {
+        "Spreker 1": "arts",
+        "Spreker 2": "patiënt"
+      },
+      "valkuilen": [
+        "De opname stopt na de anamnese: er is nog geen onderzoek, geen conclusie en geen beleid.",
+        "Een goed verslag schrijft in O, E en P 'niet in de opname' (of laat ze leeg) en verzint het vervolg niet.",
+        "Typische verzinsels: Lasègue, kracht 5/5, sensibiliteit, cauda-equina, ibuprofen met dosering, tiltechniek."
+      ],
+      "toets": {
+        "mag_niet": [
+          {
+            "veld": "o",
+            "regex": "las[eè]gue|kracht|\\b[0-5]\\s?/\\s?5\\b|sensibiliteit|reflex|standsafwijking|anteflexie|flexie|drukpijn",
+            "uitleg": "onderzoek ingevuld dat (nog) niet in de opname staat"
+          },
+          {
+            "regex": "cauda|mictie|defecatie",
+            "uitleg": "cauda-equina of mictie/defecatie (niet besproken)"
+          },
+          {
+            "veld": "p",
+            "regex": "ibuprofen|naproxen|diclofenac|\\d\\s?mg|fysiotherap|tiltechniek|houding",
+            "uitleg": "beleid ingevuld dat niet in de opname staat"
+          },
+          {
+            "veld": "e",
+            "regex": "geen aanwijzingen voor (een )?hernia|aspecifiek",
+            "uitleg": "conclusie ingevuld die de arts (nog) niet gaf"
+          }
+        ],
+        "moet": [
+          {
+            "regex": "hernia",
+            "uitleg": "de zorg over hernia (hulpvraag) ontbreekt"
+          },
+          {
+            "veld": "o",
+            "regex": "niet in de opname|geen LO|nog niet|niet beschreven|^\\s*$",
+            "uitleg": "O zegt niet dat het onderzoek niet in de opname staat"
+          }
+        ]
+      }
     }
   ]
 }

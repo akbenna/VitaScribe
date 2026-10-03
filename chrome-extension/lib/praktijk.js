@@ -62,6 +62,10 @@ var SVPraktijk = (function () {
     if (n.length) headers['X-Bricks-Praktijk'] = n.join(',');
     // De modus (claude of eu) gaat met elke aanvraag mee; zie lib/modus.js.
     if (typeof SVModus !== 'undefined') await SVModus.metKop(headers);
+    // The version, so the server log shows which extension sent what.
+    if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getManifest) {
+      headers['X-VitaScribe-Versie'] = chrome.runtime.getManifest().version;
+    }
     return headers;
   }
 

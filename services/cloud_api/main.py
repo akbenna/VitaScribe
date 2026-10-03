@@ -110,11 +110,13 @@ app.add_middleware(
 @app.middleware("http")
 async def modus_per_aanvraag(request: Request, call_next):
     token = data_policy.zet_modus(request.headers.get("x-vitascribe-modus"))
+    token_versie = data_policy.zet_versie(request.headers.get("x-vitascribe-versie"))
     try:
         response = await call_next(request)
         response.headers["X-VitaScribe-Modus"] = data_policy.modus()
         return response
     finally:
+        data_policy.herstel_versie(token_versie)
         data_policy.herstel_modus(token)
 
 
@@ -326,6 +328,7 @@ async def process_consult(
     try:
         logger.info(
             "consult.process.start",
+            versie=data_policy.versie() or "onbekend",
             file_size=len(content),
             file_size_kb=round(len(content) / 1024, 1),
             file_ext=ext,
@@ -466,6 +469,8 @@ async def list_providers(_api_key: str = Depends(verify_api_key)):
         "modi": data_policy.toegestane_modi(),
         # Advice only: why the eu mode would fail right now (None = ready).
         "eu_probleem": data_policy.eu_gereed(),
+        # The oldest extension that has everything the eu mode needs (speech check, markings).
+        "min_versie": data_policy.MIN_EXTENSIE_VERSIE,
         "stt": {
             "default": cfg.stt.default_provider,
             "available": {

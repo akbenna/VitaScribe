@@ -260,7 +260,8 @@ async def volg_consult(
         return
 
     audit.log_event(ident.label, "consult.stream", consent=True)
-    logger.info("consult_live.start", model=cfg.stt.deepgram_model, taal=taal.code)
+    logger.info("consult_live.start", model=cfg.stt.deepgram_model, taal=taal.code,
+                versie=str(auth.get("versie") or "onbekend")[:20])
     await _send_json(ws, {"type": "ready"})
 
     gesprek = Gesprek()
@@ -377,7 +378,7 @@ async def _volg_met_voxtral(ws: WebSocket, auth: Dict[str, Any], ident: Any,
     if vraagsuggesties.toegestaan(auth):
         logger.info("consult_live.vraagsuggesties_niet_met_voxtral")
     audit.log_event(ident.label, "consult.stream", consent=True)
-    logger.info("consult_live.start", stt="voxtral", taal=taal.code)
+    logger.info("consult_live.start", stt="voxtral", taal=taal.code, versie=str(auth.get("versie") or "onbekend")[:20])
     await _send_json(ws, {"type": "ready"})
 
     opname = bytearray()

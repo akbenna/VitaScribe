@@ -333,3 +333,35 @@ def test_lessons_from_the_marking_run():
         assert not any("afgebroken" in x for x in soeptest.verdacht([{"s": zin}], "Spreker 1: x")), zin
     from services.cloud_api import icpc_controle
     assert icpc_controle.controleer("L77", "Distorsie/verstuiking") is None
+
+
+
+def test_truncated_consult_case_catches_an_invented_second_half():
+    idx = {c["id"]: c for c in soeptest.index()}
+    toets = idx["05-lage-rugpijn-afgebroken"]["toets"]
+    gesprek = soeptest.gesprek_uit_testset("05-lage-rugpijn-afgebroken")
+    assert "wervelkolom" not in gesprek and "optillen" not in gesprek.lower()   # stops before the exam
+    verzonnen = [{"s": "Hulpvraag: hernia? Werk kinderdagverblijf.",
+                  "o": "LO: geen standsafwijking. Drukpijn onderrug re. Lasègue neg. Kracht re been 5/5.",
+                  "e": "Aspecifieke lage rugpijn, geen aanwijzingen voor hernia",
+                  "p": "Paracetamol, evt. ibuprofen 3dd 400 mg. Controle bij mictie/defecatiestoornissen.",
+                  "icpc_code": "L03", "icpc_titel": "Lage rugpijn"}]
+    eerlijk = [{"s": "Hulpvraag: uitsluiten hernia; veilig werken met kinderen?", "o": "niet in de opname",
+                "e": "niet in de opname", "p": "niet in de opname", "icpc_code": "L03", "icpc_titel": "Lage rugpijn"}]
+    assert soeptest.toets_valkuilen(eerlijk, toets)["fout"] == []
+    r = soeptest.toets_valkuilen(verzonnen, toets)
+    assert r["gehaald"] <= r["totaal"] - 5
+    v = soeptest.verdacht(verzonnen, gesprek)
+    assert any("Lasègue" in x for x in v) and any("5/5" in x for x in v) and any("cauda" in x for x in v)
+
+
+def test_version_header_is_logged_and_min_version_published(monkeypatch):
+    from services.cloud_api import data_policy
+    monkeypatch.setenv("API_KEYS", "geheim")
+    get_config.cache_clear()
+    api = TestClient(main.app)
+    d = api.get("/api/v1/providers", headers={"X-API-Key": "geheim", "X-VitaScribe-Versie": "2.15.3"}).json()
+    assert d["min_versie"] == data_policy.MIN_EXTENSIE_VERSIE
+    t = data_policy.zet_versie("2.15.3; drop")
+    assert data_policy.versie() == ""
+    data_policy.herstel_versie(t)

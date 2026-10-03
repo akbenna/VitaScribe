@@ -21,3 +21,10 @@ toetsen. Beschrijving en valkuilen per consult staan in `index.json`.
 - **Naar testset sturen** (spraaktest) zet de gespeelde gesprekken van die
   pagina in stukken in het log (`testset.inzending`). Daarna worden ze met de
   hand, met valkuilen, aan deze map toegevoegd. Alleen gespeelde consulten.
+
+## 05: afgebroken opname
+
+`05-lage-rugpijn-afgebroken` is het begin van consult 01, tot vlak voor het
+lichamelijk onderzoek. Zo eindigde een echte test in de EU-modus: het model
+verzon toen het hele onderzoek en beleid (Lasègue, kracht 5/5, ibuprofen
+3dd 400 mg). Een goed verslag schrijft "niet in de opname".
