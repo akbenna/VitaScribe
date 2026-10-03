@@ -45,7 +45,11 @@ async function consultStart(config) {
   if (typeof session !== 'undefined' && session) return { ok: false, message: 'Stop eerst het dicteren (Alt+Shift+D).' };
   consultPending = null;
 
-  var constraints = { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true };
+  // No echo cancellation for the consult: it removes whatever comes out of this
+  // computer's own speakers, which is exactly the patient in a video consult
+  // (and the patient in a test video). Nothing is played back here, so there
+  // is no echo to cancel.
+  var constraints = { channelCount: 1, echoCancellation: false, noiseSuppression: true, autoGainControl: true };
   if (config.micDevice) constraints.deviceId = { exact: config.micDevice };
   var stream;
   try {

@@ -18,6 +18,14 @@ import pytest
 from services.cloud_api import llm_service, pipeline
 
 
+@pytest.fixture(autouse=True)
+def _korte_testgesprekken(request, monkeypatch):
+    """The fake transcripts here are a few words; the guard against too little
+    speech has its own test."""
+    if "te_weinig_spraak" not in request.node.name:
+        monkeypatch.setattr(pipeline, "MIN_WOORDEN", 1)
+
+
 # ── Anthropic JSON-prefill ──
 
 @pytest.mark.asyncio
@@ -328,3 +336,18 @@ async def test_eu_mode_report_stands_when_the_control_pass_fails():
     finally:
         data_policy.herstel_modus(token)
     assert out["soep"]["e"] == "distorsie" and "markeringen" not in out["soep"] and out["decisief"] == "x"
+
+
+
+# ── Te weinig spraak: geen verslag (anders verzint het model een consult) ──
+
+@pytest.mark.asyncio
+async def test_te_weinig_spraak_geeft_geen_verslag():
+    complete_mock = AsyncMock()
+    transcript = MagicMock(raw_text="Ja. Oké, dank u.", duration_secs=220.0, provider="voxtral")
+    with patch.object(pipeline.llm_service, "complete", new=complete_mock), \
+         patch.object(pipeline.stt_service, "met_sprekers", return_value="Ja. Oké, dank u."):
+        out = (await pipeline.verwerk_transcript(transcript)).to_dict()
+    assert complete_mock.await_count == 0
+    assert out["soep"]["s"] == "" and out["soep"]["e"] == ""
+    assert "Te weinig spraak herkend (4 woorden in 3.7 min opname)" in out["decisief"]

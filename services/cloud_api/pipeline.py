@@ -37,6 +37,7 @@ logger = structlog.get_logger()
 SOEP_MAX_TOKENS = 1600
 MAX_PROBLEMEN = 4
 SOEP_VELDEN = ("s", "o", "e", "p", "icpc_code", "icpc_titel")
+MIN_WOORDEN = 12   # fewer recognised words than this: no report (see verwerk_transcript)
 NAZORG_MAX_TOKENS = 700
 
 
@@ -293,6 +294,20 @@ async def verwerk_transcript(
             f"Audio duur: {transcript.duration_secs:.1f}s, "
             f"Provider: {transcript.provider}"
             + (f", Bestandsgrootte: {bestandsgrootte}" if bestandsgrootte else "")
+        )
+        return result
+
+    # Too little speech: a language model asked for a report of a few words
+    # invents a whole consult (in a test, 6 characters became a diabetes
+    # consult). Then no report at all, and say why.
+    woorden = len(transcript.raw_text.split())
+    if woorden < MIN_WOORDEN:
+        logger.warning("pipeline.te_weinig_spraak", woorden=woorden,
+                       duration_secs=transcript.duration_secs, provider=transcript.provider)
+        result.decisief = (
+            f"Te weinig spraak herkend ({woorden} woord{'en' if woorden != 1 else ''} in "
+            f"{transcript.duration_secs / 60:.1f} min opname); er is geen verslag gemaakt. "
+            "Controleer of de microfoon het gesprek hoort."
         )
         return result
 

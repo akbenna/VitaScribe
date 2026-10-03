@@ -106,7 +106,9 @@ window.SVConsultUI = (function () {
       dec.textContent = data.decisief || '';
       dec.classList.toggle('hidden', !data.decisief);
       var n = Array.isArray((data.soep || {}).problemen) ? data.soep.problemen.length : 1;
-      setStatus(n > 1
+      var leeg = !['s', 'o', 'e', 'p'].some(function (k) { return ((data.soep || {})[k] || '').trim(); });
+      if (leeg) setStatus(data.decisief || 'Er is geen verslag gemaakt.', true);
+      else setStatus(n > 1
         ? 'Consultverslag klaar: ' + n + ' problemen, elk een eigen deel. Controleer en voeg ze één voor één in.'
         : 'Consultverslag klaar. Controleer het en voeg het in.');
     }
