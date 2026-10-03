@@ -63,6 +63,7 @@
       <label class="klein">Taal <select id="taal"><option value="nl">Nederlands</option><option value="multi">Meertalig</option><option value="en">Engels</option></select></label>
       <button id="vergelijk" class="hoofd" disabled>Vergelijk</button>
       <button id="bewaar" disabled title="Download alle vergelijkingen van deze pagina als testset (alleen gespeelde consulten)">Bewaar als testset</button>
+      <button id="insturen" disabled title="Stuur de vergelijkingen van deze pagina naar het serverlog, zodat de ontwikkelaar ze aan de testset toevoegt (alleen gespeelde consulten)">Naar testset sturen</button>
     </div>
     <p class="klein">Geluid van een tabblad: kies in het venster dat opent het tabblad en zet <b>Geluid van tabblad delen</b> aan. Het geluid van de hele pc kan alleen op Windows (kies dan "Volledig scherm"). Stoppen kan hier of met "Delen stoppen" in de browserbalk.</p>
     <p id="status" class="status klein"></p>
@@ -94,6 +95,7 @@
       <label class="klein">EU-model <select id="soepmodel"><option value="large">Mistral Large</option><option value="medium">Mistral Medium</option></select></label>
       <button id="soepeen" class="hoofd">Maak beide verslagen</button>
       <button id="soepalles">Hele testset</button>
+      <label class="klein" title="Draai de hele testset meer keren, om te zien hoeveel de uitkomst per keer verschilt">Herhaal <select id="soepherhaal"><option value="1">1×</option><option value="2">2×</option><option value="3">3×</option></select></label>
       <label class="klein" title="Het Mistral-verslag gaat nog een keer naar Mistral, naast het transcript; wat het gesprek niet onderbouwt, wordt geschrapt"><input type="checkbox" id="soepcontrole" checked> Controleronde (EU)</label>
       <label class="klein"><input type="checkbox" id="soepblind" checked> Blind beoordelen</label>
     </div>
