@@ -364,6 +364,7 @@ async function quickToggle(tabId) {
       apiKey: (sync.apiKey || '').trim(),
       micDevice: sync.micDevice || '',
       modus: await SVModus.lees(),
+      versie: chrome.runtime.getManifest().version,
     },
     rules: local.svTextRules || null,
   });
@@ -538,6 +539,7 @@ async function consultConfig() {
     praktijk: await SVPraktijk.nummers(),
     // Claude of EU, vastgelegd bij de start: een wissel tijdens het consult geldt voor het volgende.
     modus: await SVModus.lees(),
+    versie: chrome.runtime.getManifest().version,
   };
 }
 

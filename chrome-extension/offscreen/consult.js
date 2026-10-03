@@ -109,6 +109,7 @@ function consultStartLive(c) {
       apiKey: c.config.apiKey,
       praktijk: c.config.praktijk || [],
       modus: c.config.modus || null,
+      versie: c.config.versie || null,
       llmProvider: c.config.llmProvider,
       vraagsuggesties: c.config.vraagsuggesties === true,
       taal: c.config.taal || 'nl',
