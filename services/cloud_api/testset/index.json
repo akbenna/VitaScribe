@@ -80,7 +80,7 @@
       },
       "valkuilen": [
         "Linker enkel. Plaats van de drukpijn (lateraal, mediaal) is niet genoemd.",
-        "Geen test op tenen of hielen; wel staan op het linkerbeen, dat nog niet helemaal gaat.",
+        "Geen test op tenen of hielen; wel staan op één been (welk been precies is niet eenduidig).",
         "Geen vangnet of controleafspraak genoemd.",
         "Moeder heeft een kunstknie en artrose of reuma; de patiënt zelf niet."
       ],
@@ -93,10 +93,6 @@
           {
             "regex": "tenen|hiel",
             "uitleg": "test op tenen of hielen (niet gedaan)"
-          },
-          {
-            "regex": "\\b(re|rechter|rechts)\\w*\\s+(been|enkel)[^.]{0,25}\\b(wel|lukt|goed|normaal)\\b",
-            "uitleg": "uitkomst voor het rechterbeen (niet getest)"
           },
           {
             "regex": "terugkom|terug\\s?komen|controle|bij (geen|onvoldoende|uitblijven\\w*) (van )?verbetering",

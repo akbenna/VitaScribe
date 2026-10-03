@@ -469,3 +469,12 @@ Post-beoordelingen.
 - Oefen één keer per jaar een herstel: zet een back-up terug in een nieuwe
   PostgreSQL-dienst, koppel een testserver en controleer dat `/beheer` de
   praktijken toont. Leg de datum vast.
+
+### EU-modus: controleronde
+
+Elk consult in de EU-modus gaat na het SOEP-verslag nog een keer naar Mistral
+(Large, `MISTRAL_QUALITY_MODEL`), samen met het transcript. Wat het gesprek
+niet onderbouwt, komt als `soep.markeringen` terug en staat geel gemarkeerd in
+het zijpaneel (vanaf extensie 2.15.0). Er wordt niets weggehaald of
+toegevoegd; de arts beslist. Mislukt de controle, dan blijft het verslag
+zonder markeringen staan. Kosten: ongeveer een halve cent per consult.

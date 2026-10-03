@@ -281,3 +281,50 @@ async def test_opname_in_andere_taal():
     assert transcribe.await_args.kwargs["language"] == "pl"
     assert "TAAL VAN HET GESPREK" in complete.await_args_list[0].kwargs["user_prompt"]
     assert "Pools" in complete.await_args_list[0].kwargs["user_prompt"]
+
+
+# ── EU-modus: controleronde markeert, haalt niets weg ──
+
+@pytest.mark.asyncio
+async def test_eu_mode_marks_what_the_conversation_does_not_support():
+    from services.cloud_api import data_policy
+    soep_json = json.dumps({"s": "enkel li", "o": "drukpijn laterale malleolus", "e": "distorsie", "p": "paracetamol",
+                            "icpc_code": "L77", "icpc_titel": "Distorsie enkel"})
+    controle_json = json.dumps({"schrappen": [{"veld": "o", "tekst": "laterale malleolus", "reden": "niet gezegd"}]})
+    nazorg_json = json.dumps({"decisief": "x", "rode_vlaggen": [], "ontbrekende_info": []})
+    transcript = MagicMock(raw_text="enkel verzwikt", duration_secs=60.0, provider="voxtral")
+    for modus, verwacht in (("eu", 3), ("claude", 2)):
+        complete_mock = AsyncMock(side_effect=[soep_json, controle_json, nazorg_json] if modus == "eu"
+                                  else [soep_json, nazorg_json])
+        token = data_policy.zet_modus(modus)
+        try:
+            with patch.object(pipeline.llm_service, "complete", new=complete_mock), \
+                 patch.object(pipeline.stt_service, "met_sprekers", return_value="enkel verzwikt"), \
+                 patch.object(pipeline, "correct_transcript_full", return_value=("enkel verzwikt", MagicMock(total_corrections=0))):
+                out = (await pipeline.verwerk_transcript(transcript)).to_dict()["soep"]
+        finally:
+            data_policy.herstel_modus(token)
+        assert complete_mock.await_count == verwacht
+        assert out["o"] == "drukpijn laterale malleolus"          # nothing removed
+        if modus == "eu":
+            assert out["markeringen"] == [{"probleem": 0, "veld": "o", "tekst": "laterale malleolus", "reden": "niet gezegd"}]
+        else:
+            assert "markeringen" not in out
+
+
+@pytest.mark.asyncio
+async def test_eu_mode_report_stands_when_the_control_pass_fails():
+    from services.cloud_api import data_policy
+    soep_json = json.dumps({"s": "enkel", "o": "", "e": "distorsie", "p": "", "icpc_code": "", "icpc_titel": ""})
+    nazorg_json = json.dumps({"decisief": "x", "rode_vlaggen": [], "ontbrekende_info": []})
+    transcript = MagicMock(raw_text="enkel", duration_secs=60.0, provider="voxtral")
+    complete_mock = AsyncMock(side_effect=[soep_json, RuntimeError("mistral weg"), nazorg_json])
+    token = data_policy.zet_modus("eu")
+    try:
+        with patch.object(pipeline.llm_service, "complete", new=complete_mock), \
+             patch.object(pipeline.stt_service, "met_sprekers", return_value="enkel"), \
+             patch.object(pipeline, "correct_transcript_full", return_value=("enkel", MagicMock(total_corrections=0))):
+            out = (await pipeline.verwerk_transcript(transcript)).to_dict()
+    finally:
+        data_policy.herstel_modus(token)
+    assert out["soep"]["e"] == "distorsie" and "markeringen" not in out["soep"] and out["decisief"] == "x"
