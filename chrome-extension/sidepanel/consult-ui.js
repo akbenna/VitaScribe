@@ -85,6 +85,7 @@ window.SVConsultUI = (function () {
 
     if (opname) {
       $('consult-label').textContent = (huidig.label || 'Opname loopt') + (huidig.taal ? ' · ' + huidig.taal : '');
+      $('consult-label').classList.toggle('warn', !!huidig.stil);
       $('btn-nadicteer').classList.toggle('hidden', !!huidig.nadictaat);
       els.conn.className = 'conn live';
       els.conn.textContent = '● consult';

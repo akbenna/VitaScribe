@@ -78,6 +78,27 @@ logger = structlog.get_logger()
 UPSTREAM_CLOSE_TIMEOUT_SECS = 10.0
 MAX_OPNAME_BYTES = 200 * 1024 * 1024   # Voxtral-stand: ruim 45 minuten webm/opus
 VOORTGANG_ELKE_SECS = 5.0
+# Voxtral mode has no live text. So that a doctor does not find out after a
+# quarter of an hour that nothing was recorded, the recording so far goes to
+# Voxtral at these moments; the side panel shows only whether speech was heard
+# (a word count, never the text). Each check transcribes the recording from
+# the start (a webm piece cut from the middle cannot be read on its own).
+CONTROLE_OP_SECS = (30.0, 120.0, 300.0)
+CONTROLE_MIN_WOORDEN = {30.0: 3, 120.0: 15, 300.0: 30}
+
+
+async def _controleer_opname(ws: WebSocket, opname: bytes, seconden: float, taal_code: Optional[str],
+                             transcribeer: Callable[..., Any]) -> None:
+    """One check during a Voxtral consult: did Voxtral hear a conversation so far?"""
+    try:
+        t = await transcribeer(opname, "voxtral", language=taal_code)
+    except Exception as exc:  # a failing check must not disturb the consult
+        logger.warning("consult_live.controle_fout", seconden=seconden, error=type(exc).__name__)
+        return
+    woorden = len((t.raw_text or "").split())
+    goed = woorden >= CONTROLE_MIN_WOORDEN.get(seconden, 3)
+    logger.info("consult_live.controle", seconden=seconden, woorden=woorden, goed=goed)
+    await _send_json(ws, {"type": "controle", "seconden": seconden, "woorden": woorden, "goed": goed})
 
 
 def max_seconden() -> int:
@@ -364,6 +385,8 @@ async def _volg_met_voxtral(ws: WebSocket, auth: Dict[str, Any], ident: Any,
     start = time.time()
     laatst_gemeld = start
     gestopt = False
+    controles = list(CONTROLE_OP_SECS)
+    lopend: List[asyncio.Task] = []
     try:
         while True:
             over = max_seconden() - (time.time() - start)
@@ -383,6 +406,10 @@ async def _volg_met_voxtral(ws: WebSocket, auth: Dict[str, Any], ident: Any,
                     break
                 opname.extend(message["bytes"])
                 nu = time.time()
+                if controles and nu - start >= controles[0] and nadictaat is None:
+                    moment = controles.pop(0)
+                    lopend.append(asyncio.create_task(
+                        _controleer_opname(ws, bytes(opname), moment, taal.deepgram, transcribeer)))
                 if nu - laatst_gemeld >= VOORTGANG_ELKE_SECS:
                     laatst_gemeld = nu
                     await _send_json(ws, {"type": "voortgang", "seconden": round(nu - start, 1), "sprekers": 0})
@@ -402,6 +429,8 @@ async def _volg_met_voxtral(ws: WebSocket, auth: Dict[str, Any], ident: Any,
         if not gestopt:
             return
 
+        for taak in lopend:             # the report comes now; a check is no longer needed
+            taak.cancel()
         await _send_json(ws, {"type": "verwerken"})
         if opname:
             transcript = await transcribeer(bytes(opname), "voxtral", language=taal.deepgram)
@@ -423,6 +452,8 @@ async def _volg_met_voxtral(ws: WebSocket, auth: Dict[str, Any], ident: Any,
         await _send_json(ws, {"type": "error", "terugval": True,
                               "message": "Het verslag kon niet worden gemaakt."})
     finally:
+        for taak in lopend:
+            taak.cancel()
         opname.clear()                  # privacy: de opname leeft alleen tijdens dit consult
         await _send_json(ws, {"type": "closed"})
         try:
