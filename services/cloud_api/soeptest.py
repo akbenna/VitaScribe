@@ -223,24 +223,21 @@ async def _een(gesprek: str, aanbieder: str, taal: Optional[str], model: Optiona
 
 async def _gecontroleerd(gesprek: str, eerste: dict, aanbieder: str, model: Optional[str],
                          toets: Optional[dict]) -> dict:
-    """The first EU report once more, through the control pass (pipeline.controleer_soep)."""
+    """The first EU report with the markings of the control pass
+    (pipeline.controleer_soep). The report itself is not changed."""
     if "problemen" not in eerste:
         return {"aanbieder": aanbieder, "fout": "Geen eerste verslag om te controleren.", "seconden": 0}
     start = time.monotonic()
     try:
         verbeterd, _ = correct_transcript_full(gesprek)
         soep = pipeline.SOEPResult(**pipeline.soep_met_problemen({"problemen": eerste["problemen"]}))
-        na, markeringen = await pipeline.controleer_soep(verbeterd, soep, aanbieder, model=model)
+        markeringen = await pipeline.controleer_soep(verbeterd, soep, aanbieder, model=model)
     except Exception as exc:
         logger.warning("soeptest.controle_fout", error=type(exc).__name__)
         detail = str(exc) if isinstance(exc, ValueError) else type(exc).__name__
         return {"aanbieder": aanbieder, "fout": detail[:300], "seconden": round(time.monotonic() - start, 1)}
-    delen = na.problemen or [{k: getattr(na, k) for k in pipeline.SOEP_VELDEN}]
-    uit = {"aanbieder": aanbieder, "seconden": round(eerste.get("seconden", 0) + time.monotonic() - start, 1),
-           "problemen": delen, "verdacht": verdacht(delen, gesprek), "markeringen": markeringen}
-    if toets:
-        uit["valkuilen"] = toets_valkuilen(delen, toets)
-    return uit
+    return dict(eerste, seconden=round(eerste.get("seconden", 0) + time.monotonic() - start, 1),
+                markeringen=markeringen)
 
 
 @router.get("/api/v1/beheer/testset")

@@ -96,13 +96,18 @@ class PipelineResult:
     duration_secs: float = 0.0
     stt_provider: str = ""
     llm_provider: str = ""
+    # EU mode: what the control pass found unsupported; shown, never removed.
+    markeringen: List[Dict] = field(default_factory=list)
 
     def to_dict(self) -> dict:
+        soep = asdict(self.soep)
+        if self.markeringen:
+            soep["markeringen"] = self.markeringen
         return {
             "transcript": self.transcript,
             "transcript_raw": self.transcript_raw,
             "transcript_corrections": self.transcript_corrections,
-            "soep": asdict(self.soep),
+            "soep": soep,
             "decisief": self.decisief,
             "detection": asdict(self.detection),
             "duration_secs": self.duration_secs,
@@ -153,44 +158,12 @@ async def genereer_soep(gesprek: str, llm_provider: Optional[str] = None,
 MAX_HULPVRAAG = 240
 
 
-def _tidy(tekst: str) -> str:
-    """Clean up the punctuation left behind after a fragment was cut out."""
-    t = re.sub(r"\(\s*\)", "", tekst)
-    t = re.sub(r"\s+([,;.:)])", r"\1", t)
-    t = re.sub(r"([,;:])\s*(?=[,;.:])", "", t)
-    t = re.sub(r"\(\s+", "(", t)
-    t = re.sub(r"[ \t]{2,}", " ", t)
-    t = re.sub(r"^[\s,;:.]+", "", t)
-    t = re.sub(r"(^|[.;]\s)([,;:]\s*)", r"\1", t)
-    t = re.sub(r"[\s,;:]+$", "", t)
-    return t.strip()
-
-
-# What the server may cut on its own: a short anatomical place or level, or
-# "beiderzijds", never a negation and never in E. A side (li/re) or a number is
-# never cut: in the test runs the control pass called a side that was said
-# "not said" more often than not. Everything else is only marked for the doctor.
-_DETAIL = re.compile(r"\b(beiderzijds|bdz|bilateraal|lateraa?l\w*|mediaa?l\w*|malleol\w*|dorsaa?l\w*|volair\w*|"
-                     r"plantair\w*|psis|sips|[LST]h?\d{1,2}\s?[-–/]\s?[LST]h?\d{1,2})\b", re.IGNORECASE)
-_ZIJDE_OF_GETAL = re.compile(r"\b(li|re|links|rechts|linker\w*|rechter\w*|\d+)\b", re.IGNORECASE)
-_ONTKENNING = re.compile(r"\b(geen|zonder|niet|nooit|ontken\w*|negatief|uitgesloten|normaal|gb)\b", re.IGNORECASE)
-MAX_KNIP_WOORDEN = 4
-
-
-def mag_knippen(veld: str, tekst: str, oud: str) -> bool:
-    return (veld in ("s", "o", "p") and len(tekst.split()) <= MAX_KNIP_WOORDEN
-            and bool(_DETAIL.search(tekst)) and not _ONTKENNING.search(tekst)
-            and not _ZIJDE_OF_GETAL.search(_DETAIL.sub("", tekst))
-            and bool(_tidy(re.sub(re.escape(tekst), "", oud, count=1, flags=re.IGNORECASE))))
-
-
-def pas_controle_toe(soep: SOEPResult, controle: dict) -> tuple:
-    """Apply the control pass. Only a short, unambiguous detail (a side, place,
-    level or number, without a negation, outside E) is cut out by the server;
-    everything else becomes a marking the doctor decides on. Fragments that are
-    not in the report are dropped, so nothing new can enter the report.
-    Returns (SOEPResult, markeringen)."""
-    delen = [dict(d) for d in (soep.problemen or [{k: getattr(soep, k) for k in SOEP_VELDEN}])]
+def markeringen_uit(soep: SOEPResult, controle: dict) -> List[Dict]:
+    """The control pass as markings for the doctor. Nothing is removed or
+    added: the report stays exactly as written; the doctor decides. A fragment
+    that is not in the report is dropped, so a marking always points at text
+    the doctor can see."""
+    delen = soep.problemen or [{k: getattr(soep, k) for k in SOEP_VELDEN}]
     markeringen: List[Dict] = []
     for item in controle.get("schrappen") or []:
         if not isinstance(item, dict):
@@ -202,27 +175,23 @@ def pas_controle_toe(soep: SOEPResult, controle: dict) -> tuple:
             nr = 0
         if veld not in ("s", "o", "e", "p") or len(tekst) < 2 or not 0 <= nr < len(delen):
             continue
-        oud = str(delen[nr].get(veld) or "")
-        if tekst.lower() not in oud.lower():
+        if tekst.lower() not in str(delen[nr].get(veld) or "").lower():
             continue
-        reden = str(item.get("reden") or "")[:200]
-        geknipt = mag_knippen(veld, tekst, oud)
-        if geknipt:
-            delen[nr][veld] = _tidy(re.sub(re.escape(tekst), "", oud, count=1, flags=re.IGNORECASE))
-        markeringen.append({"probleem": nr, "veld": veld, "tekst": tekst, "reden": reden, "geknipt": geknipt})
+        markeringen.append({"probleem": nr, "veld": veld, "tekst": tekst,
+                            "reden": str(item.get("reden") or "")[:200]})
     hulpvraag = str(controle.get("hulpvraag") or "").strip()[:MAX_HULPVRAAG]
     if hulpvraag:
-        markeringen.append({"probleem": 0, "veld": "s", "tekst": "", "geknipt": False,
+        markeringen.append({"probleem": 0, "veld": "s", "tekst": "",
                             "reden": "hulpvraag ontbreekt mogelijk: " + hulpvraag})
-    return SOEPResult(**soep_met_problemen({"problemen": delen})), markeringen
+    return markeringen
 
 
 async def controleer_soep(gesprek: str, soep: SOEPResult, llm_provider: Optional[str] = None,
-                          model: Optional[str] = None) -> tuple:
+                          model: Optional[str] = None) -> List[Dict]:
     """Second pass: the report next to the transcript; the model names the
-    fragments the conversation does not support. Returns (SOEPResult,
-    markeringen), see pas_controle_toe. Raises on failure (the caller keeps
-    the first report)."""
+    fragments the conversation does not support. Returns markings for the
+    doctor (see markeringen_uit); the report itself is not changed. Raises on
+    failure (the caller then shows the report without markings)."""
     delen = soep.problemen or [{k: getattr(soep, k) for k in SOEP_VELDEN}]
     notitie = json.dumps({"problemen": [{k: d.get(k, "") for k in ("s", "o", "e", "p", "icpc_code", "icpc_titel")}
                                         for d in delen]}, ensure_ascii=False)
@@ -236,7 +205,7 @@ async def controleer_soep(gesprek: str, soep: SOEPResult, llm_provider: Optional
         json_schema=SOEP_CONTROLE_JSON_SCHEMA,
         model=model,
     )
-    return pas_controle_toe(soep, _parse_json_response(antwoord))
+    return markeringen_uit(soep, _parse_json_response(antwoord))
 
 
 async def process_consultation(
@@ -335,6 +304,14 @@ async def verwerk_transcript(
     except Exception as e:
         logger.error("pipeline.soep_error", error=str(e))
         result.soep = SOEPResult(s="Fout bij SOEP generatie.", e=str(e))
+    else:
+        # ── Step 2b: control pass (EU mode): mark what the conversation does not support ──
+        if data_policy.eu_modus():
+            try:
+                result.markeringen = await controleer_soep(result.transcript, result.soep, llm_provider)
+                logger.info("pipeline.controle", markeringen=len(result.markeringen))
+            except Exception as e:  # the report stands without markings
+                logger.warning("pipeline.controle_fout", error=type(e).__name__)
 
     # ── Step 3: Nazorg (decisief regel + rode vlaggen) in EEN call ──
     # Beide taken werken op de SOEP; samenvoegen scheelt een derde LLM-call.

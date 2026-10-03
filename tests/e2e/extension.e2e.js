@@ -62,7 +62,8 @@ function check(name, cond, extra) {
     if (url.endsWith('/letters/generate')) return r.fulfill({ contentType: 'text/plain; charset=utf-8', body: LETTER });
     if (url.endsWith('/dictation/process')) return r.fulfill({ contentType: 'application/json', body: JSON.stringify({ mode: 'soep', soep: {
       s: '2 wk hoesten, gebruikt meta prolol 50 mg', o: 'RR 150/90 mmHg', e: 'Pneumonie', p: 'Amoxicilline 3dd 500 mg', icpc_code: 'R81', icpc_titel: 'Pneumonie',
-      aandachtspunten: ['Duur van de kuur ontbreekt in P'] } }) });
+      aandachtspunten: ['Duur van de kuur ontbreekt in P'],
+      markeringen: [{ probleem: 0, veld: 'o', tekst: '150/90', reden: 'waarde niet genoemd' }] } }) });
     if (url.endsWith('/post/beoordeel')) {
       const kweek = body.tekst.includes('CFU');
       return r.fulfill({ contentType: 'application/json', body: JSON.stringify(kweek ? {
@@ -149,6 +150,9 @@ function check(name, cond, extra) {
   check('SOEP getoond', (await panel.$$eval('.soep-text', (e) => e.map((x) => x.textContent))).includes('Pneumonie'));
   const kaart = await panel.textContent('#soep-check');
   check('kaart heet "Onvolledig in de verslaglegging"', kaart.includes('Onvolledig in de verslaglegging') && kaart.includes('Duur'), kaart);
+  check('markering geel in de tekst', (await panel.$$eval('.soep-text[data-key="o"] mark.sv-mark', (m) => m.map((x) => x.textContent))).join() === '150/90');
+  check('markering laat de tekst ongemoeid', (await panel.$eval('.soep-text[data-key="o"]', (n) => n.innerText)) === 'RR 150/90 mmHg');
+  check('lijst "Controleer" met reden', (await panel.textContent('#soep-mark')).includes('waarde niet genoemd'));
 
   console.log('Meedenken');
   await sleep(600);

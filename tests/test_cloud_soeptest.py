@@ -115,7 +115,7 @@ def test_pitfalls_score_the_first_run_reports():
                      "e": "Distorsie li enkel, geen aanwijzingen voor artrose of reuma", "p": "Terugkomen indien geen verbetering.",
                      "icpc_code": "L77", "icpc_titel": "Verstuiking enkel"}]
     r = soeptest.toets_valkuilen(claude_enkel, idx["02-verzwikte-enkel"]["toets"])
-    assert r["totaal"] == 9 and r["gehaald"] == 6
+    assert r["totaal"] == 8 and r["gehaald"] == 6
     mistral_moe = [{"s": "moeheid", "e": "overspanning", "p": "controle 4-6 weken", "icpc_code": "P78", "icpc_titel": "overspanning"}]
     r = soeptest.toets_valkuilen(mistral_moe, idx["04-moeheid"]["toets"])
     assert any("psychisch label" in f for f in r["fout"]) and any("schildklier" in f for f in r["fout"])
@@ -148,9 +148,7 @@ def test_soeptest_control_pass(monkeypatch):
 
     async def fake_controle(gesprek, soep, llm_provider=None, model=None):
         gecontroleerd.append((llm_provider, model, soep.problemen[0]["p"]))
-        return pipeline.SOEPResult(problemen=[{"s": "rugpijn", "o": "drukpijn", "e": "Lage rugpijn",
-                                               "p": "Paracetamol", "icpc_code": "L03", "icpc_titel": ""}]), [
-            {"probleem": 0, "veld": "o", "tekst": "PSIS-gebied", "reden": "", "geknipt": True}]
+        return [{"probleem": 0, "veld": "o", "tekst": "PSIS-gebied", "reden": "niet gezegd"}]
 
     async def log(*a, **k):
         pass
@@ -166,8 +164,8 @@ def test_soeptest_control_pass(monkeypatch):
         d = api.post("/api/v1/beheer/soeptest", json={"id": "01-lage-rugpijn", "controle": True}).json()
         assert gecontroleerd == [("mistral", None, "Paracetamol 6dd500mg")]
         g = d["eu_gecontroleerd"]
-        assert d["eu"]["verdacht"] and g["verdacht"] == []
-        assert g["valkuilen"]["gehaald"] > d["eu"]["valkuilen"]["gehaald"]
+        # nothing removed: the same report, with the markings next to it
+        assert g["problemen"] == d["eu"]["problemen"] and g["markeringen"][0]["tekst"] == "PSIS-gebied"
 
         async def kapot(*a, **k):
             raise RuntimeError("weg")
@@ -203,26 +201,22 @@ def test_pitfalls_score_the_medium_run_reports():
     assert r["fout"] == ["bloedarmoede of nieren als zorg van de patiënt (noemde de arts)"]
 
 
-def test_control_pass_cuts_only_small_details_and_marks_the_rest():
+def test_control_pass_only_marks_and_never_changes_the_report():
     enkel = pipeline.SOEPResult(problemen=[{
         "s": "Pijn li enkel na badminton.",
         "o": "li enkel licht gezwollen t.o.v. re; drukpijn laterale malleolus li; bewegingen pijnlijk.",
-        "e": "Enkelverzwikking li zonder aanwijzingen voor fractuur of onderliggende artrose/reuma",
+        "e": "Enkelverzwikking li zonder aanwijzingen voor fractuur of artrose/reuma",
         "p": "Paracetamol bij pijn. Vangnet: bij toename klachten terugkomen.",
         "icpc_code": "L77", "icpc_titel": "Distorsie enkel"}])
-    na, mark = pipeline.pas_controle_toe(enkel, {"schrappen": [
-        {"veld": "o", "tekst": "laterale malleolus "},                        # small detail: cut
-        {"veld": "e", "tekst": "zonder aanwijzingen voor fractuur of onderliggende"},   # negation in E: only marked
-        {"veld": "p", "tekst": "Vangnet: bij toename klachten terugkomen."},  # a sentence: only marked
-        {"veld": "o", "tekst": "staat er niet in"}],                          # not in the report: dropped
+    voor = json.dumps(enkel.problemen)
+    mark = pipeline.markeringen_uit(enkel, {"schrappen": [
+        {"veld": "o", "tekst": "laterale malleolus", "reden": "plaats niet genoemd"},
+        {"veld": "p", "tekst": "Vangnet: bij toename klachten terugkomen."},
+        {"veld": "o", "tekst": "staat er niet in"}, {"veld": "x", "tekst": "li"}, {"probleem": 7, "veld": "o", "tekst": "li"}],
         "hulpvraag": "wil weten of het artrose is"})
-    d = na.problemen[0]
-    assert d["o"] == "li enkel licht gezwollen t.o.v. re; drukpijn li; bewegingen pijnlijk."
-    assert d["e"] == enkel.problemen[0]["e"] and "Vangnet" in d["p"] and d["s"] == "Pijn li enkel na badminton."
-    assert [(m["veld"], m["geknipt"]) for m in mark] == [("o", True), ("e", False), ("p", False), ("s", False)]
-    assert "hulpvraag ontbreekt mogelijk" in mark[-1]["reden"]
-    assert not pipeline.mag_knippen("o", "geen hematoom", "x geen hematoom")
-    assert not pipeline.mag_knippen("o", "li", "li")          # would empty the field
+    assert json.dumps(enkel.problemen) == voor
+    assert [(m["veld"], m["tekst"]) for m in mark] == [("o", "laterale malleolus"), ("p", "Vangnet: bij toename klachten terugkomen."), ("s", "")]
+    assert "hulpvraag ontbreekt mogelijk" in mark[-1]["reden"] and "geknipt" not in mark[0]
 
 
 def test_fair_pitfalls_catch_what_cutting_broke():
@@ -257,7 +251,7 @@ def test_false_positives_from_the_large_run():
 
 
 @pytest.mark.asyncio
-async def test_controleer_soep_sends_the_report_and_applies_the_cuts(monkeypatch):
+async def test_controleer_soep_sends_the_report_and_returns_markings(monkeypatch):
     gezien = {}
 
     async def complete(**k):
@@ -268,9 +262,9 @@ async def test_controleer_soep_sends_the_report_and_applies_the_cuts(monkeypatch
     monkeypatch.setattr(llm_service, "complete", complete)
     soep = pipeline.SOEPResult(problemen=[{"s": "Hulpvraag: hernia?", "o": "anteflexie beperkt (stopt halverwege)",
                                            "e": "", "p": "", "icpc_code": "L03", "icpc_titel": "Lage rugpijn"}])
-    na, mark = await pipeline.controleer_soep("Spreker 1: ...", soep, "mistral", model="mistral-large-latest")
-    assert na.problemen[0]["o"] == "anteflexie beperkt (stopt halverwege)" and mark[0]["geknipt"] is False
-    assert na.icpc_code == "L03"
+    mark = await pipeline.controleer_soep("Spreker 1: ...", soep, "mistral", model="mistral-large-latest")
+    assert mark == [{"probleem": 0, "veld": "o", "tekst": "(stopt halverwege)", "reden": ""}]
+    assert soep.problemen[0]["o"] == "anteflexie beperkt (stopt halverwege)"
     assert gezien["model"] == "mistral-large-latest" and "schrappen" in json.dumps(gezien["json_schema"])
     assert "stopt halverwege" in gezien["user_prompt"]
 
@@ -333,11 +327,6 @@ def test_submission_goes_to_the_log_in_parts(monkeypatch):
 
 
 def test_lessons_from_the_marking_run():
-    # a side or a number is never cut by the server (it was said more often than not)
-    for tekst in ("li thorax", "li (meerdere punten)", "re bil", "re > li", "li enkel lateraal"):
-        assert not pipeline.mag_knippen("o", tekst, tekst + " x"), tekst
-    for tekst in ("laterale malleolus", "lateraal", "beiderzijds", "L4-L5"):
-        assert pipeline.mag_knippen("o", tekst, tekst + " x"), tekst
     # ordinary Dutch is not a broken sentence
     for zin in ("Gebruikt paracetamol voor de nacht. Zorgen: of het artrose is", "komen er niet meer van. Pt",
                 "pt is hier bang voor.\nDrukpijn"):

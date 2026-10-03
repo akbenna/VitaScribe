@@ -166,6 +166,14 @@ textarea:focus { outline: 2px solid var(--brand); outline-offset: -1px; }
   background: #fff7e6; border: 1px solid #f0d9a8; color: #6b4a00; font-size: 12px;
 }
 .soep-check ul { margin: 4px 0 0 16px; padding: 0; }
+.soep-mark {
+  margin: 8px 0; padding: 8px 10px; border-radius: 8px;
+  background: #fffbe0; border: 1px solid #ecd96a; color: #5c4b00; font-size: 12px;
+}
+.soep-mark ul { margin: 4px 0 0 16px; padding: 0; }
+.soep-mark li { margin: 2px 0; }
+.soep-mark-uitleg { margin: 4px 0 0; color: #7a6a20; }
+mark.sv-mark { background: #fff1a8; color: inherit; border-radius: 2px; padding: 0 1px; }
 .soep-check li { margin: 2px 0; }
 
 /* ── Consult recording ── */

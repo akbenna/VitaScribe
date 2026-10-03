@@ -447,11 +447,12 @@ var SOEP_KEYS = [['s', 'S'], ['o', 'O'], ['e', 'E'], ['p', 'P']];
 // doctor puts each in its own SOEP line in Bricks. One part: as before.
 var soepDelen = null;    // [{titel, s, o, e, p, icpc_code, icpc_titel}] or null
 var deelIdx = 0;
-var soepAlgemeen = {};   // aandachtspunten, shared by all parts
+var soepAlgemeen = {};   // aandachtspunten and markeringen, shared by all parts
 
 function renderSoep(soep) {
   var delen = Array.isArray(soep.problemen) ? soep.problemen : [];
-  soepAlgemeen = { aandachtspunten: soep.aandachtspunten };
+  soepAlgemeen = { aandachtspunten: soep.aandachtspunten,
+                   markeringen: Array.isArray(soep.markeringen) ? soep.markeringen : [] };
   var bar = document.getElementById('soep-delen');
   bar.textContent = '';
   if (delen.length > 1) {
@@ -510,6 +511,39 @@ function huidigDeel() {
   return { index: soepDelen ? deelIdx : 0, soep: soep, delen: soepDelen ? soepDelen.length : 1 };
 }
 
+function markeringenVoor(soep, key) {
+  return (soep.markeringen || []).filter(function (m) {
+    return m.veld === key && m.tekst && (m.probleem || 0) === (soepDelen ? deelIdx : 0);
+  });
+}
+
+// Text with the marked fragments in <mark>; innerText (what is inserted) stays the same.
+function toonMetMarkeringen(node, tekst, markeringen) {
+  node.textContent = '';
+  var stukken = [{ t: tekst, m: false }];
+  markeringen.forEach(function (mk) {
+    var zoek = mk.tekst.toLowerCase();
+    for (var i = 0; i < stukken.length; i++) {
+      if (stukken[i].m) continue;
+      var pos = stukken[i].t.toLowerCase().indexOf(zoek);
+      if (pos < 0) continue;
+      var t = stukken[i].t;
+      stukken.splice(i, 1, { t: t.slice(0, pos), m: false }, { t: t.slice(pos, pos + zoek.length), m: true, r: mk.reden },
+                     { t: t.slice(pos + zoek.length), m: false });
+      break;
+    }
+  });
+  stukken.forEach(function (s) {
+    if (!s.t) return;
+    if (!s.m) { node.appendChild(document.createTextNode(s.t)); return; }
+    var m = document.createElement('mark');
+    m.className = 'sv-mark';
+    m.textContent = s.t;
+    if (s.r) m.title = s.r;
+    node.appendChild(m);
+  });
+}
+
 function renderSoepDeel(part) {
   var soep = Object.assign({}, part, soepAlgemeen);
   lastSoep = soep;
@@ -526,7 +560,7 @@ function renderSoepDeel(part) {
     text.className = 'soep-text';
     text.contentEditable = 'true';
     text.dataset.key = pair[0];
-    text.textContent = soep[pair[0]] || '';
+    toonMetMarkeringen(text, soep[pair[0]] || '', markeringenVoor(soep, pair[0]));
 
     var btn = document.createElement('button');
     btn.className = 'btn small';
@@ -554,6 +588,17 @@ function renderSoepDeel(part) {
     list.appendChild(li);
   });
   document.getElementById('soep-check').classList.toggle('hidden', points.length === 0);
+  // EU mode: what the control pass could not find in the conversation. Marked
+  // in yellow and listed; nothing is removed, the doctor decides.
+  var mark = (soep.markeringen || []).filter(function (m) { return (m.probleem || 0) === (soepDelen ? deelIdx : 0); });
+  var mlist = document.getElementById('soep-mark-list');
+  mlist.textContent = '';
+  mark.forEach(function (m) {
+    var li = document.createElement('li');
+    li.textContent = (m.tekst ? m.veld.toUpperCase() + ': "' + m.tekst + '"' + (m.reden ? ' – ' : '') : '') + (m.reden || '');
+    mlist.appendChild(li);
+  });
+  document.getElementById('soep-mark').classList.toggle('hidden', mark.length === 0);
   els.soep.classList.remove('hidden');
   if (window.SVMeedenkenUI) window.SVMeedenkenUI.toon(soep);
 }
