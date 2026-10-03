@@ -166,11 +166,13 @@ def _tidy(tekst: str) -> str:
     return t.strip()
 
 
-# What the server may cut on its own: a short side, place, level or number,
-# never a negation and never in E. Everything else is only marked for the doctor.
-_DETAIL = re.compile(r"\b(li|re|links|rechts|linker\w*|rechter\w*|beiderzijds|bdz|bilateraal|lateraa?l\w*|"
-                     r"mediaa?l\w*|malleol\w*|dorsa\w*|volair\w*|plantair\w*|psis|sips|[LST]h?\d{1,2}|\d+)\b",
-                     re.IGNORECASE)
+# What the server may cut on its own: a short anatomical place or level, or
+# "beiderzijds", never a negation and never in E. A side (li/re) or a number is
+# never cut: in the test runs the control pass called a side that was said
+# "not said" more often than not. Everything else is only marked for the doctor.
+_DETAIL = re.compile(r"\b(beiderzijds|bdz|bilateraal|lateraa?l\w*|mediaa?l\w*|malleol\w*|dorsaa?l\w*|volair\w*|"
+                     r"plantair\w*|psis|sips|[LST]h?\d{1,2}\s?[-–/]\s?[LST]h?\d{1,2})\b", re.IGNORECASE)
+_ZIJDE_OF_GETAL = re.compile(r"\b(li|re|links|rechts|linker\w*|rechter\w*|\d+)\b", re.IGNORECASE)
 _ONTKENNING = re.compile(r"\b(geen|zonder|niet|nooit|ontken\w*|negatief|uitgesloten|normaal|gb)\b", re.IGNORECASE)
 MAX_KNIP_WOORDEN = 4
 
@@ -178,6 +180,7 @@ MAX_KNIP_WOORDEN = 4
 def mag_knippen(veld: str, tekst: str, oud: str) -> bool:
     return (veld in ("s", "o", "p") and len(tekst.split()) <= MAX_KNIP_WOORDEN
             and bool(_DETAIL.search(tekst)) and not _ONTKENNING.search(tekst)
+            and not _ZIJDE_OF_GETAL.search(_DETAIL.sub("", tekst))
             and bool(_tidy(re.sub(re.escape(tekst), "", oud, count=1, flags=re.IGNORECASE))))
 
 

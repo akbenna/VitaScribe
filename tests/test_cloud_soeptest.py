@@ -330,3 +330,17 @@ def test_submission_goes_to_the_log_in_parts(monkeypatch):
         assert api.post("/api/v1/beheer/testset/inzending", json={"titel": "Kort", "gesprek": "te kort"}).status_code == 422
     finally:
         main.app.dependency_overrides.clear()
+
+
+def test_lessons_from_the_marking_run():
+    # a side or a number is never cut by the server (it was said more often than not)
+    for tekst in ("li thorax", "li (meerdere punten)", "re bil", "re > li", "li enkel lateraal"):
+        assert not pipeline.mag_knippen("o", tekst, tekst + " x"), tekst
+    for tekst in ("laterale malleolus", "lateraal", "beiderzijds", "L4-L5"):
+        assert pipeline.mag_knippen("o", tekst, tekst + " x"), tekst
+    # ordinary Dutch is not a broken sentence
+    for zin in ("Gebruikt paracetamol voor de nacht. Zorgen: of het artrose is", "komen er niet meer van. Pt",
+                "pt is hier bang voor.\nDrukpijn"):
+        assert not any("afgebroken" in x for x in soeptest.verdacht([{"s": zin}], "Spreker 1: x")), zin
+    from services.cloud_api import icpc_controle
+    assert icpc_controle.controleer("L77", "Distorsie/verstuiking") is None
