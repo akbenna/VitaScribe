@@ -71,6 +71,9 @@ var SVConsultLive = (function () {
         rij.forEach(function (d) { ws.send(d); });
       } else if (e.type === 'voortgang') {
         if (opties.onVoortgang) opties.onVoortgang(e.seconden || 0, e.sprekers || 0);
+      } else if (e.type === 'controle') {
+        // EU mode: did the speech service hear a conversation so far? (a count, no text)
+        if (opties.onControle) opties.onControle({ seconden: e.seconden || 0, woorden: e.woorden || 0, goed: !!e.goed });
       } else if (e.type === 'suggesties') {
         // Vraagsuggesties (alleen als server en arts ze aanzetten).
         if (opties.onSuggesties) opties.onSuggesties({ klacht: e.klacht || '', vragen: Array.isArray(e.vragen) ? e.vragen : [] });

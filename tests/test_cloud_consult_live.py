@@ -423,3 +423,40 @@ def test_voxtral_stand_lege_opname(monkeypatch):
         ws.send_text(json.dumps({"type": "stop"}))
         events = _tot_gesloten(ws)
     assert ontvangen == [] and [e for e in events if e["type"] == "result"][0]["leeg"] is True
+
+
+def test_voxtral_stand_controleert_tijdens_de_opname(monkeypatch):
+    """EU mode has no live text: during the recording the server checks whether
+    the speech service hears a conversation, and reports a count (no text)."""
+    for drempel, goed in ((3, True), (100, False)):
+        monkeypatch.setattr(consult_live, "CONTROLE_OP_SECS", (0.0,))
+        monkeypatch.setattr(consult_live, "CONTROLE_MIN_WOORDEN", {0.0: drempel})
+        verwerkt, ontvangen = [], []
+        client = TestClient(_voxtral_app(monkeypatch, verwerkt, ontvangen))
+        with client.websocket_connect("/ws") as ws:
+            ws.send_text(json.dumps(dict(AUTH, taal="nl")))
+            assert ws.receive_json() == {"type": "ready"}
+            ws.send_bytes(b"\x1aE\xdf\xa3kop")
+            controle = ws.receive_json()
+            assert controle == {"type": "controle", "seconden": 0.0, "woorden": 7, "goed": goed}
+            assert "Keelpijn" not in json.dumps(controle)
+            ws.send_bytes(b"stuk-2")
+            ws.send_text(json.dumps({"type": "stop"}))
+            events = _tot_gesloten(ws)
+        assert [e["type"] for e in events] == ["verwerken", "result", "closed"]
+        # the check read the recording so far; the report the whole recording
+        assert ontvangen[0][0] == b"\x1aE\xdf\xa3kop" and ontvangen[-1][0] == b"\x1aE\xdf\xa3kopstuk-2"
+
+
+def test_voxtral_controle_fout_stoort_het_consult_niet(monkeypatch):
+    monkeypatch.setattr(consult_live, "CONTROLE_OP_SECS", (0.0,))
+    verwerkt, ontvangen = [], []
+    client = TestClient(_voxtral_app(monkeypatch, verwerkt, ontvangen, fout=RuntimeError("weg")))
+    with client.websocket_connect("/ws") as ws:
+        ws.send_text(json.dumps(AUTH))
+        assert ws.receive_json() == {"type": "ready"}
+        ws.send_bytes(b"stuk")
+        ws.send_text(json.dumps({"type": "stop"}))
+        events = _tot_gesloten(ws)
+    assert "controle" not in [e["type"] for e in events]
+    assert events[-1]["type"] == "closed"

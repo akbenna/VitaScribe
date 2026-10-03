@@ -153,3 +153,13 @@ test('nadictaat gaat als markering mee, ook voor ready', () => {
   const m = JSON.parse(ws.verstuurd.at(-1));
   assert.deepEqual(m, { type: 'nadictaat', vanaf: 312.4 });
 });
+
+test('EU-modus: de geluidscontrole van de server komt door (aantal woorden, geen tekst)', () => {
+  const controles = [];
+  const { ws } = start({ onControle: (r) => controles.push(r) });
+  ws.open();
+  ws.ontvang({ type: 'ready' });
+  ws.ontvang({ type: 'controle', seconden: 30, woorden: 2, goed: false });
+  ws.ontvang({ type: 'controle', seconden: 120, woorden: 48, goed: true });
+  assert.deepEqual(controles, [{ seconden: 30, woorden: 2, goed: false }, { seconden: 120, woorden: 48, goed: true }]);
+});

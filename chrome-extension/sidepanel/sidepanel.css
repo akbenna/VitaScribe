@@ -311,3 +311,6 @@ body.consult-running .consult { border-color: var(--rec); }
 .gevoelig-knoppen button { font: inherit; font-size: 12px; border-radius: 6px; padding: 3px 8px; cursor: pointer;
                            border: 1px solid #fcd34d; background: #fff; color: #78350f; }
 .gevoelig-knoppen .gevoelig-eu { background: #1d4ed8; border-color: #1d4ed8; color: #fff; font-weight: 600; }
+
+/* The microphone hears nothing (or the speech service heard no conversation). */
+#consult-label.warn { color: #b42318; font-weight: 600; }
