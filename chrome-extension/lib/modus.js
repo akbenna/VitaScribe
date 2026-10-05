@@ -3,7 +3,7 @@
  *
  * Claude-modus: alle functies (live dicteren, vraagsuggesties), tekst via
  * Claude (Anthropic, VS) en spraak via Deepgram (EU-eindpunt).
- * EU-modus (formeel): alleen Europese bedrijven. Tekst via Mistral, het
+ * EU-modus (formeel): spraak en tekst alleen via Mistral (EU). Tekst via Mistral, het
  * consult via Voxtral na afloop. Live dicteren en vraagsuggesties kunnen dan
  * niet.
  *
@@ -25,7 +25,7 @@ var SVModus = (function () {
     claude: { naam: 'Claude', kort: 'Alle functies',
               lang: 'Claude-modus: alle functies, ook live dicteren en vraagsuggesties. Tekst via Claude (Anthropic, VS), spraak via Deepgram (EU-eindpunt).' },
     eu: { naam: 'EU', kort: 'Alleen Europese diensten',
-          lang: 'EU-modus: alleen Europese bedrijven. Tekst via Mistral (Frankrijk), het consult via Voxtral na afloop. Live dicteren en klinische ondersteuning (vraagsuggesties, NHG-toets, aandachtspunten) staan in deze modus uit: alleen verslaglegging.' }
+          lang: 'EU-modus: spraak en tekst alleen via Mistral (Frankrijk, EU). Tekst via Mistral (Frankrijk), het consult via Voxtral na afloop. Live dicteren en klinische ondersteuning (vraagsuggesties, NHG-toets, aandachtspunten) staan in deze modus uit: alleen verslaglegging.' }
   };
 
   function geldig(m) { return m === 'eu' ? 'eu' : 'claude'; }
