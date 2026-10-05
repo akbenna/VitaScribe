@@ -491,9 +491,8 @@ vertaalt elke beurt en leest hem voor. Endpoints onder `/api/v1/tolk`
   Marokkaans- en Syrisch-Arabisch gaan in de Claude-modus als eigen dialect
   naar Deepgram (`ar-MA`, `ar-SY`).
 - **Vertalen:** het taalmodel van de modus (`phi_llm_provider`), snel model.
-- **Voorlezen:** altijd een stem die de taal als moedertaal spreekt. Een stem
-  uit een andere taal leest met een vreemd accent en wordt nooit gebruikt.
-  Volgorde `TOLK_TTS_VOORKEUR` (standaard `azure,mistral`), daarna de stem op
+- **Voorlezen:** bij voorkeur een stem die de taal als moedertaal spreekt.
+  Volgorde `TOLK_TTS_VOORKEUR` (standaard `azure,mistral,mistral_overig`), daarna de stem op
   de computer.
   - **Azure AI Speech** (aanbevolen, natuurlijkst): maak in Azure een
     Speech-resource in `westeurope` (Nederland) of een andere EU-regio, en zet
@@ -505,8 +504,15 @@ vertaalt elke beurt en leest hem voor. Endpoints onder `/api/v1/tolk`
     Tempo: `TOLK_TEMPO` (standaard `-8%`). Microsoft is een Amerikaans bedrijf:
     in de EU-modus alleen met `TOLK_AZURE_IN_EU=true`, na een besluit van de
     praktijk en met Microsoft in de lijst van verwerkers (zoals Railway).
-  - **Mistral (Voxtral TTS)**: alleen als het account een stem van die taal
-    heeft (de log `tolk.stemmen` toont welke). Vaste stem: `TOLK_STEM_<TAAL>`.
+  - **Mistral (Voxtral TTS)** met een stem van die taal: een eigen stem die de
+    praktijk opnam (zijpaneel › Tolk › Eigen stem voor deze taal: een collega
+    die de taal als moedertaal spreekt, 15–20 seconden; Mistral kloont de stem
+    en het accent; bewaard in `vs_instellingen` als `tolk_stem:<code>`), of
+    een Mistral-stem van die taal. Vaste stem: `TOLK_STEM_<CODE>` (bijv.
+    `TOLK_STEM_AR_MA`).
+  - **Mistral, andere stem** (`mistral_overig`): de eerste stem van het
+    account (of `TOLK_STEM`), met een vreemd accent; nog altijd beter dan de
+    stemmen van Windows.
     `TOLK_TTS_MODEL` (standaard `voxtral-mini-tts-latest`).
 - **Handsfree:** de extensie stuurt elke beurt als WAV met `spreker=auto`.
   EU-modus: Voxtral herkent de taal zelf (één aanroep). Claude-modus: Deepgram
