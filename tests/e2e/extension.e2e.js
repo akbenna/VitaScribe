@@ -441,7 +441,10 @@ function check(name, cond, extra) {
   check('de taal bepaalde de spreker: patiënt', (await panel.textContent('.tk-beurt:first-child .tk-wie')).includes('Patiënt')
     && (await panel.textContent('.tk-beurt:first-child .tk-wie')).includes('herkend aan de taal')
     && (await panel.textContent('.tk-beurt:first-child .tk-vert')) === 'Ik heb hoofdpijn.');
-  check('na het voorlezen luistert hij weer', (await panel.textContent('.tk-hf-status')) === 'luistert');
+  // Reading aloud (server voice 404, no computer voice) takes a moment; on a slow runner longer.
+  let weer = false;
+  for (let i = 0; i < 50 && !weer; i++) { weer = (await panel.textContent('.tk-hf-status')) === 'luistert'; if (!weer) await sleep(100); }
+  check('na het voorlezen luistert hij weer', weer, await panel.textContent('.tk-hf-status'));
   await panel.click('#tk-handsfree');
   check('handsfree uit: de knoppen komen terug', await panel.isVisible('#tk-arts') && await panel.isVisible('#tk-patient')
     && (await panel.textContent('#tk-patient-taal')).includes('Turks'));
