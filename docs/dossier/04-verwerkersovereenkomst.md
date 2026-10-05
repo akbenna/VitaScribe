@@ -1,7 +1,8 @@
 # 04 Verwerkersovereenkomst VitaScribe
 
-*Concept. Gebruik in fase 1 alleen als de praktijk en ProVitaCare twee
-verschillende partijen zijn. In fase 2 met elke praktijk. Laat het voor fase 2
+*Concept. Niet nodig in fase 1 voor Huisartsenpraktijk Roosendael: de praktijk
+en ProVitaCare vallen onder dezelfde rechtspersoon, en niemand kan een
+overeenkomst met zichzelf sluiten. In fase 2 met elke praktijk. Laat het voor fase 2
 juridisch toetsen. Bijlage B is stuk 06; bijlage C is stuk 05.*
 
 ## Partijen

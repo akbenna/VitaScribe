@@ -45,7 +45,7 @@ noteert dat.
 
 | Maatregel | Invulling |
 |---|---|
-| Rollen | Beheerder: `[NAAM]`. Gebruikers: zie de aftekenlijst in stuk 09. |
+| Rollen | Beheerder: A. Bennaghmouch. Gebruikers: zie de aftekenlijst in stuk 09. |
 | Sleutelbeheer | Een sleutel per persoon, niet gedeeld. Bij vertrek of verlies direct intrekken. Sleutels niet per mail sturen. |
 | Werkplek | Een eigen Windows-account per gebruiker; schermvergrendeling; het consult afsluiten na elke patiënt |
 | Training | Stuk 09: werkinstructie en AI-geletterdheid, afgetekend |

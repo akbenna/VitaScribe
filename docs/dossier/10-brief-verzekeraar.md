@@ -31,15 +31,18 @@ Wij vragen u schriftelijk te bevestigen:
    hulpmiddel is gemaakt en door de arts is goedgekeurd;
 2. of u voorwaarden stelt aan dit gebruik, bijvoorbeeld een werkinstructie of
    een registratie;
-3. `[alleen als van toepassing:]` dat de dekking ook geldt als de arts het
-   hulpmiddel zelf heeft ontwikkeld en alleen in de eigen praktijk gebruikt.
+3. dat de dekking ook geldt als de arts het hulpmiddel zelf heeft ontwikkeld
+   en alleen in de eigen praktijk gebruikt. De praktijk en de ontwikkeling
+   (onder de naam ProVitaCare) vallen onder dezelfde rechtspersoon,
+   `[NAAM HOLDING]`. Wij vragen u te bevestigen dat de polis ook die
+   ontwikkelactiviteit niet uitsluit.
 
 Een korte beschrijving van het beoogd gebruik stuur ik mee.
 
 Met vriendelijke groet,
 
-`[NAAM]`
-huisarts, `[PRAKTIJKNAAM]`
+A. Bennaghmouch
+huisarts en praktijkhouder, Huisartsenpraktijk Roosendael, Roermond
 Bijlage: beoogd gebruik (stuk 01)
 
 ---

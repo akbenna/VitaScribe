@@ -22,7 +22,7 @@ from docx.shared import Pt, RGBColor
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 DOSSIER = ROOT / "docs" / "dossier"
-ALLEEN_EXTERN = {"11", "12"}
+ALLEEN_EXTERN = {"04", "11", "12"}
 GROEN = RGBColor(0x04, 0x78, 0x57)
 INLINE = re.compile(r"(\*\*[^*]+\*\*|`[^`]+`|\*[^*]+\*)")
 

@@ -76,7 +76,7 @@ enkele tekst die functies.
 
 | | |
 |---|---|
-| Praktijk | `[PRAKTIJKNAAM]` |
-| Naam en functie | `[NAAM]`, `[praktijkhouder / huisarts]` |
+| Praktijk | Huisartsenpraktijk Roosendael, Roermond |
+| Naam en functie | A. Bennaghmouch, huisarts en praktijkhouder |
 | Datum | `[DATUM]` |
 | Handtekening | |

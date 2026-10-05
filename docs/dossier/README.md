@@ -21,7 +21,7 @@ worden.
 | 01 | [Beoogd gebruik en MDR-afbakening](01-beoogd-gebruik.md) | ja | ja, ook publiceren |
 | 02 | [Verwerkingsregister (AVG art. 30)](02-verwerkingsregister.md) | ja | ja, ook als verwerker |
 | 03 | [DPIA](03-dpia.md) | ja | per klantpraktijk, met dit stuk als basis |
-| 04 | [Verwerkersovereenkomst](04-verwerkersovereenkomst.md) | alleen als praktijk en ProVitaCare twee partijen zijn | ja, met elke praktijk |
+| 04 | [Verwerkersovereenkomst](04-verwerkersovereenkomst.md) | nee (één rechtspersoon) | ja, met elke praktijk |
 | 05 | [Subverwerkers](05-subverwerkers.md) | ja | ja, ook publiceren |
 | 06 | [Beveiligingsbijlage (NEN 7510, 7513)](06-beveiliging.md) | ja | ja |
 | 07 | [Datalekprocedure](07-datalekprocedure.md) | ja | ja, met de verwerkersroute |
@@ -34,20 +34,33 @@ worden.
 
 ## Wie is wie
 
-Dit bepaalt welke stukken nodig zijn. Vul het eerst in.
+- **Verwerkingsverantwoordelijke:** `[NAAM HOLDING]`, handelend onder de
+  naam Huisartsenpraktijk Roosendael in Roermond, vertegenwoordigd door
+  A. Bennaghmouch, huisarts en praktijkhouder.
+- **ProVitaCare:** de technische tak van dezelfde rechtspersoon. Omdat het één
+  rechtspersoon is, is ProVitaCare in fase 1 geen verwerker van de praktijk.
+  Daarom vervalt de verwerkersovereenkomst (stuk 04) intern.
+- **Verwerkers:** Railway Corp. (hosting) en Mistral AI SAS (spraak en tekst),
+  rechtstreeks voor de praktijk. Zie stuk 05.
 
-- **Verwerkingsverantwoordelijke:** de huisartsenpraktijk `[PRAKTIJKNAAM]`,
-  vertegenwoordigd door de praktijkhouder `[NAAM PRAKTIJKHOUDER]`.
-- **Verwerker:** ProVitaCare `[RECHTSVORM, KVK-NUMMER]`, beheerder van de
-  VitaScribe-server.
-- **Subverwerkers:** Railway Corp. (hosting) en Mistral AI SAS (spraak en
-  tekst). Zie stuk 05.
+Kijk in het Handelsregister of "Roosendael" en "ProVitaCare" echt
+handelsnamen van één rechtspersoon zijn. Zijn het aparte BV's onder de
+holding, dan zijn het twee partijen, en is stuk 04 ook in fase 1 nodig. Zet de
+overeenkomsten met Railway en Mistral op naam van de rechtspersoon die de
+praktijk voert.
 
-Zijn de praktijk en ProVitaCare één en dezelfde rechtspersoon, bijvoorbeeld
-allebei de eenmanszaak van dezelfde arts, dan is er geen verwerker tussen
-die twee. Dan vervalt stuk 04 in fase 1 en sluit de praktijk de
-overeenkomsten met Railway en Mistral rechtstreeks. Werkt de arts als
-waarnemer, dan is de praktijkhouder de verantwoordelijke en tekent die.
+### Advies voor fase 2: het risico scheiden
+
+Verkoopt dezelfde rechtspersoon die de praktijk voert, straks software aan
+andere praktijken, dan staat ook de huisartsenpraktijk bloot aan de
+aansprakelijkheid voor dat product. Dat zijn claims van klantpraktijken en
+productaansprakelijkheid onder de nieuwe richtlijn. Gebruikelijk is dan:
+
+- breng ProVitaCare vóór fase 2 onder in een eigen BV onder de holding;
+- sluit daarna een verwerkersovereenkomst tussen de praktijk en die BV
+  (stuk 04).
+
+Bespreek dat met je accountant of jurist.
 
 ## Checklist fase 1: intern
 
@@ -56,7 +69,8 @@ waarnemer, dan is de praktijkhouder de verantwoordelijke en tekent die.
 - [ ] Schriftelijke bevestiging van Railway dat gezondheidsgegevens eronder vallen
 - [ ] SOC 2-rapport van Railway opgevraagd en bewaard
 - [ ] Mistral: verwerkersovereenkomst, ZDR, verwerking in de EU, geen training
-- [ ] Rollen vastgesteld (zie hierboven); zo nodig stuk 04 getekend
+- [x] Rollen vastgesteld: praktijkhouder, één rechtspersoon (stuk 04 vervalt intern)
+- [ ] Handelsregister gecontroleerd; overeenkomsten op naam van de juiste rechtspersoon
 - [ ] Stuk 01 ondertekend; op de server `CLINICAL_DECISION_SUPPORT` uit
 - [ ] Stuk 02 in het verwerkingsregister van de praktijk
 - [ ] Stuk 03 (DPIA) ingevuld, besproken en ondertekend
@@ -69,6 +83,7 @@ waarnemer, dan is de praktijkhouder de verantwoordelijke en tekent die.
 
 ## Checklist fase 2: extern, bovenop fase 1
 
+- [ ] ProVitaCare in een eigen BV; verwerkersovereenkomst tussen de praktijk en die BV
 - [ ] Juridische toets van stukken 04, 11 en 12
 - [ ] Stuk 01 gepubliceerd in de winkeltekst, de handleiding en de voorwaarden
 - [ ] Klinisch meedenken uit, of een CE-markering als medisch hulpmiddel (klasse IIa)

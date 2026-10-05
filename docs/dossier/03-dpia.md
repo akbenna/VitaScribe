@@ -1,4 +1,4 @@
-# 03 DPIA: VitaScribe in `[PRAKTIJKNAAM]`
+# 03 DPIA: VitaScribe in Huisartsenpraktijk Roosendael
 
 Gegevensbeschermingseffectbeoordeling volgens AVG art. 35. De opbouw volgt
 het Model DPIA Rijksdienst en de vier eisen van art. 35 lid 7:
@@ -146,7 +146,7 @@ andere aanbieder, de Claude-modus voor echte patiënten, of fase 2.
 
 | | |
 |---|---|
-| Vastgesteld door | `[NAAM, FUNCTIE]` |
+| Vastgesteld door | A. Bennaghmouch, huisarts en praktijkhouder |
 | Datum | `[DATUM]` |
 | Volgende herziening | `[DATUM + 1 JAAR]` |
 

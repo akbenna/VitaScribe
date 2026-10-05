@@ -17,7 +17,7 @@ sub 12). Een mogelijk lek meld je direct. Twijfel is geen reden om te wachten.
 
 | Stap | Wat | Wie | Termijn |
 |---|---|---|---|
-| 1 | Melden bij de privacyverantwoordelijke van de praktijk: `[NAAM, TELEFOON]` | wie het ontdekt | direct |
+| 1 | Melden bij de privacyverantwoordelijke van de praktijk: A. Bennaghmouch, `[TELEFOON]` | wie het ontdekt | direct |
 | 2 | Beperken: de sleutel intrekken, de werkplek afmelden, en bij twijfel VitaScribe stoppen. Railway kan de server stilzetten. | beheerder | direct |
 | 3 | Vastleggen: wat, wanneer, welke gegevens, hoeveel patiënten, welke maatregel | privacyverantwoordelijke | dezelfde dag |
 | 4 | Beoordelen: is er een risico voor de betrokkenen? Gaat het om gezondheidsgegevens, dan is er bijna altijd een risico. | praktijkhouder | binnen 24 uur |

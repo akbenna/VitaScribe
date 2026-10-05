@@ -1,7 +1,12 @@
 # 05 Subverwerkers
 
-Stand 5 oktober 2026. Wijzigingen meldt de verwerker 30 dagen vooraf (stuk
-04, art. 5).
+Stand 5 oktober 2026.
+
+In fase 1 zijn de praktijk en ProVitaCare één rechtspersoon. Railway en
+Mistral zijn dan rechtstreeks verwerkers van de praktijk, en de
+overeenkomsten lopen op naam van die rechtspersoon. In fase 2 zijn ze
+subverwerkers van ProVitaCare, en meldt ProVitaCare wijzigingen 30 dagen
+vooraf (stuk 04, art. 5).
 
 ## In gebruik voor echte patiënten (EU-modus)
 
