@@ -114,3 +114,7 @@ Komt erbij, bovenop fase 1:
   host maakt het verhaal tegenover praktijken eenvoudiger. Met een eigen
   domeinnaam is een verhuizing klein werk.
 - Daarna: `VITASCRIBE_FASE=extern` en openbaar maken in de winkel.
+
+## Dossier
+
+De stukken voor beide fasen (DPIA, verwerkersovereenkomst, register, beveiliging, patiëntinformatie, werkinstructie en meer) staan in [dossier/](dossier/README.md).
