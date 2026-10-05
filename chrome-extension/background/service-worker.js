@@ -507,6 +507,13 @@ async function consultCommand(cmd, sender, msg) {
     await consultUpdate({ dismissed: true });
     return { ok: true };
   }
+  if (cmd === 'afsluiten') {
+    // Close the consult from the side panel: whatever state it is in (also a
+    // report that hangs while processing), throw it away and start clean.
+    if (await chrome.offscreen.hasDocument()) await toOffscreen('SV_CONSULT_AFBREKEN');
+    await consultUpdate({}, true);
+    return { ok: true };
+  }
   if (cmd === 'pill') return consultPillState(await consultGet());
   if (cmd === 'edit') {
     // The doctor changed the report in the side panel: "Invoegen" on the pill

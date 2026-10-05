@@ -802,15 +802,38 @@ els.copy.addEventListener('click', function () {
 });
 els.clean.addEventListener('click', function () { processText('clean'); });
 els.soepBtn.addEventListener('click', function () { processText('soep'); });
-els.clear.addEventListener('click', function () {
+// Empty the SOEP block: report, parts, markings, checks, thinking along and
+// patient instruction. Used when a consult is closed or a new one starts.
+function wisSoepBlok() {
+  els.soep.classList.add('hidden');
+  els.soepRows.textContent = '';
+  soepDelen = null;
+  deelIdx = 0;
+  soepAlgemeen = {};
+  lastSoep = null;
+  document.getElementById('soep-delen').textContent = '';
+  ['soep-delen', 'soep-delen-hint', 'soep-decisief', 'soep-mark', 'soep-check', 'md', 'pi', 'ta', 'bt'].forEach(function (id) {
+    var n = document.getElementById(id);
+    if (n) n.classList.add('hidden');
+  });
+  document.getElementById('icpc-code').textContent = '';
+  document.getElementById('icpc-titel').textContent = '';
+}
+window.svWisSoepBlok = wisSoepBlok;
+
+// "Wissen" and "Consult afsluiten": everything about this patient goes, and
+// the consult block is ready for the next recording.
+async function nieuwConsult() {
+  if (window.SVConsultUI && !(await window.SVConsultUI.afsluiten())) return;
   els.text.value = '';
   els.interim.textContent = '';
-  els.soep.classList.add('hidden');
-  document.getElementById('soep-decisief').classList.add('hidden');
-  if (window.SVConsultUI) window.SVConsultUI.losgekoppeld();
-  lastSoep = null;
-  setStatus('');
-});
+  wisSoepBlok();
+  wisDicteerVragen();
+  document.getElementById('mw').classList.add('hidden');
+  setStatus('Klaar voor het volgende consult.');
+}
+els.clear.addEventListener('click', nieuwConsult);
+document.getElementById('btn-consult-afsluiten').addEventListener('click', nieuwConsult);
 els.soepInsert.addEventListener('click', insertSoepPerField);
 document.getElementById('btn-map-fields').addEventListener('click', startFieldMapping);
 document.getElementById('map-fields-link').addEventListener('click', function (e) {

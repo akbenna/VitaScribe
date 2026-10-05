@@ -221,6 +221,7 @@ var MIN_OPNAME_MS = 3000;
 
 // A report without any speech is not a report: say so, with the likely cause.
 function consultResultaat(data, c) {
+  if (consultVerworpen(c)) return;   // the doctor closed this consult meanwhile
   if (!String((data && (data.transcript_raw || data.transcript)) || '').trim()) {
     var sec = Math.round((data && data.duration_secs) || (Date.now() - c.startedAt) / 1000);
     consultEmit('error', {
@@ -237,6 +238,10 @@ async function consultRondAf(c, blob, mime) {
   var verbinding = c.live;
   c.live = null;
   try {
+    if (c.verworpen) {
+      if (verbinding) verbinding.sluit();
+      return;
+    }
     if (c.afgebroken) {
       if (verbinding) verbinding.sluit();
       consultEmit('error', { message: c.afgebroken, code: c.afgebrokenCode || '' });
@@ -252,6 +257,7 @@ async function consultRondAf(c, blob, mime) {
     if (verbinding) {
       consultEmit('processing', { step: 'Verslag wordt gemaakt…' });
       var uit = await verbinding.stop(CONSULT_LIVE_WAIT_MS);
+      if (consultVerworpen(c)) return;
       if (uit.ok) {
         consultResultaat(uit.data, c);
         return;
@@ -277,6 +283,7 @@ async function consultSend(job) {
     consultPending = null;
     consultResultaat(data, job);
   } catch (err) {
+    if (consultVerworpen(job)) { consultPending = null; return; }
     consultPending = err.permanent ? null : job;
     consultEmit('error', {
       message: ((err && err.message) || 'Verwerken mislukt.') + (consultPending ? ' De opname is bewaard.' : ''),
@@ -323,6 +330,32 @@ async function consultUpload(c, blob, mime) {
   return resp.json();
 }
 
+// "Consult afsluiten" while it is still recording or being processed: throw it
+// away. A result that arrives afterwards for this consult is ignored.
+var consultVerworpenTot = 0;
+
+function consultVerworpen(job) {
+  return !!(job && job.startedAt && job.startedAt <= consultVerworpenTot);
+}
+
+function consultAfbreken() {
+  consultVerworpenTot = Date.now();
+  consultPending = null;
+  var c = consult;
+  if (c) {
+    c.verworpen = true;
+    if (c.recorder && c.recorder.state !== 'inactive') {
+      c.stopGevraagd = true;
+      c.recorder.stop();   // onstop -> consultRondAf, which sees "verworpen"
+    } else {
+      if (c.live) { c.live.sluit(); c.live = null; }
+      c.chunks = [];
+      consult = null;
+    }
+  }
+  return { ok: true };
+}
+
 function consultStatus() {
   if (!consult) return { active: false };
   var recording = !!(consult.recorder && consult.recorder.state !== 'inactive');
@@ -346,6 +379,8 @@ chrome.runtime.onMessage.addListener(function (msg, _sender, sendResponse) {
     return true;
   } else if (msg.action === 'SV_CONSULT_STATUS') {
     sendResponse(consultStatus());
+  } else if (msg.action === 'SV_CONSULT_AFBREKEN') {
+    sendResponse(consultAfbreken());
   }
   return false;
 });

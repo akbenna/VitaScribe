@@ -314,3 +314,11 @@ body.consult-running .consult { border-color: var(--rec); }
 
 /* The microphone hears nothing (or the speech service heard no conversation). */
 #consult-label.warn { color: #b42318; font-weight: 600; }
+
+/* Close the consult: big and plain, so the next consult can start without
+   closing the extension. Green once the report is in Bricks. */
+.consult-afsluiten { width: 100%; margin-top: 6px; padding: 9px 12px; font-size: 13px; font-weight: 600;
+  border: 2px solid var(--brand); color: var(--brand); background: #fff; }
+.consult-afsluiten:hover { background: #f1f8f5; }
+.consult-afsluiten.klaar { background: var(--brand); color: #fff; }
+.consult-afsluiten.klaar:hover { background: var(--brand-dark); }
