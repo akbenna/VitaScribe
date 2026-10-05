@@ -413,15 +413,17 @@ async def beurt(
 
 # ── 3 Voorlezen ──
 #
-# A voice must be a native speaker of the language it reads. Voxtral TTS can
-# read any of its languages with any voice, but then with that voice's accent:
-# Arabic read by an English voice sounds like an American reading Arabic. So
-# only a voice of the language itself is used, from (in this order, see
-# TOLK_TTS_VOORKEUR):
-#   azure    Azure AI Speech, neural voices per country (ar-MA, ar-SY, tr-TR …).
-#            Microsoft (US company), EU region of choice; in the eu mode only
-#            when the practice allows it (TOLK_AZURE_IN_EU=true).
-#   mistral  Voxtral TTS, only when Mistral has a voice of that language.
+# Best is a voice that speaks the language as its mother tongue. In order
+# (TOLK_TTS_VOORKEUR, default azure,mistral,mistral_overig):
+#   azure          Azure AI Speech, neural voices per country (ar-MA, ar-SY,
+#                  tr-TR …). Microsoft (US company), EU region of choice; in the
+#                  eu mode only when the practice allows it (TOLK_AZURE_IN_EU).
+#   mistral        Voxtral TTS with a voice of that language: one the practice
+#                  recorded itself (a colleague who speaks it natively reads 10
+#                  to 20 seconds; Voxtral then speaks with that accent), or a
+#                  Mistral voice of that language.
+#   mistral_overig a Mistral voice of another language: a foreign accent, but
+#                  in practice still better than the voices of Windows.
 # Otherwise the extension reads aloud with a voice on the computer itself.
 
 TTS_URL = "https://api.mistral.ai/v1/audio/speech"
@@ -459,7 +461,7 @@ def azure_mag() -> bool:
 
 
 def voorkeur() -> List[str]:
-    return [v.strip() for v in os.getenv("TOLK_TTS_VOORKEUR", "azure,mistral").lower().split(",") if v.strip()]
+    return [v.strip() for v in os.getenv("TOLK_TTS_VOORKEUR", "azure,mistral,mistral_overig").lower().split(",") if v.strip()]
 
 
 def _stem_id(stem: dict) -> str:
@@ -478,9 +480,6 @@ def kies_stem(stemmen: List[dict], taal: str) -> Optional[str]:
     """A Mistral voice of this language (it names the language, or has it as a
     prefix such as "fr_marie_neutral"), or None. Never a voice of another
     language: that reads with a foreign accent."""
-    eigen = os.getenv(f"TOLK_STEM_{taal.upper()}")
-    if eigen:
-        return eigen
     for s in stemmen:
         if any(t.lower().replace("_", "-").split("-")[0] == taal for t in _stem_talen(s)):
             return _stem_id(s)
@@ -507,11 +506,50 @@ async def _laad_stemmen(sleutel: str) -> List[dict]:
     return _stemmen
 
 
+# Voices the practice recorded itself, per language code (also kept in the register).
+_eigen: Dict[str, str] = {}
+
+
+async def eigen_stem(code: str) -> Optional[str]:
+    env = os.getenv("TOLK_STEM_" + code.upper().replace("-", "_"))
+    if env:
+        return env
+    if code in _eigen:
+        return _eigen[code]
+    from . import register
+    if register.actief():
+        try:
+            rij = await register.fetchrow("SELECT waarde FROM vs_instellingen WHERE sleutel = $1", f"tolk_stem:{code}")
+            if rij:
+                _eigen[code] = rij["waarde"]
+                return rij["waarde"]
+        except Exception as exc:
+            logger.warning("tolk.eigen_stem_fout", error=type(exc).__name__)
+    return None
+
+
 async def mistral_stem(taal: Taal) -> Optional[str]:
+    """A voice of this language: recorded by the practice (exact code, e.g.
+    ar-MA, then the base language), or a Mistral voice of the language."""
     sleutel = get_config().llm.mistral_api_key
     if not (sleutel and taal.tts):
         return None
+    for code in dict.fromkeys([taal.code, taal.tts]):
+        eigen = await eigen_stem(code)
+        if eigen:
+            return eigen
     return kies_stem(await _laad_stemmen(sleutel), taal.tts)
+
+
+async def mistral_overig(taal: Taal) -> Optional[str]:
+    """Any Mistral voice (TOLK_STEM, else the first): a foreign accent, as a last server option."""
+    sleutel = get_config().llm.mistral_api_key
+    if not (sleutel and taal.tts):
+        return None
+    if os.getenv("TOLK_STEM"):
+        return os.getenv("TOLK_STEM")
+    stemmen = await _laad_stemmen(sleutel)
+    return _stem_id(stemmen[0]) if stemmen else None
 
 
 async def stem_bron(taal: Taal) -> str:
@@ -520,6 +558,8 @@ async def stem_bron(taal: Taal) -> str:
         if bron == "azure" and azure_mag() and azure_stem(taal.code):
             return "azure"
         if bron == "mistral" and await mistral_stem(taal):
+            return "mistral"
+        if bron == "mistral_overig" and await mistral_overig(taal):
             return "mistral"
     return "computer"
 
@@ -568,9 +608,9 @@ async def _azure(tekst: str, taal: Taal, geslacht: str) -> Optional[bytes]:
     return None
 
 
-async def _mistral(tekst: str, taal: Taal) -> Optional[bytes]:
+async def _mistral(tekst: str, taal: Taal, overig: bool = False) -> Optional[bytes]:
     sleutel = get_config().llm.mistral_api_key
-    stem = await mistral_stem(taal)
+    stem = await (mistral_overig(taal) if overig else mistral_stem(taal))
     if not stem:
         return None
     model = os.getenv("TOLK_TTS_MODEL", "voxtral-mini-tts-latest")
@@ -594,8 +634,8 @@ async def tekst_naar_spraak(tekst: str, taal: Taal, geslacht: str = "vrouw") -> 
     for bron in voorkeur():
         if bron == "azure" and azure_mag() and azure_stem(taal.code):
             audio = await _azure(tekst, taal, geslacht)
-        elif bron == "mistral":
-            audio = await _mistral(tekst, taal)
+        elif bron in ("mistral", "mistral_overig"):
+            audio = await _mistral(tekst, taal, overig=bron == "mistral_overig")
         else:
             continue
         if audio:
@@ -624,6 +664,54 @@ async def spreek(body: SpreekRequest, user: str = Depends(verify_api_key)):
         raise HTTPException(status_code=404, detail="Geen stem op de server voor deze taal.")
     audit.log_event(user, "tolk.spreek", taal=taal.code, chars=len(body.tekst))
     return Response(content=audio, media_type="audio/mpeg", headers={"Cache-Control": "no-store"})
+
+
+# ── 3b Own voice per language (voice cloning by Voxtral) ──
+
+MAX_STEM_MB = 5
+
+
+@router.post("/stem")
+async def nieuwe_stem(
+    audio: UploadFile = File(...),
+    taal: str = Form(...),
+    toestemming: bool = Form(default=False),
+    user: str = Depends(verify_api_key),
+):
+    """A colleague who speaks the language natively reads 10 to 20 seconds; Mistral
+    makes a voice of it, and the interpreter reads that language with it from then on.
+    Never a patient: the speaker gives consent for the recording and its use."""
+    t = TALEN.get(taal)
+    if not t or not t.tts:
+        raise HTTPException(status_code=400, detail="Voor deze taal kan Mistral geen stem maken.")
+    if not toestemming:
+        raise HTTPException(status_code=400, detail="De spreker moet toestemming geven voor de opname en het gebruik van de stem.")
+    sleutel = get_config().llm.mistral_api_key
+    if not sleutel:
+        raise HTTPException(status_code=503, detail="Op de server is geen Mistral-sleutel ingesteld.")
+    inhoud = await audio.read()
+    if not inhoud or len(inhoud) > MAX_STEM_MB * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="De opname is leeg of te groot.")
+    body = {"name": f"VitaScribe {t.naam}", "sample_audio": base64.b64encode(inhoud).decode(),
+            "sample_filename": audio.filename or "stem.webm"}
+    async with httpx.AsyncClient(timeout=60.0) as client:
+        r = await client.post(os.getenv("TOLK_STEMMEN_URL", STEMMEN_URL), json=body,
+                              headers={"Authorization": f"Bearer {sleutel}"})
+    if r.status_code not in (200, 201):
+        logger.warning("tolk.stem_fout", status=r.status_code, body=r.text[:300])
+        raise HTTPException(status_code=502, detail="Mistral kon geen stem maken van deze opname. Probeer een langere, rustige opname.")
+    stem_id = _stem_id(r.json() if r.content else {})
+    if not stem_id:
+        raise HTTPException(status_code=502, detail="Mistral gaf geen stem terug.")
+    _eigen[t.code] = stem_id
+    from . import register
+    if register.actief():
+        await register.execute(
+            "INSERT INTO vs_instellingen (sleutel, waarde) VALUES ($1, $2) "
+            "ON CONFLICT (sleutel) DO UPDATE SET waarde = EXCLUDED.waarde", f"tolk_stem:{t.code}", stem_id)
+    logger.info("tolk.stem_gemaakt", taal=t.code, bytes=len(inhoud))
+    audit.log_event(user, "tolk.stem", taal=t.code)
+    return {"taal": t.code, "stem": stem_id}
 
 
 # ── 4 Verslag ──

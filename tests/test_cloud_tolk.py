@@ -15,12 +15,14 @@ def _env(monkeypatch):
     monkeypatch.setenv("MISTRAL_API_KEY", "m")
     monkeypatch.setenv("DEEPGRAM_API_KEY", "d")
     get_config.cache_clear()
-    for k in ("TOLK_AZURE_KEY", "TOLK_AZURE_REGION", "TOLK_AZURE_IN_EU", "TOLK_TTS_VOORKEUR"):
+    for k in ("TOLK_AZURE_KEY", "TOLK_AZURE_REGION", "TOLK_AZURE_IN_EU", "TOLK_TTS_VOORKEUR", "TOLK_STEM"):
         monkeypatch.delenv(k, raising=False)
     # Mistral's voices in a test account: English and French only, no Dutch or Arabic.
     tolk._stemmen = [{"id": "en_paul_neutral"}, {"id": "fr_marie_neutral", "languages": ["fr"]}]
+    tolk._eigen.clear()
     yield
     tolk._stemmen = None
+    tolk._eigen.clear()
     get_config.cache_clear()
 
 
@@ -56,9 +58,9 @@ def test_talen_per_modus(api):
     # Voxtral kent geen Turks, Pools of Oekraïens; Arabisch, Duits, Frans en Engels wel.
     assert [c for c, t in eu.items() if not t["verstaat"]] == ["tr", "pl", "uk"]
     assert "Voxtral" in eu["tr"]["waarom"]
-    # Alleen een stem van de taal zelf: Mistral heeft hier Frans, geen Arabisch of Nederlands.
-    assert claude["fr"]["stem"] == "mistral"
-    assert claude["ar-MA"]["stem"] == "computer" and claude["tr"]["stem"] == "computer"
+    # Mistral leest de talen van Voxtral TTS (ook met een stem uit een andere taal); Turks niet.
+    assert claude["fr"]["stem"] == "mistral" and claude["ar-MA"]["stem"] == "mistral"
+    assert claude["tr"]["stem"] == "computer"
 
 
 def test_beurt_arts_naar_turks(api, monkeypatch):
@@ -172,7 +174,7 @@ def test_azure_moedertaalstemmen_en_eu_beleid(api, monkeypatch):
     assert claude["nl_stem"] == "azure" and {t["stem"] for t in claude["talen"]} == {"azure"}
     # Azure is van Microsoft (VS): in de EU-modus alleen als de praktijk dat toestaat.
     eu = api.get("/api/v1/tolk/talen", headers=EU).json()
-    assert eu["nl_stem"] == "computer" and {t["code"]: t["stem"] for t in eu["talen"]}["fr"] == "mistral"
+    assert eu["nl_stem"] == "mistral" and {t["code"]: t["stem"] for t in eu["talen"]}["tr"] == "computer"
     monkeypatch.setenv("TOLK_AZURE_IN_EU", "true")
     assert api.get("/api/v1/tolk/talen", headers=EU).json()["nl_stem"] == "azure"
     assert tolk.azure_stem("ar-MA") == "ar-MA-MounaNeural" and tolk.azure_stem("ar-MA", "man") == "ar-MA-JamalNeural"
@@ -282,3 +284,45 @@ def test_genereer_soep_gebruikt_taalregel(monkeypatch):
     monkeypatch.setattr(llm_service, "complete", nep_llm({"s": "x", "o": "", "e": "", "p": ""}, gezien))
     asyncio.run(pipeline.genereer_soep("Arts: hallo", "mistral", taalregel="TOLKREGEL\n\n"))
     assert gezien[0]["user"].startswith("TOLKREGEL")
+
+
+def test_stemkeuze_eigen_dan_moedertaal_dan_overig(monkeypatch):
+    import asyncio
+    ar_ma, fr, tr = tolk.TALEN["ar-MA"], tolk.TALEN["fr"], tolk.TALEN["tr"]
+    run = asyncio.run
+    # Geen Arabische stem bij Mistral: als laatste mogelijkheid de eerste stem (Engels accent).
+    assert run(tolk.mistral_stem(ar_ma)) is None and run(tolk.mistral_overig(ar_ma)) == "en_paul_neutral"
+    assert run(tolk.mistral_stem(fr)) == "fr_marie_neutral"
+    assert run(tolk.mistral_overig(tr)) is None              # Voxtral TTS kent geen Turks
+    # Een eigen opgenomen Marokkaanse stem gaat voor; Syrisch valt terug op Arabisch.
+    tolk._eigen["ar-MA"] = "stem-ma"
+    tolk._eigen["ar"] = "stem-ar"
+    assert run(tolk.mistral_stem(ar_ma)) == "stem-ma"
+    assert run(tolk.mistral_stem(tolk.TALEN["ar-SY"])) == "stem-ar"
+    monkeypatch.setenv("TOLK_STEM_AR_MA", "env-stem")
+    assert run(tolk.mistral_stem(ar_ma)) == "env-stem"
+
+
+def test_eigen_stem_opnemen(api, monkeypatch):
+    gezien = {}
+
+    class Antwoord:
+        status_code, content, text = 201, b"{}", ""
+        def json(self): return {"id": "nieuwe-stem"}
+
+    class Client:
+        def __init__(self, *a, **k): pass
+        async def __aenter__(self): return self
+        async def __aexit__(self, *a): return False
+        async def post(self, url, json=None, headers=None, **k):
+            gezien.update(url=url, body=json)
+            return Antwoord()
+    monkeypatch.setattr(tolk.httpx, "AsyncClient", Client)
+    f = {"audio": ("stem.webm", b"geluid", "audio/webm")}
+    assert api.post("/api/v1/tolk/stem", headers=H, data={"taal": "ar-MA"}, files=f).status_code == 400   # geen toestemming
+    assert api.post("/api/v1/tolk/stem", headers=H, data={"taal": "tr", "toestemming": "true"}, files=f).status_code == 400
+    r = api.post("/api/v1/tolk/stem", headers=H, data={"taal": "ar-MA", "toestemming": "true"}, files=f)
+    assert r.status_code == 200, r.text
+    assert r.json() == {"taal": "ar-MA", "stem": "nieuwe-stem"}
+    assert gezien["url"].endswith("/v1/audio/voices") and gezien["body"]["sample_audio"] == "Z2VsdWlk"
+    assert tolk._eigen["ar-MA"] == "nieuwe-stem"

@@ -377,3 +377,6 @@ body.consult-running .dv-balk { border-top-color: var(--rec); }
 .tk-handsfree:disabled { opacity: .5; cursor: default; }
 .tk-gesprek.handsfree .tk-knoppen { display: none; }
 .tk-stem { font: inherit; font-size: 12px; padding: 2px 4px; border: 1px solid var(--border); border-radius: 6px; background: var(--panel); }
+.tk-eigen { font-size: 13px; }
+.tk-eigen summary { cursor: pointer; color: var(--brand-dark); font-weight: 600; }
+.tk-eigen[open] { display: flex; flex-direction: column; gap: 6px; }

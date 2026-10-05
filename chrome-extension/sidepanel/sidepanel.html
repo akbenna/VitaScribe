@@ -222,6 +222,15 @@
       <label class="lt-label" for="tk-taal">Taal van de patiënt</label>
       <select id="tk-taal" class="lt-input"></select>
       <p id="tk-taal-uitleg" class="lt-hint"></p>
+      <details id="tk-eigen" class="tk-eigen">
+        <summary>Eigen stem voor deze taal</summary>
+        <p class="lt-hint">Klinkt het voorlezen niet goed? Laat een collega die de taal als moedertaal spreekt (geen patiënt)
+          15 tot 20 seconden rustig vertellen of voorlezen, in die taal. Mistral maakt er een stem van; de tolk leest deze
+          taal daarna met dat accent voor.</p>
+        <label class="lt-check"><input type="checkbox" id="tk-eigen-ok"> De spreker geeft toestemming voor de opname en het gebruik van de stem</label>
+        <button id="tk-eigen-opname" class="btn small" type="button">Opnemen (max. 20 s)</button>
+        <p id="tk-eigen-status" class="status" role="status"></p>
+      </details>
       <button id="tk-begin" class="btn primary lt-go" type="button">Start tolkgesprek</button>
       <p class="lt-hint">Na het starten luistert VitaScribe handsfree: praat gewoon om beurten. Aan de taal hoort het wie er
         spreekt. Liever met knoppen? Zet handsfree uit.</p>

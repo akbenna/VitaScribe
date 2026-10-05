@@ -531,7 +531,63 @@ window.SVTolkUI = (function () {
     teken();
   }
 
+  // ── Own voice for a language (a colleague reads; Mistral clones the voice) ──
+
+  var eigenOpname = null;
+
+  function eigenStatus(msg, fout) {
+    $('tk-eigen-status').textContent = msg || '';
+    $('tk-eigen-status').classList.toggle('error', !!fout);
+  }
+
+  async function eigenStem() {
+    var knop = $('tk-eigen-opname');
+    if (eigenOpname) { eigenOpname.stop(); return; }
+    var t = taalInfo($('tk-taal').value);
+    if (!t) { eigenStatus('Kies eerst een taal.', true); return; }
+    if (!$('tk-eigen-ok').checked) { eigenStatus('Vink eerst de toestemming van de spreker aan.', true); return; }
+    var config = await getConfig();
+    var stream;
+    try { stream = await openMicrophone(config.micDevice); } catch (e) { eigenStatus(e.message, true); return; }
+    var stukken = [];
+    var rec = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+    var begin = Date.now();
+    var klok = setInterval(function () {
+      var s = Math.round((Date.now() - begin) / 1000);
+      knop.textContent = 'Stop (' + s + ' s)';
+      if (s >= 20) rec.stop();
+    }, 250);
+    rec.ondataavailable = function (e) { if (e.data && e.data.size) stukken.push(e.data); };
+    rec.onstop = async function () {
+      clearInterval(klok);
+      eigenOpname = null;
+      stream.getTracks().forEach(function (x) { x.stop(); });
+      knop.textContent = 'Opnemen (max. 20 s)';
+      var duur = (Date.now() - begin) / 1000;
+      if (duur < 8) { eigenStatus('Te kort: neem minstens 10 seconden op.', true); return; }
+      eigenStatus('Stem maken…');
+      try {
+        var fd = new FormData();
+        fd.append('audio', new Blob(stukken, { type: 'audio/webm' }), 'stem.webm');
+        fd.append('taal', t.code);
+        fd.append('toestemming', 'true');
+        var resp = await aanvraag('/api/v1/tolk/stem', { method: 'POST', body: fd });
+        if (!resp.ok) throw await fout(resp);
+        eigenStatus('Klaar: ' + t.naam + ' wordt voortaan met deze stem voorgelezen.');
+        $('tk-eigen-ok').checked = false;
+        laadTalen();
+      } catch (e) {
+        eigenStatus(e.message, true);
+      }
+    };
+    rec.start(250);
+    eigenOpname = rec;
+    eigenStatus('Neemt op… laat de collega rustig vertellen in het ' + t.naam + '.');
+  }
+
   // ── Wiring ──
+
+  $('tk-eigen-opname').addEventListener('click', eigenStem);
 
   $('tk-taal').addEventListener('change', toonTaal);
   $('tk-begin').addEventListener('click', function () {
