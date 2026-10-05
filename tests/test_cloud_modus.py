@@ -205,3 +205,20 @@ def test_mistral_model_override_reaches_the_request(monkeypatch):
     assert seen["model"] == "mistral-large-latest"          # the default for the report
     asyncio.run(llm_service.complete("s", "u", provider="mistral", quality=True, model="mistral-medium-latest"))
     assert seen["model"] == "mistral-medium-latest"
+
+
+
+def test_fase_intern_sluit_aanmelden(monkeypatch):
+    """Phase "intern" (default): only the own practice; the public sign-up is closed."""
+    from fastapi.testclient import TestClient
+    from services.cloud_api import data_policy, main
+    monkeypatch.delenv("VITASCRIBE_FASE", raising=False)
+    assert data_policy.fase() == "intern"
+    api = TestClient(main.app)
+    assert api.get("/aanmelden").status_code == 404
+    r = api.post("/api/v1/aanmelden", json={"praktijknaam": "x"})
+    assert r.status_code in (403, 422)
+    monkeypatch.setenv("VITASCRIBE_FASE", "onzin")
+    assert data_policy.fase() == "intern"
+    monkeypatch.setenv("VITASCRIBE_FASE", "extern")
+    assert data_policy.fase() == "extern"

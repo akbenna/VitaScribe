@@ -191,3 +191,17 @@ def herstel_versie(token: Token) -> None:
 
 def versie() -> str:
     return _versie.get()
+
+
+# ── Phase: internal use in the own practice, or distribution to others ──
+# "intern" (default): VitaScribe is used only in the practice that runs it.
+# No public sign-up; practices and users are added by the administrator.
+# "extern": distribution to other practices (sign-up page open). Switching to
+# extern is a deliberate step, after the agreements for distribution are in
+# place (see docs/FASERING.md).
+FASEN = ("intern", "extern")
+
+
+def fase() -> str:
+    gekozen = _env("VITASCRIBE_FASE", "intern").lower()
+    return gekozen if gekozen in FASEN else "intern"

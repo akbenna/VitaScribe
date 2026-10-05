@@ -85,6 +85,7 @@ def api(database_url, monkeypatch):
     monkeypatch.setenv("ADMIN_KEY", "beheer-test")
     monkeypatch.setenv("SLEUTELKLUIS", Fernet.generate_key().decode())
     monkeypatch.setenv("API_USERS", "dr.eigen:omgevingssleutel")
+    monkeypatch.setenv("VITASCRIBE_FASE", "extern")   # sign-up is open only in the extern phase
     monkeypatch.delenv("API_KEYS", raising=False)
     monkeypatch.setenv("DEEPGRAM_API_KEY", "dg-server")
     get_config.cache_clear()
