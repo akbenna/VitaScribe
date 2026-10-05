@@ -20,6 +20,7 @@ window.SVConsultUI = (function () {
   var getoondOp = null;   // "at" van het verslag of de fout die al getoond is
   var gekoppeld = false;  // staat het consultverslag nu in het SOEP-blok?
   var bewerkTimer = null;
+  var geladen = false;    // false until the stored state has been shown once
 
   function bezig() {
     return huidig.state === 'recording' || huidig.state === 'processing';
@@ -74,6 +75,23 @@ window.SVConsultUI = (function () {
   function toon(c) {
     huidig = c || {};
     var st = huidig.state || 'idle';
+    var eersteKeer = !geladen;
+    geladen = true;
+    // The consult was closed (or a new one started): its report must not stay
+    // in the SOEP block.
+    if (gekoppeld && (st === 'idle' || st === 'recording')) {
+      if (window.svWisSoepBlok) window.svWisSoepBlok();
+      gekoppeld = false;
+      getoondOp = null;
+    }
+    // Close button: whenever there is a report or an error to close.
+    var afsluiten = $('btn-consult-afsluiten');
+    var tonen = st === 'results' || st === 'error';
+    afsluiten.classList.toggle('hidden', !tonen || (st === 'results' && eersteKeer && !!huidig.dismissed));
+    afsluiten.classList.toggle('klaar', st === 'results' && !!huidig.dismissed);
+    afsluiten.textContent = st === 'results' && huidig.dismissed
+      ? '✓ Ingevoegd · consult afsluiten en nieuw consult'
+      : '✓ Consult afsluiten · nieuw consult';
     var opname = st === 'recording';
     var verwerken = st === 'processing';
     $('consult-idle').classList.toggle('hidden', opname || verwerken);
@@ -98,7 +116,9 @@ window.SVConsultUI = (function () {
       els.conn.textContent = 'klaar';
     }
 
-    if (st === 'results' && huidig.result && huidig.at !== getoondOp) {
+    // A report that was already inserted (dismissed) is not shown again when
+    // the panel opens or is refreshed: that is where it used to "hang".
+    if (st === 'results' && huidig.result && huidig.at !== getoondOp && !(eersteKeer && huidig.dismissed)) {
       getoondOp = huidig.at;
       var data = huidig.result;
       renderSoep(data.soep || {});
@@ -169,6 +189,21 @@ window.SVConsultUI = (function () {
   $('btn-consult-stop').addEventListener('click', function () { opdracht('stop'); });
   $('btn-nadicteer').addEventListener('click', function () { opdracht('nadictaat'); });
   $('btn-consult-resend').addEventListener('click', function () { opdracht('retry'); });
+  $('btn-consult-afbreken').addEventListener('click', function () {
+    if (window.confirm('Dit consult afbreken? Het verslag dat nog gemaakt wordt, gaat verloren.')) afsluiten();
+  });
+
+  // Close the consult in the service worker (and the pill in Bricks). A running
+  // recording is only thrown away after a confirmation. Returns false when the
+  // doctor cancels.
+  async function afsluiten() {
+    var st = huidig.state || 'idle';
+    if (st === 'recording' && !window.confirm('De opname loopt nog. Stoppen en weggooien?')) return false;
+    await chrome.runtime.sendMessage({ action: 'SV_CONSULT_CMD', cmd: 'afsluiten' }).catch(function () { return null; });
+    gekoppeld = false;
+    getoondOp = null;
+    return true;
+  }
   $('btn-consult-settings').addEventListener('click', function () { chrome.runtime.openOptionsPage(); });
 
   chrome.storage.onChanged.addListener(function (changes, area) {
@@ -196,6 +231,7 @@ window.SVConsultUI = (function () {
 
   return {
     bezig: bezig,
+    afsluiten: afsluiten,
     /** Het SOEP-blok toont nu iets anders dan het consultverslag. */
     losgekoppeld: function () { gekoppeld = false; },
     /** Een deel van het consultverslag is via het zijpaneel ingevoegd; na het

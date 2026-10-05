@@ -407,6 +407,32 @@ async function listenPill(page, clickStop) {
   check('ingevoegd vanuit het zijpaneel', (await tab.inputValue('#E')).includes('faryngitis'));
   check('bolletje en icoon opgeruimd', !(await pill(tab)).visible && (await badge()) === '');
 
+  console.log('J2. Consult afsluiten in het zijpaneel');
+  check('na invoegen: groene knop "consult afsluiten"', await side.$eval('#btn-consult-afsluiten',
+    (e) => !e.classList.contains('hidden') && e.classList.contains('klaar')));
+  await side.reload();
+  await sleep(900);
+  check('na verversen blijft het ingevoegde verslag niet hangen', await side.$eval('#soep', (e) => e.classList.contains('hidden')));
+  await sw.evaluate((r) => chrome.storage.session.set({ svConsult: { state: 'results', result: r, inserted: 0, at: Date.now() } }), REPORT);
+  await sleep(700);
+  check('nieuw verslag zichtbaar, met afsluitknop', !(await side.$eval('#soep', (e) => e.classList.contains('hidden'))) &&
+    !(await side.$eval('#btn-consult-afsluiten', (e) => e.classList.contains('hidden'))));
+  await side.click('#btn-consult-afsluiten');
+  await sleep(700);
+  const naAfsluiten = await sw.evaluate(() => chrome.storage.session.get('svConsult').then((r) => r.svConsult || {}));
+  check('afsluiten: verslag weg en consult leeg', (await side.$eval('#soep', (e) => e.classList.contains('hidden'))) && !naAfsluiten.state, naAfsluiten);
+  check('afsluiten: startknop weer klaar', await side.$eval('#consult-idle', (e) => !e.classList.contains('hidden')) &&
+    await side.$eval('#btn-consult-afsluiten', (e) => e.classList.contains('hidden')));
+  // A report that hangs while processing: "Afbreken" clears it as well.
+  await sw.evaluate(() => chrome.storage.session.set({ svConsult: { state: 'processing', step: 'Verslag wordt gemaakt…' } }));
+  await sleep(600);
+  check('hangend verslag: knop Afbreken zichtbaar', await side.$eval('#consult-busy', (e) => !e.classList.contains('hidden')));
+  side.once('dialog', (d) => d.accept());
+  await side.click('#btn-consult-afbreken');
+  await sleep(700);
+  const naAfbreken = await sw.evaluate(() => chrome.storage.session.get('svConsult').then((r) => r.svConsult || {}));
+  check('afbreken: consult leeg, startknop terug', !naAfbreken.state && await side.$eval('#consult-idle', (e) => !e.classList.contains('hidden')), naAfbreken);
+
   console.log('K. Dicteren: paneel en pagina lopen gelijk');
   await tab.bringToFront();
   await side.evaluate(() => {
