@@ -471,6 +471,8 @@ async def list_providers(_api_key: str = Depends(verify_api_key)):
         "eu_probleem": data_policy.eu_gereed(),
         # The oldest extension that has everything the eu mode needs (speech check, markings).
         "min_versie": data_policy.MIN_EXTENSIE_VERSIE,
+        # intern: only the own practice; extern: distribution (see docs/FASERING.md).
+        "fase": data_policy.fase(),
         "stt": {
             "default": cfg.stt.default_provider,
             "available": {

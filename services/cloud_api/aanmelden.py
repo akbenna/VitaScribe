@@ -25,10 +25,10 @@ from typing import Dict, List, Optional
 
 import structlog
 from fastapi import APIRouter, HTTPException, Request
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, HTMLResponse
 from pydantic import BaseModel, Field
 
-from . import licentie, register
+from . import data_policy, licentie, register
 
 logger = structlog.get_logger()
 router = APIRouter(tags=["aanmelden"])
@@ -74,8 +74,16 @@ def _limiet(adres: str) -> None:
     _totaal.append(nu)
 
 
+GESLOTEN = ("Aanmelden is gesloten: VitaScribe wordt nu alleen intern gebruikt, in de eigen praktijk. "
+            "Wilt u op de hoogte blijven, mail ons dan.")
+
+
 @router.get("/aanmelden", include_in_schema=False)
 async def aanmeldpagina():
+    if data_policy.fase() == "intern":
+        return HTMLResponse(f"<!doctype html><meta charset=utf-8><title>VitaScribe</title>"
+                            f"<p style='font-family:sans-serif;max-width:36em;margin:3em auto'>{GESLOTEN}</p>",
+                            status_code=404)
     return FileResponse(STATIC / "aanmelden.html", headers={
         "Cache-Control": "no-cache",
         "Referrer-Policy": "no-referrer",
@@ -90,6 +98,8 @@ async def aanmeldscript():
 
 @router.post("/api/v1/aanmelden")
 async def aanmelden(invoer: Aanmelding, request: Request):
+    if data_policy.fase() == "intern":
+        raise HTTPException(status_code=403, detail=GESLOTEN)
     if not register.actief():
         raise HTTPException(status_code=503, detail="Aanmelden kan op dit moment niet. Mail ons liever.")
     if invoer.website:
