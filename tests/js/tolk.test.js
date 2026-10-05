@@ -58,3 +58,46 @@ test('de Nederlandse kant van het gesprek', () => {
   assert.strictEqual(T.eerder(veel).length, 6);
   assert.strictEqual(T.eerder(veel)[5].nl, 'zin 9');
 });
+
+test('handsfree: ruis telt niet, spraak begint en eindigt na een stilte', () => {
+  let st = null;
+  let t = 0;
+  const stap = (rms) => { t += 64; const r = T.vadStap(st, rms, t); st = r.st; return r.gebeurtenis; };
+  // A humming room (0.02) for 3 s: the noise floor follows, no speech.
+  for (let i = 0; i < 47; i++) assert.strictEqual(stap(0.02), null);
+  // A short click (one frame) is no speech either.
+  assert.strictEqual(stap(0.3), null);
+  assert.strictEqual(stap(0.02), null);
+  // Speaking: begins after ~350 ms.
+  const gebeurt = [];
+  for (let i = 0; i < 20; i++) gebeurt.push(stap(0.3));
+  assert.strictEqual(gebeurt.filter((g) => g === 'begin').length, 1);
+  // A short pause within a sentence (0.5 s) does not end the turn; 1.2 s does.
+  for (let i = 0; i < 8; i++) assert.strictEqual(stap(0.02), null);
+  stap(0.3);
+  const einde = [];
+  for (let i = 0; i < 20; i++) einde.push(stap(0.02));
+  assert.strictEqual(einde.filter((g) => g === 'einde').length, 1);
+});
+
+test('handsfree: een beurt stopt uiterlijk na de maximale duur', () => {
+  let st = null;
+  let r;
+  for (let t = 64; t < 50000; t += 64) {
+    r = T.vadStap(st, t <= 512 ? 0.005 : 0.3, t, { maxMs: 20000 });   // half a second of quiet room first
+    st = r.st;
+    if (r.gebeurtenis === 'einde') break;
+  }
+  assert.strictEqual(r.gebeurtenis, 'einde');
+});
+
+test('WAV-kop klopt', () => {
+  const w = T.wav(new Float32Array([0, 1, -1, 0.5]), 16000);
+  const tekst = (o, n) => String.fromCharCode(...w.slice(o, o + n));
+  const v = new DataView(w.buffer);
+  assert.strictEqual(tekst(0, 4), 'RIFF');
+  assert.strictEqual(tekst(8, 4), 'WAVE');
+  assert.strictEqual(v.getUint32(24, true), 16000);
+  assert.strictEqual(v.getUint32(40, true), 8);
+  assert.deepStrictEqual([v.getInt16(44, true), v.getInt16(46, true), v.getInt16(48, true)], [0, 32767, -32768]);
+});

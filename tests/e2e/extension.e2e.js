@@ -62,6 +62,8 @@ function check(name, cond, extra) {
         { code: 'ar-MA', naam: 'Marokkaans-Arabisch (Darija)', eigen: 'الدارجة', verstaat: true, stem: 'mistral', waarom: '' }] }) });
     if (url.endsWith('/tolk/beurt')) {
       const patient = raw.includes('name="spreker"\r\n\r\npatient');
+      if (raw.includes('name="spreker"\r\n\r\nauto')) return r.fulfill({ contentType: 'application/json', body: JSON.stringify(
+        { spreker: 'patient', origineel: 'Başım ağrıyor.', vertaling: 'Ik heb hoofdpijn.', terugvertaling: '', onzeker: false, twijfel: '', leeg: false }) });
       return r.fulfill({ contentType: 'application/json', body: JSON.stringify(patient
         ? { spreker: 'patient', origineel: 'Üç gündür ateşim var.', vertaling: 'Ik heb al drie dagen koorts.', terugvertaling: '',
             onzeker: true, twijfel: '"Üç" kan ook "iki" (twee) zijn.', leeg: false }
@@ -403,12 +405,16 @@ function check(name, cond, extra) {
   await page.goto('https://test.bfrcloud.com/patient');
   await panel.bringToFront();
   await panel.evaluate(() => {
-    // A steady tone instead of a microphone, and no voices on this computer.
+    // A tone instead of a microphone (window.__geluid: 0 = stil, 0.3 = praten), and no voices on this computer.
     window.openMicrophone = async () => {
       const c = new AudioContext();
       const o = c.createOscillator();
+      const g = c.createGain();
+      g.gain.value = 0;
+      window.__geluid = (v) => { g.gain.value = v; };
       const d = c.createMediaStreamDestination();
-      o.connect(d);
+      o.connect(g);
+      g.connect(d);
       o.start();
       return d.stream;
     };
@@ -420,15 +426,35 @@ function check(name, cond, extra) {
   await panel.selectOption('#tk-taal', 'tr');
   check('uitleg: voorlezen met een stem op de computer', (await panel.textContent('#tk-taal-uitleg')).includes('stem op deze computer'));
   await panel.click('#tk-begin');
-  check('gesprek gestart: twee grote knoppen', await panel.isVisible('#tk-arts') && await panel.isVisible('#tk-patient')
+  await sleep(600);
+  check('na start luistert VitaScribe handsfree, zonder knoppen', (await panel.getAttribute('#tk-handsfree', 'class')).includes('aan')
+    && await panel.isHidden('#tk-arts') && (await panel.textContent('.tk-hf-status')) === 'luistert');
+  const tb = () => sent.filter((x) => x.url.endsWith('/tolk/beurt'));
+  await panel.evaluate(() => window.__geluid(0.3));
+  await sleep(1200);
+  check('spraak gehoord', (await panel.textContent('.tk-hf-status')).includes('hoort spraak'));
+  await panel.evaluate(() => window.__geluid(0));
+  await sleep(2500);
+  const b0 = tb()[0] ? tb()[0].raw : '';
+  check('na een stilte gaat de beurt als WAV naar de server, spreker automatisch', /name="spreker"\r\n\r\nauto/.test(b0)
+    && b0.includes('filename="beurt.wav"') && b0.includes('RIFF') && b0.includes('WAVE'), b0.slice(0, 300));
+  check('de taal bepaalde de spreker: patiënt', (await panel.textContent('.tk-beurt:first-child .tk-wie')).includes('Patiënt')
+    && (await panel.textContent('.tk-beurt:first-child .tk-wie')).includes('herkend aan de taal')
+    && (await panel.textContent('.tk-beurt:first-child .tk-vert')) === 'Ik heb hoofdpijn.');
+  // Reading aloud (server voice 404, no computer voice) takes a moment; on a slow runner longer.
+  let weer = false;
+  for (let i = 0; i < 50 && !weer; i++) { weer = (await panel.textContent('.tk-hf-status')) === 'luistert'; if (!weer) await sleep(100); }
+  check('na het voorlezen luistert hij weer', weer, await panel.textContent('.tk-hf-status'));
+  await panel.click('#tk-handsfree');
+  check('handsfree uit: de knoppen komen terug', await panel.isVisible('#tk-arts') && await panel.isVisible('#tk-patient')
     && (await panel.textContent('#tk-patient-taal')).includes('Turks'));
   await panel.click('#tk-arts');
+  await panel.evaluate(() => window.__geluid(0.3));
   await sleep(700);
   check('knop van de arts luistert', (await panel.getAttribute('#tk-arts', 'class')).includes('luistert'));
   await panel.click('#tk-arts');
   await sleep(1000);
-  const tb = () => sent.filter((x) => x.url.endsWith('/tolk/beurt'));
-  const b1 = tb()[0] ? tb()[0].raw : '';
+  const b1 = tb()[1] ? tb()[1].raw : '';
   check('beurt verstuurd: arts, Turks, met toestemming en opname', /name="spreker"\r\n\r\narts/.test(b1) && /name="taal"\r\n\r\ntr/.test(b1)
     && /name="consent"\r\n\r\ntrue/.test(b1) && b1.includes('filename="beurt.webm"'), b1.slice(0, 300));
   check('vertaling en terugvertaling getoond', (await panel.textContent('.tk-beurt.arts .tk-vert')) === 'Ateşiniz var mı?'
@@ -437,21 +463,26 @@ function check(name, cond, extra) {
     && (await panel.textContent('#tk-scherm-tekst')) === 'Ateşiniz var mı?' && (await panel.textContent('#tk-status')).includes('Stemmen toevoegen'));
   await panel.click('#tk-scherm-dicht');
   await panel.keyboard.press('Enter');
-  await sleep(700);
+  await sleep(300);
+  await panel.evaluate(() => window.__geluid(0.3));   // each turn opens its own microphone
+  await sleep(500);
   check('Enter: de patiënt spreekt', (await panel.getAttribute('#tk-patient', 'class')).includes('luistert'));
   await panel.keyboard.press('Enter');
   await sleep(1200);
-  const b2 = tb()[1] ? tb()[1].raw : '';
-  check('tweede beurt met de eerste als context', /name="spreker"\r\n\r\npatient/.test(b2) && b2.includes('Heeft u koorts?'), b2.slice(0, 400));
+  await panel.evaluate(() => window.__geluid(0));
+  const b2 = tb()[2] ? tb()[2].raw : '';
+  check('volgende beurt met de vorige als context', /name="spreker"\r\n\r\npatient/.test(b2) && b2.includes('Heeft u koorts?') && b2.includes('Ik heb hoofdpijn.'), b2.slice(0, 400));
   check('patiënt: Nederlands bovenaan, twijfel gemarkeerd', (await panel.textContent('.tk-beurt:first-child .tk-vert')) === 'Ik heb al drie dagen koorts.'
     && (await panel.textContent('.tk-beurt:first-child .tk-twijfel')).includes('iki'));
   const sp = sent.filter((x) => x.url.endsWith('/tolk/spreek'));
-  check('Nederlands voorlezen vraagt eerst de stem van de server', sp.length === 1 && sp[0].body.taal === 'nl' && sp[0].body.tekst.includes('drie dagen'), sp.map((x) => x.body));
+  check('Nederlands voorlezen vraagt eerst de stem van de server, met de gekozen stem', sp.length === 2 && sp.every((x) => x.body.taal === 'nl' && x.body.geslacht === 'vrouw')
+    && sp[1].body.tekst.includes('drie dagen'), sp.map((x) => x.body));
   await panel.click('#tk-verslag');
   await sleep(1500);
   const vs = sent.filter((x) => x.url.endsWith('/tolk/verslag'))[0];
   check('verslag uit de Nederlandse kant van het gesprek', vs && vs.body.taal === 'tr' && vs.body.consent === true
-    && JSON.stringify(vs.body.beurten) === JSON.stringify([{ spreker: 'arts', nl: 'Heeft u koorts?' }, { spreker: 'patient', nl: 'Ik heb al drie dagen koorts.' }]), vs && vs.body);
+    && JSON.stringify(vs.body.beurten) === JSON.stringify([{ spreker: 'patient', nl: 'Ik heb hoofdpijn.' }, { spreker: 'arts', nl: 'Heeft u koorts?' },
+      { spreker: 'patient', nl: 'Ik heb al drie dagen koorts.' }]), vs && vs.body);
   check('verslag verschijnt in het tabblad Consult', await panel.isVisible('#view-dictate')
     && (await panel.$$eval('.soep-text', (e) => e.map((x) => x.textContent))).some((t) => t.includes('via AI-tolk')));
   check('bolletje en popup kennen het verslag', (await sw.evaluate(async () => (await chrome.storage.session.get('svConsult')).svConsult.state)) === 'results');

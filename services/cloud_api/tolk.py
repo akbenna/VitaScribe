@@ -35,6 +35,7 @@ from __future__ import annotations
 import base64
 import json
 import os
+import re
 import time
 from typing import Dict, List, NamedTuple, Optional
 
@@ -100,11 +101,7 @@ def verstaat(taal: Taal) -> bool:
     return taal.voxtral is not None if data_policy.eu_modus() else True
 
 
-def mistral_stem_kan(taal: Taal) -> bool:
-    return bool(taal.tts and get_config().llm.mistral_api_key)
-
-
-def talen_overzicht() -> List[dict]:
+async def talen_overzicht() -> List[dict]:
     uit = []
     for t in TALEN.values():
         if t.code == "nl":
@@ -112,7 +109,7 @@ def talen_overzicht() -> List[dict]:
         uit.append({
             "code": t.code, "naam": t.naam, "eigen": t.eigen,
             "verstaat": verstaat(t),
-            "stem": "mistral" if mistral_stem_kan(t) else "computer",
+            "stem": await stem_bron(t),
             "waarom": "" if verstaat(t) else
                       f"In de EU-modus verstaat de spraakherkenning (Voxtral, Mistral) geen {t.naam}.",
         })
@@ -121,8 +118,8 @@ def talen_overzicht() -> List[dict]:
 
 @router.get("/talen")
 async def talen(_user: str = Depends(verify_api_key)):
-    return {"modus": data_policy.modus(), "talen": talen_overzicht(),
-            "nl_stem": "mistral" if mistral_stem_kan(ARTS_TAAL) else "computer"}
+    return {"modus": data_policy.modus(), "talen": await talen_overzicht(),
+            "nl_stem": await stem_bron(ARTS_TAAL)}
 
 
 # ── 1 Spraak naar tekst, één beurt ──
@@ -233,6 +230,92 @@ async def vertaal(tekst: str, spreker: str, taal: Taal, eerder: List[Eerder], ee
     }
 
 
+VERTAAL_AUTO_SYSTEM = """Je bent een medisch tolk in een Nederlandse huisartsenpraktijk. De arts spreekt Nederlands, de patiënt spreekt {patient}. Je krijgt de spraakherkenning van één gesproken beurt{dubbel}. Wat je vertaalt, wordt hardop voorgelezen.
+
+Stap 1, wie sprak: Nederlands is de arts, {patient} is de patiënt. Een herkenning in de verkeerde taal is meestal onzin of een rij losse woorden; kies de herkenning die een zinnige uiting is. Is het echt niet uit te maken (bijvoorbeeld alleen "ja" of "oké"), kies dan wat het best past bij het gesprek tot nu toe en zet "onzeker" op true.
+Stap 2: zet in "origineel" de juiste herkende tekst, ongewijzigd, en in "spreker" "arts" of "patient".
+Stap 3: vertaal. Van de arts naar {doel}; van de patiënt naar Nederlands.
+
+Regels:
+- Vertaal alles wat gezegd is. Laat niets weg en voeg niets toe. Geef geen antwoord, geen advies en geen eigen uitleg.
+- Schrijf zoals je het hardop zegt: korte zinnen, gewone woorden, geen afkortingen, geen opsommingstekens.
+- Spreek de ander beleefd aan (in het Nederlands met "u").
+- Namen van personen, medicijnnamen, getallen, doseringen, datums en tijden neem je exact over.
+- Naar de patiënt: vervang een medische vakterm door gewone woorden die een leek begrijpt, zonder de betekenis te veranderen.
+- Naar de arts: correct Nederlands, zo dicht mogelijk bij wat de patiënt zei, ook als het vaag klinkt.
+- Klinkt iets als verkeerd verstaan, vertaal dan wat het meest waarschijnlijk bedoeld is, zet "onzeker" op true en schrijf in "twijfel" in één korte Nederlandse zin wat onzeker is.
+- "terugvertaling": alleen als de arts sprak, jouw vertaling letterlijk terug in het Nederlands; anders leeg.
+
+Antwoord alleen met JSON: {{"spreker": "arts", "origineel": "...", "vertaling": "...", "terugvertaling": "...", "onzeker": false, "twijfel": ""}}"""
+
+VERTAAL_AUTO_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "spreker": {"type": "string", "enum": ["arts", "patient"]},
+        "origineel": {"type": "string"},
+        **VERTAAL_SCHEMA["properties"],
+    },
+    "required": ["spreker", "origineel", *VERTAAL_SCHEMA["required"]],
+    "additionalProperties": False,
+}
+
+
+async def kandidaten(audio: bytes, patient: Taal, sleutel: Optional[str],
+                     content_type: str = "audio/webm") -> List["tuple[str, str]"]:
+    """Hands-free: who spoke is not known. EU: Voxtral detects the language
+    itself (one call). Otherwise Deepgram hears the turn twice, as Dutch and
+    as the patient's language, at the same time; the language model then sees
+    which of the two is a sensible utterance. Replaceable in tests."""
+    if data_policy.eu_modus():
+        res = await stt_service._transcribe_voxtral(audio, None, naam="beurt.wav", diarize=False)
+        return [("automatisch herkend", res.raw_text.strip())]
+    import asyncio
+    nl, ander = await asyncio.gather(
+        spraak_naar_tekst(audio, ARTS_TAAL, sleutel, content_type),
+        spraak_naar_tekst(audio, patient, sleutel, content_type),
+        return_exceptions=True)
+    uit = []
+    for naam, r in (("verstaan als Nederlands", nl), (f"verstaan als {patient.naam}", ander)):
+        if isinstance(r, Exception):
+            logger.warning("tolk.stt_fout", error=type(r).__name__, taal=naam)
+            continue
+        uit.append((naam, (r or "").strip()))
+    if not uit:
+        raise ValueError("Spraakherkenning mislukt.")
+    return uit
+
+
+def vertaal_auto_prompts(kand: List["tuple[str, str]"], patient: Taal, eerder: List[Eerder]) -> "tuple[str, str]":
+    dubbel = ", twee keer: " + " en ".join(n for n, _ in kand) if len(kand) > 1 else ""
+    system = VERTAAL_AUTO_SYSTEM.format(patient=patient.naam, doel=patient.prompt, dubbel=dubbel)
+    delen = []
+    if eerder:
+        regels = [f"{'Arts' if e.spreker == 'arts' else 'Patiënt'}: {e.nl.strip()}" for e in eerder[-MAX_EERDER:]]
+        delen.append("EERDER IN HET GESPREK (Nederlands, alleen als context; niet vertalen):\n" + "\n".join(regels))
+    for naam, tekst in kand:
+        delen.append(f"HERKENNING ({naam}):\n{tekst or '(niets)'}")
+    return system, "\n\n".join(delen)
+
+
+async def vertaal_auto(kand: List["tuple[str, str]"], patient: Taal, eerder: List[Eerder]) -> dict:
+    system, user = vertaal_auto_prompts(kand, patient, eerder)
+    raw = await llm_service.complete(system, user, provider=data_policy.phi_llm_provider(), json_mode=True,
+                                     max_tokens=VERTAAL_MAX_TOKENS, json_schema=VERTAAL_AUTO_SCHEMA)
+    data = _parse(raw)
+    spreker = "arts" if data.get("spreker") == "arts" else "patient"
+    origineel = str(data.get("origineel") or "").strip()
+    if not origineel:   # the model left it out: take the transcript it most likely meant
+        origineel = next((t for _, t in kand if t), "")
+    return {
+        "spreker": spreker,
+        "origineel": origineel,
+        "vertaling": str(data.get("vertaling") or "").strip(),
+        "terugvertaling": str(data.get("terugvertaling") or "").strip() if spreker == "arts" else "",
+        "onzeker": bool(data.get("onzeker")),
+        "twijfel": str(data.get("twijfel") or "").strip(),
+    }
+
+
 def _toestemming(consent: bool, user: str) -> None:
     if os.getenv("REQUIRE_RECORDING_CONSENT", "true").lower() == "true" and not consent:
         audit.log_event(user, "tolk.refused", status="geen_toestemming")
@@ -253,28 +336,33 @@ def _eerder(veld: Optional[str]) -> List[Eerder]:
 async def beurt(
     audio: Optional[UploadFile] = File(default=None),
     tekst: Optional[str] = Form(default=None, max_length=MAX_ZIN_CHARS),
-    spreker: str = Form(..., pattern="^(arts|patient)$"),
+    spreker: str = Form(..., pattern="^(arts|patient|auto)$"),
     taal: str = Form(...),
     consent: bool = Form(default=False),
     eerder: Optional[str] = Form(default=None),
     eenvoudiger: bool = Form(default=False),
     ident=Depends(huidige_identiteit),
 ):
-    """Eén beurt: verstaan (of de tekst van een eerdere beurt opnieuw) en vertalen."""
+    """Eén beurt: verstaan (of de tekst van een eerdere beurt opnieuw) en vertalen.
+    spreker=auto (handsfree): de taal bepaalt wie er sprak."""
     user = ident.label
     _toestemming(consent, user)
     patient = kies(taal)
-    bron = ARTS_TAAL if spreker == "arts" else patient
+    auto = spreker == "auto"
     begin = time.time()
+    context = _eerder(eerder)
+    grootte = 0
     if tekst and tekst.strip():
         # "Zeg het eenvoudiger": the text is already there, no audio again.
+        if auto:
+            raise HTTPException(status_code=400, detail="Kies wie er sprak.")
         origineel = tekst.strip()
-        grootte = 0
+        kand: List["tuple[str, str]"] = []
     else:
         if audio is None:
             raise HTTPException(status_code=400, detail="Geen opname ontvangen.")
-        if not verstaat(bron):
-            raise HTTPException(status_code=400, detail=f"In de EU-modus verstaat de spraakherkenning geen {bron.naam}.")
+        if not verstaat(patient) and spreker != "arts":
+            raise HTTPException(status_code=400, detail=f"In de EU-modus verstaat de spraakherkenning geen {patient.naam}.")
         inhoud = await audio.read()
         grootte = len(inhoud)
         if not inhoud:
@@ -285,20 +373,30 @@ async def beurt(
         if not data_policy.eu_modus():
             from .praktijk_sleutels import kies_spraak
             sleutel = await kies_spraak(ident)
+        soort = audio.content_type or "audio/webm"
         try:
-            origineel = await spraak_naar_tekst(inhoud, bron, sleutel, audio.content_type or "audio/webm")
+            if auto:
+                kand = await kandidaten(inhoud, patient, sleutel, soort)
+                origineel = " ".join(t for _, t in kand).strip()
+            else:
+                bron = ARTS_TAAL if spreker == "arts" else patient
+                origineel = await spraak_naar_tekst(inhoud, bron, sleutel, soort)
         except ValueError as exc:
-            logger.warning("tolk.stt_fout", error=str(exc)[:200], taal=bron.code)
+            logger.warning("tolk.stt_fout", error=str(exc)[:200], taal=patient.code)
             raise HTTPException(status_code=502, detail="De spraak kon niet worden verstaan. Probeer het opnieuw.")
         except Exception as exc:
-            logger.warning("tolk.stt_fout", error=type(exc).__name__, taal=bron.code)
+            logger.warning("tolk.stt_fout", error=type(exc).__name__, taal=patient.code)
             raise HTTPException(status_code=502, detail="De spraakherkenning reageert niet. Probeer het zo opnieuw.")
     if not origineel:
         audit.log_event(user, "tolk.beurt", spreker=spreker, taal=patient.code, status="leeg", bytes=grootte)
         return {"spreker": spreker, "origineel": "", "vertaling": "", "terugvertaling": "",
                 "onzeker": False, "twijfel": "", "leeg": True}
     try:
-        uit = await vertaal(origineel, spreker, patient, _eerder(eerder), eenvoudiger)
+        if auto:
+            uit = await vertaal_auto(kand, patient, context)
+            spreker, origineel = uit.pop("spreker"), uit.pop("origineel")
+        else:
+            uit = await vertaal(origineel, spreker, patient, context, eenvoudiger)
     except ValueError as exc:   # includes json.JSONDecodeError
         logger.warning("tolk.vertaal_fout", error=str(exc)[:200])
         raise HTTPException(status_code=502, detail="De vertaling lukte niet. Probeer het opnieuw.")
@@ -306,18 +404,62 @@ async def beurt(
         logger.warning("tolk.vertaal_fout", error=type(exc).__name__)
         raise HTTPException(status_code=502, detail="De AI-dienst reageert niet. Probeer het zo opnieuw.")
     # Content-free: who, which language, sizes and time.
-    logger.info("tolk.beurt", spreker=spreker, taal=patient.code, bytes=grootte, chars=len(origineel),
+    logger.info("tolk.beurt", spreker=spreker, auto=auto, taal=patient.code, bytes=grootte, chars=len(origineel),
                 onzeker=uit["onzeker"], seconden=round(time.time() - begin, 1), modus=data_policy.modus())
     audit.log_event(user, "tolk.beurt", spreker=spreker, taal=patient.code, chars=len(origineel),
                     provider=data_policy.phi_llm_provider())
     return {"spreker": spreker, "origineel": origineel, **uit, "leeg": False}
 
 
-# ── 3 Voorlezen (Voxtral TTS, Mistral) ──
+# ── 3 Voorlezen ──
+#
+# A voice must be a native speaker of the language it reads. Voxtral TTS can
+# read any of its languages with any voice, but then with that voice's accent:
+# Arabic read by an English voice sounds like an American reading Arabic. So
+# only a voice of the language itself is used, from (in this order, see
+# TOLK_TTS_VOORKEUR):
+#   azure    Azure AI Speech, neural voices per country (ar-MA, ar-SY, tr-TR …).
+#            Microsoft (US company), EU region of choice; in the eu mode only
+#            when the practice allows it (TOLK_AZURE_IN_EU=true).
+#   mistral  Voxtral TTS, only when Mistral has a voice of that language.
+# Otherwise the extension reads aloud with a voice on the computer itself.
 
 TTS_URL = "https://api.mistral.ai/v1/audio/speech"
 STEMMEN_URL = "https://api.mistral.ai/v1/audio/voices"
 _stemmen: Optional[List[dict]] = None
+
+# Azure neural voices: (female, male). TOLK_AZURE_STEM_<CODE> overrides, e.g.
+# TOLK_AZURE_STEM_AR_MA=ar-MA-JamalNeural.
+AZURE_STEMMEN: Dict[str, "tuple[str, str]"] = {
+    "nl": ("nl-NL-FennaNeural", "nl-NL-MaartenNeural"),
+    "tr": ("tr-TR-EmelNeural", "tr-TR-AhmetNeural"),
+    "pl": ("pl-PL-ZofiaNeural", "pl-PL-MarekNeural"),
+    "uk": ("uk-UA-PolinaNeural", "uk-UA-OstapNeural"),
+    "ar": ("ar-SA-ZariyahNeural", "ar-SA-HamedNeural"),
+    "ar-SY": ("ar-SY-AmanyNeural", "ar-SY-LaithNeural"),
+    "ar-MA": ("ar-MA-MounaNeural", "ar-MA-JamalNeural"),
+    "de": ("de-DE-KatjaNeural", "de-DE-ConradNeural"),
+    "fr": ("fr-FR-DeniseNeural", "fr-FR-HenriNeural"),
+    "en": ("en-GB-SoniaNeural", "en-GB-RyanNeural"),
+}
+
+
+def azure_stem(code: str, geslacht: str = "vrouw") -> Optional[str]:
+    eigen = os.getenv("TOLK_AZURE_STEM_" + code.upper().replace("-", "_"))
+    if eigen:
+        return eigen
+    paar = AZURE_STEMMEN.get(code)
+    return (paar[1] if geslacht == "man" else paar[0]) if paar else None
+
+
+def azure_mag() -> bool:
+    if not (os.getenv("TOLK_AZURE_KEY") and os.getenv("TOLK_AZURE_REGION")):
+        return False
+    return not data_policy.eu_modus() or os.getenv("TOLK_AZURE_IN_EU", "false").lower() == "true"
+
+
+def voorkeur() -> List[str]:
+    return [v.strip() for v in os.getenv("TOLK_TTS_VOORKEUR", "azure,mistral").lower().split(",") if v.strip()]
 
 
 def _stem_id(stem: dict) -> str:
@@ -327,36 +469,59 @@ def _stem_id(stem: dict) -> str:
     return ""
 
 
+def _stem_talen(stem: dict) -> List[str]:
+    talen = stem.get("languages") or stem.get("language") or stem.get("locale") or []
+    return [talen] if isinstance(talen, str) else [str(t) for t in talen]
+
+
 def kies_stem(stemmen: List[dict], taal: str) -> Optional[str]:
-    """Een stem voor deze taal: eerst een die de taal noemt, dan een met de taal
-    als voorvoegsel (zoals "fr_marie_neutral"), anders de eerste. Voxtral TTS
-    spreekt de taal van de tekst, ook met een stem uit een andere taal."""
-    eigen = os.getenv(f"TOLK_STEM_{taal.upper()}") or os.getenv("TOLK_STEM")
+    """A Mistral voice of this language (it names the language, or has it as a
+    prefix such as "fr_marie_neutral"), or None. Never a voice of another
+    language: that reads with a foreign accent."""
+    eigen = os.getenv(f"TOLK_STEM_{taal.upper()}")
     if eigen:
         return eigen
     for s in stemmen:
-        talen = s.get("languages") or s.get("language") or []
-        talen = [talen] if isinstance(talen, str) else talen
-        if any(str(t).lower().split("-")[0] == taal for t in talen):
+        if any(t.lower().replace("_", "-").split("-")[0] == taal for t in _stem_talen(s)):
             return _stem_id(s)
     for s in stemmen:
-        if _stem_id(s).lower().startswith(taal + "_"):
+        if re.match(rf"{re.escape(taal)}[_-]", _stem_id(s).lower()):
             return _stem_id(s)
-    return _stem_id(stemmen[0]) if stemmen else None
+    return None
 
 
-async def _laad_stemmen(client: httpx.AsyncClient, sleutel: str) -> List[dict]:
+async def _laad_stemmen(sleutel: str) -> List[dict]:
     global _stemmen
     if _stemmen is None:
         try:
-            r = await client.get(STEMMEN_URL, headers={"Authorization": f"Bearer {sleutel}"})
+            async with httpx.AsyncClient(timeout=20.0) as client:
+                r = await client.get(STEMMEN_URL, headers={"Authorization": f"Bearer {sleutel}"})
             body = r.json() if r.status_code == 200 else {}
             lijst = body if isinstance(body, list) else (body.get("items") or body.get("data") or body.get("voices") or [])
             _stemmen = [s for s in lijst if isinstance(s, dict)]
         except Exception:
             _stemmen = []
-        logger.info("tolk.stemmen", aantal=len(_stemmen))
+        # Names and languages of the voices (no patient data), to see which languages have one.
+        logger.info("tolk.stemmen", aantal=len(_stemmen),
+                    stemmen=[f"{_stem_id(s)}:{'/'.join(_stem_talen(s))}" for s in _stemmen][:40])
     return _stemmen
+
+
+async def mistral_stem(taal: Taal) -> Optional[str]:
+    sleutel = get_config().llm.mistral_api_key
+    if not (sleutel and taal.tts):
+        return None
+    return kies_stem(await _laad_stemmen(sleutel), taal.tts)
+
+
+async def stem_bron(taal: Taal) -> str:
+    """Who reads this language aloud: azure, mistral or computer."""
+    for bron in voorkeur():
+        if bron == "azure" and azure_mag() and azure_stem(taal.code):
+            return "azure"
+        if bron == "mistral" and await mistral_stem(taal):
+            return "mistral"
+    return "computer"
 
 
 def _audio_uit(r: httpx.Response) -> Optional[bytes]:
@@ -376,19 +541,44 @@ def _audio_uit(r: httpx.Response) -> Optional[bytes]:
     return None
 
 
-async def tekst_naar_spraak(tekst: str, taal: Taal) -> Optional[bytes]:
-    """MP3 van Voxtral TTS, of None (dan leest de extensie zelf voor). Vervangbaar in tests."""
+def _xml(tekst: str) -> str:
+    return (tekst.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+            .replace('"', "&quot;").replace("'", "&apos;"))
+
+
+async def _azure(tekst: str, taal: Taal, geslacht: str) -> Optional[bytes]:
+    stem = azure_stem(taal.code, geslacht)
+    regio = os.getenv("TOLK_AZURE_REGION", "westeurope")
+    locale = "-".join(stem.split("-")[:2])
+    tempo = os.getenv("TOLK_TEMPO", "-8%")   # a little slower: a second language, often older patients
+    ssml = (f"<speak version='1.0' xml:lang='{locale}' xmlns='http://www.w3.org/2001/10/synthesis'>"
+            f"<voice name='{stem}'><prosody rate='{tempo}'>{_xml(tekst)}</prosody></voice></speak>")
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        r = await client.post(
+            f"https://{regio}.tts.speech.microsoft.com/cognitiveservices/v1",
+            headers={"Ocp-Apim-Subscription-Key": os.getenv("TOLK_AZURE_KEY", ""),
+                     "Content-Type": "application/ssml+xml",
+                     "X-Microsoft-OutputFormat": "audio-24khz-48kbitrate-mono-mp3",
+                     "User-Agent": "VitaScribe"},
+            content=ssml.encode("utf-8"),
+        )
+    if r.status_code == 200 and r.content:
+        return r.content
+    logger.warning("tolk.azure_fout", status=r.status_code, body=r.text[:200], stem=stem)
+    return None
+
+
+async def _mistral(tekst: str, taal: Taal) -> Optional[bytes]:
     sleutel = get_config().llm.mistral_api_key
-    if not (sleutel and taal.tts):
+    stem = await mistral_stem(taal)
+    if not stem:
         return None
     model = os.getenv("TOLK_TTS_MODEL", "voxtral-mini-tts-latest")
+    basis = {"model": model, "input": tekst, "response_format": "mp3"}
     async with httpx.AsyncClient(timeout=60.0) as client:
-        stem = kies_stem(await _laad_stemmen(client, sleutel), taal.tts)
-        basis = {"model": model, "input": tekst, "response_format": "mp3"}
         # The voice field is called voice_id in Mistral's SDK and voice in the
         # OpenAI-style API; try both before giving up.
-        pogingen = [dict(basis, voice_id=stem), dict(basis, voice=stem)] if stem else [basis]
-        for body in pogingen:
+        for body in (dict(basis, voice_id=stem), dict(basis, voice=stem)):
             r = await client.post(os.getenv("TOLK_TTS_URL", TTS_URL), json=body,
                                   headers={"Authorization": f"Bearer {sleutel}"})
             if r.status_code == 200:
@@ -399,9 +589,24 @@ async def tekst_naar_spraak(tekst: str, taal: Taal) -> Optional[bytes]:
     return None
 
 
+async def tekst_naar_spraak(tekst: str, taal: Taal, geslacht: str = "vrouw") -> Optional[bytes]:
+    """MP3 from a native voice, or None (the extension then reads aloud itself). Replaceable in tests."""
+    for bron in voorkeur():
+        if bron == "azure" and azure_mag() and azure_stem(taal.code):
+            audio = await _azure(tekst, taal, geslacht)
+        elif bron == "mistral":
+            audio = await _mistral(tekst, taal)
+        else:
+            continue
+        if audio:
+            return audio
+    return None
+
+
 class SpreekRequest(BaseModel):
     tekst: str = Field(..., min_length=1, max_length=MAX_SPREEK_CHARS)
     taal: str
+    geslacht: str = Field(default="vrouw", pattern="^(vrouw|man)$")
 
 
 @router.post("/spreek")
@@ -410,7 +615,7 @@ async def spreek(body: SpreekRequest, user: str = Depends(verify_api_key)):
     if not taal:
         raise HTTPException(status_code=400, detail="Onbekende taal.")
     try:
-        audio = await tekst_naar_spraak(body.tekst.strip(), taal)
+        audio = await tekst_naar_spraak(body.tekst.strip(), taal, body.geslacht)
     except Exception as exc:
         logger.warning("tolk.tts_fout", error=type(exc).__name__)
         audio = None

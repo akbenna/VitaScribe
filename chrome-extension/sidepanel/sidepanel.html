@@ -223,6 +223,8 @@
       <select id="tk-taal" class="lt-input"></select>
       <p id="tk-taal-uitleg" class="lt-hint"></p>
       <button id="tk-begin" class="btn primary lt-go" type="button">Start tolkgesprek</button>
+      <p class="lt-hint">Na het starten luistert VitaScribe handsfree: praat gewoon om beurten. Aan de taal hoort het wie er
+        spreekt. Liever met knoppen? Zet handsfree uit.</p>
       <p class="lt-hint">Starten = de patiënt geeft toestemming voor opname en AI-vertaling. Bij slecht nieuws, ingrijpende
         keuzes of twijfel: een professionele tolk.</p>
     </section>
@@ -232,9 +234,15 @@
         <span id="tk-kop-taal" class="tk-kop-taal"></span>
         <label class="lt-check tk-optie" title="Na een stilte van ruim een seconde stopt de beurt vanzelf">
           <input type="checkbox" id="tk-auto" checked> Stop bij stilte</label>
+        <select id="tk-stem" class="tk-stem" title="Stem van het voorlezen">
+          <option value="vrouw">Stem: vrouw</option>
+          <option value="man">Stem: man</option>
+        </select>
         <label class="lt-check tk-optie" title="Wat de patiënt zei ook in het Nederlands voorlezen">
           <input type="checkbox" id="tk-nl-voorlezen" checked> Nederlands voorlezen</label>
       </div>
+      <button id="tk-handsfree" class="tk-handsfree" type="button">
+        <span class="tk-hf-titel">Handsfree</span><span class="tk-hf-status">uit</span></button>
       <div class="tk-knoppen">
         <button id="tk-arts" class="tk-knop arts" type="button" title="Spatie">
           <span class="tk-knop-wie">Ik spreek</span><span class="tk-knop-taal">Nederlands · spatie</span></button>

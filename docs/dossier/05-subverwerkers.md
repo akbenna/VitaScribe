@@ -27,6 +27,7 @@ nodig.
 | Partij | Rol | Vestiging |
 |---|---|---|
 | Anthropic PBC | Tekst (Claude) | VS |
+| Microsoft (Azure AI Speech) | Voorlezen door de tolk, alleen als de beheerder het instelt; in de EU-modus alleen met een besluit van de praktijk (`TOLK_AZURE_IN_EU`) | VS, verwerking in een EU-regio |
 | Deepgram Inc. | Spraak, live dicteren (EU-eindpunt) | VS |
 
 Een praktijk die een eigen sleutel bij Anthropic, OpenAI of Deepgram instelt,

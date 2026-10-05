@@ -491,12 +491,28 @@ vertaalt elke beurt en leest hem voor. Endpoints onder `/api/v1/tolk`
   Marokkaans- en Syrisch-Arabisch gaan in de Claude-modus als eigen dialect
   naar Deepgram (`ar-MA`, `ar-SY`).
 - **Vertalen:** het taalmodel van de modus (`phi_llm_provider`), snel model.
-- **Voorlezen:** Voxtral TTS van Mistral voor Nederlands, Arabisch, Duits,
-  Frans en Engels. Optioneel: `TOLK_TTS_MODEL` (standaard
-  `voxtral-mini-tts-latest`), `TOLK_STEM` of `TOLK_STEM_<TAAL>` (bijvoorbeeld
-  `TOLK_STEM_NL`) voor een vaste stem; zonder kiest de server er een uit de
-  lijst van Mistral. Lukt het niet, of is de taal Turks, Pools of Oekraïens,
-  dan leest de extensie voor met een stem die op de computer staat.
+- **Voorlezen:** altijd een stem die de taal als moedertaal spreekt. Een stem
+  uit een andere taal leest met een vreemd accent en wordt nooit gebruikt.
+  Volgorde `TOLK_TTS_VOORKEUR` (standaard `azure,mistral`), daarna de stem op
+  de computer.
+  - **Azure AI Speech** (aanbevolen, natuurlijkst): maak in Azure een
+    Speech-resource in `westeurope` (Nederland) of een andere EU-regio, en zet
+    `TOLK_AZURE_KEY` en `TOLK_AZURE_REGION`. De gratis laag (F0) bevat 500.000
+    tekens per maand, genoeg voor honderden tolkgesprekken. Stemmen per land:
+    `nl-NL-FennaNeural`/`MaartenNeural`, `tr-TR-EmelNeural`/`AhmetNeural`,
+    `ar-MA-MounaNeural`/`JamalNeural`, `ar-SY-AmanyNeural`/`LaithNeural`, enz.;
+    andere stem met `TOLK_AZURE_STEM_<CODE>` (bijv. `TOLK_AZURE_STEM_AR_MA`).
+    Tempo: `TOLK_TEMPO` (standaard `-8%`). Microsoft is een Amerikaans bedrijf:
+    in de EU-modus alleen met `TOLK_AZURE_IN_EU=true`, na een besluit van de
+    praktijk en met Microsoft in de lijst van verwerkers (zoals Railway).
+  - **Mistral (Voxtral TTS)**: alleen als het account een stem van die taal
+    heeft (de log `tolk.stemmen` toont welke). Vaste stem: `TOLK_STEM_<TAAL>`.
+    `TOLK_TTS_MODEL` (standaard `voxtral-mini-tts-latest`).
+- **Handsfree:** de extensie stuurt elke beurt als WAV met `spreker=auto`.
+  EU-modus: Voxtral herkent de taal zelf (één aanroep). Claude-modus: Deepgram
+  verstaat de beurt twee keer tegelijk (als Nederlands en als de taal van de
+  patiënt); het taalmodel kiest welke herkenning zinnig is en daarmee wie er
+  sprak.
 - **Kosten:** per beurt een korte spraakherkenning en een kleine vertaling;
   voorlezen ongeveer 1,6 cent per 1000 tekens. Een tolkgesprek van 15 minuten
   kost enkele tientallen centen.

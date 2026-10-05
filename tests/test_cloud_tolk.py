@@ -15,8 +15,12 @@ def _env(monkeypatch):
     monkeypatch.setenv("MISTRAL_API_KEY", "m")
     monkeypatch.setenv("DEEPGRAM_API_KEY", "d")
     get_config.cache_clear()
-    tolk._stemmen = None
+    for k in ("TOLK_AZURE_KEY", "TOLK_AZURE_REGION", "TOLK_AZURE_IN_EU", "TOLK_TTS_VOORKEUR"):
+        monkeypatch.delenv(k, raising=False)
+    # Mistral's voices in a test account: English and French only, no Dutch or Arabic.
+    tolk._stemmen = [{"id": "en_paul_neutral"}, {"id": "fr_marie_neutral", "languages": ["fr"]}]
     yield
+    tolk._stemmen = None
     get_config.cache_clear()
 
 
@@ -52,8 +56,9 @@ def test_talen_per_modus(api):
     # Voxtral kent geen Turks, Pools of Oekraïens; Arabisch, Duits, Frans en Engels wel.
     assert [c for c, t in eu.items() if not t["verstaat"]] == ["tr", "pl", "uk"]
     assert "Voxtral" in eu["tr"]["waarom"]
-    # Voorlezen door Mistral alleen in de talen van Voxtral TTS; de rest op de computer.
-    assert claude["ar-MA"]["stem"] == "mistral" and claude["tr"]["stem"] == "computer"
+    # Alleen een stem van de taal zelf: Mistral heeft hier Frans, geen Arabisch of Nederlands.
+    assert claude["fr"]["stem"] == "mistral"
+    assert claude["ar-MA"]["stem"] == "computer" and claude["tr"]["stem"] == "computer"
 
 
 def test_beurt_arts_naar_turks(api, monkeypatch):
@@ -142,7 +147,7 @@ def test_eenvoudiger_met_tekst_zonder_opname(api, monkeypatch):
 
 
 def test_spreek_mistral_of_404(api, monkeypatch):
-    async def stem(tekst, taal):
+    async def stem(tekst, taal, geslacht="vrouw"):
         return b"MP3" if taal.tts else None
     monkeypatch.setattr(tolk, "tekst_naar_spraak", stem)
     r = api.post("/api/v1/tolk/spreek", headers=H, json={"tekst": "مرحبا", "taal": "ar-MA"})
@@ -151,12 +156,96 @@ def test_spreek_mistral_of_404(api, monkeypatch):
     assert api.post("/api/v1/tolk/spreek", headers=H, json={"tekst": "Merhaba", "taal": "tr"}).status_code == 404
 
 
-def test_kies_stem():
+def test_kies_stem_nooit_een_stem_uit_een_andere_taal():
     stemmen = [{"id": "en_paul_neutral"}, {"id": "fr_marie_neutral"}, {"id": "x", "languages": ["ar-SA"]}]
     assert tolk.kies_stem(stemmen, "fr") == "fr_marie_neutral"
     assert tolk.kies_stem(stemmen, "ar") == "x"
-    assert tolk.kies_stem(stemmen, "nl") == "en_paul_neutral"   # geen eigen stem: de eerste
+    # Geen Nederlandse stem: niet de Engelse (die leest met een Amerikaans accent), maar geen.
+    assert tolk.kies_stem(stemmen, "nl") is None
     assert tolk.kies_stem([], "nl") is None
+
+
+def test_azure_moedertaalstemmen_en_eu_beleid(api, monkeypatch):
+    monkeypatch.setenv("TOLK_AZURE_KEY", "a")
+    monkeypatch.setenv("TOLK_AZURE_REGION", "westeurope")
+    claude = api.get("/api/v1/tolk/talen", headers=H).json()
+    assert claude["nl_stem"] == "azure" and {t["stem"] for t in claude["talen"]} == {"azure"}
+    # Azure is van Microsoft (VS): in de EU-modus alleen als de praktijk dat toestaat.
+    eu = api.get("/api/v1/tolk/talen", headers=EU).json()
+    assert eu["nl_stem"] == "computer" and {t["code"]: t["stem"] for t in eu["talen"]}["fr"] == "mistral"
+    monkeypatch.setenv("TOLK_AZURE_IN_EU", "true")
+    assert api.get("/api/v1/tolk/talen", headers=EU).json()["nl_stem"] == "azure"
+    assert tolk.azure_stem("ar-MA") == "ar-MA-MounaNeural" and tolk.azure_stem("ar-MA", "man") == "ar-MA-JamalNeural"
+    monkeypatch.setenv("TOLK_AZURE_STEM_AR_MA", "ar-MA-JamalNeural")
+    assert tolk.azure_stem("ar-MA") == "ar-MA-JamalNeural"
+
+
+def test_azure_ssml_met_marokkaanse_stem(monkeypatch):
+    import asyncio
+    monkeypatch.setenv("TOLK_AZURE_KEY", "a")
+    monkeypatch.setenv("TOLK_AZURE_REGION", "westeurope")
+    gezien = {}
+
+    class Antwoord:
+        status_code, content, text = 200, b"MP3", ""
+
+    class Client:
+        def __init__(self, *a, **k): pass
+        async def __aenter__(self): return self
+        async def __aexit__(self, *a): return False
+        async def post(self, url, headers=None, content=None, **k):
+            gezien.update(url=url, headers=headers, ssml=content.decode())
+            return Antwoord()
+    monkeypatch.setattr(tolk.httpx, "AsyncClient", Client)
+    audio = asyncio.run(tolk.tekst_naar_spraak("Wach 3ndek s5ana? <ja>", tolk.TALEN["ar-MA"], "man"))
+    assert audio == b"MP3"
+    assert gezien["url"] == "https://westeurope.tts.speech.microsoft.com/cognitiveservices/v1"
+    assert "name='ar-MA-JamalNeural'" in gezien["ssml"] and "xml:lang='ar-MA'" in gezien["ssml"]
+    assert "&lt;ja&gt;" in gezien["ssml"]   # tekst veilig in de SSML
+
+
+def test_handsfree_taal_bepaalt_de_spreker(api, monkeypatch):
+    gezien, stt = [], []
+
+    async def verstaan(audio, taal, sleutel, content_type="audio/webm"):
+        stt.append((taal.code, content_type))
+        return "Başım ağrıyor." if taal.code == "tr" else "Basim aar je jor."
+    monkeypatch.setattr(tolk, "spraak_naar_tekst", verstaan)
+    monkeypatch.setattr(llm_service, "complete", nep_llm(
+        {"spreker": "patient", "origineel": "Başım ağrıyor.", "vertaling": "Ik heb hoofdpijn.",
+         "terugvertaling": "x", "onzeker": False, "twijfel": ""}, gezien))
+    r = api.post("/api/v1/tolk/beurt", headers=H, data={"spreker": "auto", "taal": "tr", "consent": "true"},
+                 files={"audio": ("beurt.wav", b"RIFF", "audio/wav")})
+    assert r.status_code == 200, r.text
+    d = r.json()
+    assert d["spreker"] == "patient" and d["origineel"] == "Başım ağrıyor." and d["vertaling"] == "Ik heb hoofdpijn."
+    assert d["terugvertaling"] == ""
+    # Claude-modus: twee keer verstaan, als Nederlands en als Turks, als WAV.
+    assert sorted(stt) == [("nl", "audio/wav"), ("tr", "audio/wav")]
+    assert "verstaan als Nederlands" in gezien[0]["user"] and "verstaan als Turks" in gezien[0]["user"]
+    assert "Nederlands is de arts" in gezien[0]["system"]
+
+
+def test_handsfree_eu_een_keer_voxtral_zelf_de_taal(api, monkeypatch):
+    stt = []
+
+    async def voxtral(audio, language=None, naam="", diarize=True):
+        stt.append((language, naam, diarize))
+        from services.cloud_api.stt_service import TranscriptResult
+        return TranscriptResult(raw_text="Heeft u koorts?", provider="voxtral")
+    monkeypatch.setattr(tolk.stt_service, "_transcribe_voxtral", voxtral)
+    monkeypatch.setattr(llm_service, "complete", nep_llm(
+        {"spreker": "arts", "origineel": "Heeft u koorts?", "vertaling": "هل عندك سخانة؟",
+         "terugvertaling": "Heeft u koorts?", "onzeker": False, "twijfel": ""}, []))
+    r = api.post("/api/v1/tolk/beurt", headers=EU, data={"spreker": "auto", "taal": "ar-MA", "consent": "true"},
+                 files={"audio": ("beurt.wav", b"RIFF", "audio/wav")})
+    assert r.status_code == 200, r.text
+    assert r.json()["spreker"] == "arts" and r.json()["terugvertaling"] == "Heeft u koorts?"
+    assert stt == [(None, "beurt.wav", False)]   # geen taal opgegeven: Voxtral herkent hem zelf
+    # Turks verstaat Voxtral niet: handsfree kan dan niet.
+    r = api.post("/api/v1/tolk/beurt", headers=EU, data={"spreker": "auto", "taal": "tr", "consent": "true"},
+                 files={"audio": ("beurt.wav", b"RIFF", "audio/wav")})
+    assert r.status_code == 400
 
 
 def test_verslag_uit_nederlandse_kant(api, monkeypatch):
