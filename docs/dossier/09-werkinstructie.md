@@ -42,6 +42,20 @@ jouw verantwoordelijkheid (WGBO). Dat verandert niet door de software.
    patiëntgegevens, alleen wat er misging. Een mogelijk datalek meld je
    direct (stuk 07).
 
+## De tolk
+
+- Spreek in korte zinnen, één vraag per beurt. Lees de **terugvertaling**: zo
+  hoort de patiënt het. Klopt het niet, tik op "Eenvoudiger" of zeg het anders.
+- Staat er ⚠, vraag het dan na: het kan een verkeerd verstaan woord zijn.
+- Haal een verkeerd verstane beurt weg met ✕; die gaat dan niet mee in het
+  verslag.
+- Bij slecht nieuws, een ingrijpende keuze of als je twijfelt of het
+  overkomt: een professionele tolk. Marokkaans-Arabisch wordt minder goed
+  verstaan dan standaard-Arabisch; Berbers kan de tolk niet.
+- In de EU-modus wordt Turks, Pools en Oekraïens niet verstaan: je kunt dan
+  wel spreken en laten voorlezen, maar het antwoord van de patiënt niet laten
+  vertalen.
+
 ## Wat VitaScribe niet doet
 
 VitaScribe stelt geen diagnose, geeft geen behandeladvies en waarschuwt niet

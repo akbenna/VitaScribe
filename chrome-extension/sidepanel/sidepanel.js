@@ -830,6 +830,7 @@ async function nieuwConsult() {
   wisSoepBlok();
   wisDicteerVragen();
   document.getElementById('mw').classList.add('hidden');
+  if (window.SVTolkUI) window.SVTolkUI.wis();   // the interpreter conversation belongs to this consult
   setStatus('Klaar voor het volgende consult.');
 }
 els.clear.addEventListener('click', nieuwConsult);

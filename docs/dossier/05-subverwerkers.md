@@ -13,7 +13,7 @@ vooraf (stuk 04, art. 5).
 | Partij | Rol | Vestiging | Verwerking | Grondslag en afspraken | Status |
 |---|---|---|---|---|---|
 | Railway Corp. | Hosting van de VitaScribe-server en de database (register en auditlog) | San Francisco, VS | Server in Nederland (regio Europa-West). Bewaart geen audio of tekst; wel het auditlog zonder inhoud. | Verwerkersovereenkomst getekend (envelop 15F6A42D…). Railway is actief in het EU-US Data Privacy Framework. SOC 2 Type II. | Bevestiging over gezondheidsgegevens gevraagd; SOC 2-rapport op te vragen |
-| Mistral AI SAS | Spraakherkenning (Voxtral) en tekst (Mistral Large): SOEP, controleronde, brieven, dossiervragen, post | Parijs, Frankrijk | EU | Verwerkersovereenkomst, verwerking in de EU, geen training, zero data retention (ZDR) | **Open**: aangevraagd, nog niet bevestigd |
+| Mistral AI SAS | Spraakherkenning (Voxtral), tekst (Mistral Large) en voorlezen (Voxtral TTS): SOEP, controleronde, tolk, brieven, dossiervragen, post | Parijs, Frankrijk | EU | Verwerkersovereenkomst, verwerking in de EU, geen training, zero data retention (ZDR) | **Open**: aangevraagd, nog niet bevestigd |
 
 Zolang Mistral open staat, gebruikt de praktijk alleen gespeelde consulten.
 
@@ -41,3 +41,6 @@ van ProVitaCare.
   extensie. Er gaat geen patiëntgegeven mee.
 - **Microsoft (Edge Add-ons) en Google (Chrome Web Store).** Die verspreiden
   alleen de extensie, en zien geen gegevens.
+- **Stemmen van de browser.** De tolk leest alleen voor met stemmen die op de
+  computer zelf staan. De online stemmen van Edge en Chrome sturen de tekst
+  naar Microsoft of Google en worden daarom nooit gebruikt.

@@ -531,6 +531,24 @@ async function consultCommand(cmd, sender, msg) {
     return { ok: true };
   }
   if (cmd === 'inserted') return consultMarkInserted(msg.deel || 0);
+  if (cmd === 'tolk') {
+    // The interpreter in the side panel made (or is making) the report of this
+    // consult: it goes in the same place as a recorded consult, pill included.
+    const c = await consultGet();
+    if (c.state === 'recording') return { ok: false, message: 'Er loopt een consultopname; stop die eerst.' };
+    if (msg.fase === 'bezig') {
+      await consultUpdate({ state: 'processing', step: 'Verslag van het tolkgesprek…', bron: 'tolk', startedAt: null }, true);
+      return { ok: true };
+    }
+    // Afbreken in the meantime: the late answer is dropped.
+    if (c.state !== 'processing' || c.bron !== 'tolk') return { ok: false, afgebroken: true };
+    if (msg.fase === 'klaar') {
+      await consultUpdate({ state: 'results', result: msg.data, inserted: 0, bron: 'tolk', at: Date.now() }, true);
+    } else {
+      await consultUpdate({ state: 'error', message: msg.message || 'Het verslag van het tolkgesprek is mislukt.', at: Date.now() }, true);
+    }
+    return { ok: true };
+  }
   if (cmd === 'options') { chrome.runtime.openOptionsPage(); return { ok: true }; }
   const action = { stop: 'SV_CONSULT_STOP', nadictaat: 'SV_CONSULT_NADICTAAT', status: 'SV_CONSULT_STATUS', retry: 'SV_CONSULT_RETRY' }[cmd];
   if (!action) return { ok: false };

@@ -1,8 +1,11 @@
 /**
  * VitaScribe - Tabbladen van het zijpaneel en "Minimaliseren"
  *
- * Vier tabbladen: Dicteren & SOEP, Brieven, Dossiervraag en Post. De laatste keuze
- * blijft bewaard; knoppen in de popup kunnen een tabblad kiezen (svOpenView).
+ * Vier tabbladen: Consult (opnemen, dicteren, SOEP), Tolk, Brieven en Post. De
+ * dossiervraag is geen tabblad maar de balk onderaan, in elk tabblad (die heb
+ * je overal nodig). De laatste keuze blijft bewaard; knoppen in de popup
+ * kunnen een tabblad kiezen (svOpenView), of "dossier": dan krijgt de balk
+ * de focus.
  *
  * Minimaliseren sluit het zijpaneel, zodat het hele scherm vrij is. Een klik
  * op het icoon opent het weer. Een lopende consultopname gaat door (die zit in
@@ -14,7 +17,7 @@
 (function () {
   'use strict';
 
-  var VIEWS = ['dictate', 'letters', 'dossier', 'post'];
+  var VIEWS = ['dictate', 'tolk', 'letters', 'post'];
   var $ = function (id) { return document.getElementById(id); };
 
   function showView(view) {
@@ -39,6 +42,11 @@
 
   // Popup buttons ("Brief schrijven", "Dossiervraag") choose the view.
   function applyRequestedView(v) {
+    if (v === 'dossier') {
+      chrome.storage.session.remove('svOpenView');
+      setTimeout(function () { $('dv-input').focus(); }, 0);
+      return;
+    }
     if (VIEWS.indexOf(v) === -1) return;
     showView(v);
     chrome.storage.session.remove('svOpenView');

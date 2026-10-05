@@ -1,7 +1,9 @@
 /**
- * VitaScribe - Dossiervraag (derde tabblad van het zijpaneel)
+ * VitaScribe - Dossiervraag (de balk onderaan het zijpaneel, in elk tabblad)
  *
- * De arts vraagt iets aan het dossier dat in Bricks open staat. Bij elke
+ * De arts vraagt iets aan het dossier dat in Bricks open staat, ook midden in
+ * een consult of bij een bericht in de post (dan leest de vraag dat bericht
+ * mee, want het staat in beeld). De antwoorden schuiven boven de balk open. Bij elke
  * vraag wordt het dossier opnieuw ingelezen (letters.js: SVBricksDossier),
  * gefilterd (lib/dossiervraag.js + lib/privacy.js) en met de vraag naar de
  * server gestuurd (/api/v1/dossier/vraag). Zo telt een pas geopend onderdeel
@@ -18,7 +20,13 @@
   var $ = function (id) { return document.getElementById(id); };
   var dv = { naam: '', eerder: [], bezig: false };
 
+  function open(aan) {
+    $('dv-paneel').classList.toggle('hidden', !aan);
+    document.body.classList.toggle('dv-open', !!aan);
+  }
+
   function status(msg, isError) {
+    if (msg) open(true);
     var el = $('dv-status');
     el.textContent = msg || '';
     el.classList.toggle('error', !!isError);
@@ -167,6 +175,7 @@
     try {
       status('Dossier inlezen…');
       var b = await leesDossier();
+      open(true);
       kaart = el('div', 'dv-item bezig');
       kaart.appendChild(el('p', 'dv-vraag', tekst));
       kaart.appendChild(el('p', 'dv-antwoord muted', 'Zoeken in het dossier…'));
@@ -195,7 +204,11 @@
       vraag($('dv-input').value);
     }
   });
-  document.addEventListener('sv-view', function (e) {
-    if (e.detail === 'dossier') setTimeout(function () { $('dv-input').focus(); }, 0);
+  // Focus shows the quick questions; ✕ hides the answers again (they stay
+  // in memory until another patient or the panel closes).
+  $('dv-input').addEventListener('focus', function () { open(true); });
+  $('dv-dicht').addEventListener('click', function () { open(false); });
+  $('dv-input').addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') { open(false); $('dv-input').blur(); }
   });
 })();

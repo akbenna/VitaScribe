@@ -141,11 +141,16 @@ def _parse_json_response(text: str) -> dict:
 
 
 async def genereer_soep(gesprek: str, llm_provider: Optional[str] = None,
-                        taal: Optional[str] = None, model: Optional[str] = None) -> SOEPResult:
-    """One SOEP call on a (corrected) conversation per speaker. Raises on failure."""
+                        taal: Optional[str] = None, model: Optional[str] = None,
+                        taalregel: Optional[str] = None) -> SOEPResult:
+    """One SOEP call on a (corrected) conversation per speaker. Raises on failure.
+
+    taalregel: replaces the language line from talen.py (the interpreter
+    brings its own: who spoke which language, and that it was translated)."""
+    regel = taalregel if taalregel is not None else talen.prompt_regel(talen.kies(taal))
     antwoord = await llm_service.complete(
         system_prompt=SOEP_SYSTEM_PROMPT,
-        user_prompt=talen.prompt_regel(talen.kies(taal)) + SOEP_USER_TEMPLATE.format(transcript=gesprek),
+        user_prompt=regel + SOEP_USER_TEMPLATE.format(transcript=gesprek),
         provider=llm_provider,
         json_mode=True,
         max_tokens=SOEP_MAX_TOKENS,
@@ -250,6 +255,7 @@ async def verwerk_transcript(
     llm_provider: str = None,
     bestandsgrootte: str = "",
     taal: Optional[str] = None,
+    taalregel: Optional[str] = None,
 ) -> PipelineResult:
     """Van transcript naar SOEP, decisief en aandachtspunten.
 
@@ -314,7 +320,7 @@ async def verwerk_transcript(
     # ── Step 2: SOEP Generation ──
     logger.info("pipeline.step", step="soep_generation")
     try:
-        result.soep = await genereer_soep(result.transcript, llm_provider, taal)
+        result.soep = await genereer_soep(result.transcript, llm_provider, taal, taalregel=taalregel)
         result.llm_provider = llm_provider or "default"
     except Exception as e:
         logger.error("pipeline.soep_error", error=str(e))
