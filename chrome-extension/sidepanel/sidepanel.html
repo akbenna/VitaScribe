@@ -32,9 +32,9 @@
   <div id="gevoelig-advies" class="gevoelig-advies" role="status" hidden></div>
 
   <nav class="views" role="tablist">
-    <button class="view-tab active" data-view="dictate" role="tab" aria-selected="true" title="Dicteren &amp; SOEP">Dicteren</button>
+    <button class="view-tab active" data-view="dictate" role="tab" aria-selected="true" title="Consult opnemen, dicteren en SOEP">Consult</button>
+    <button class="view-tab" data-view="tolk" role="tab" aria-selected="false" title="Tolk: arts en patiënt spreken om beurten; VitaScribe vertaalt en leest voor">Tolk</button>
     <button class="view-tab" data-view="letters" role="tab" aria-selected="false">Brieven</button>
-    <button class="view-tab" data-view="dossier" role="tab" aria-selected="false" title="Vraag iets aan het geopende dossier">Dossiervraag</button>
     <button class="view-tab" data-view="post" role="tab" aria-selected="false" title="Labuitslagen en brieven uit de Bricks-post beoordelen">Post</button>
   </nav>
 
@@ -216,6 +216,48 @@
   <p id="status" class="status" role="status"></p>
   </div>
 
+  <div id="view-tolk" class="view hidden">
+    <section class="lt-card tk-start" id="tk-start">
+      <h2>Tolkgesprek</h2>
+      <label class="lt-label" for="tk-taal">Taal van de patiënt</label>
+      <select id="tk-taal" class="lt-input"></select>
+      <p id="tk-taal-uitleg" class="lt-hint"></p>
+      <button id="tk-begin" class="btn primary lt-go" type="button">Start tolkgesprek</button>
+      <p class="lt-hint">Starten = de patiënt geeft toestemming voor opname en AI-vertaling. Bij slecht nieuws, ingrijpende
+        keuzes of twijfel: een professionele tolk.</p>
+    </section>
+
+    <section id="tk-gesprek" class="tk-gesprek hidden">
+      <div class="tk-kop">
+        <span id="tk-kop-taal" class="tk-kop-taal"></span>
+        <label class="lt-check tk-optie" title="Na een stilte van ruim een seconde stopt de beurt vanzelf">
+          <input type="checkbox" id="tk-auto" checked> Stop bij stilte</label>
+        <label class="lt-check tk-optie" title="Wat de patiënt zei ook in het Nederlands voorlezen">
+          <input type="checkbox" id="tk-nl-voorlezen" checked> Nederlands voorlezen</label>
+      </div>
+      <div class="tk-knoppen">
+        <button id="tk-arts" class="tk-knop arts" type="button" title="Spatie">
+          <span class="tk-knop-wie">Ik spreek</span><span class="tk-knop-taal">Nederlands · spatie</span></button>
+        <button id="tk-patient" class="tk-knop patient" type="button" title="Enter">
+          <span class="tk-knop-wie" id="tk-patient-wie">Patiënt spreekt</span><span class="tk-knop-taal" id="tk-patient-taal">· Enter</span></button>
+      </div>
+      <p id="tk-status" class="status tk-status" role="status" aria-live="polite"></p>
+      <div id="tk-beurten" class="tk-beurten" aria-live="polite"></div>
+      <div class="lt-row tk-eind">
+        <button id="tk-verslag" class="btn primary" type="button" title="SOEP uit het gesprek, in het tabblad Consult">Maak verslag</button>
+        <button id="tk-groot" class="btn" type="button" title="De laatste vertaling groot op het scherm, om aan de patiënt te laten zien">Toon groot</button>
+        <button id="tk-stop" class="btn ghost" type="button" title="Gesprek wissen; er wordt niets bewaard">Wissen</button>
+      </div>
+      <p class="note">De server bewaart geen opname en geen tekst. De vertaling is door AI gemaakt: bij twijfel staat er ⚠.
+        "Terug" laat zien wat de patiënt hoort, terugvertaald.</p>
+    </section>
+  </div>
+
+  <div id="tk-scherm" class="tk-scherm hidden" role="dialog" aria-label="Vertaling voor de patiënt">
+    <p id="tk-scherm-tekst" class="tk-scherm-tekst" dir="auto"></p>
+    <button id="tk-scherm-dicht" class="btn" type="button">Sluiten</button>
+  </div>
+
   <div id="view-letters" class="view hidden">
     <section class="lt-card">
       <h2><span class="lt-step">1</span> Dossier</h2>
@@ -326,33 +368,6 @@
     <p id="lt-status" class="status" role="status"></p>
   </div>
 
-  <div id="view-dossier" class="view hidden">
-    <section class="lt-card dv-card">
-      <div class="dv-kop">
-        <div>
-          <h2>Vraag het dossier</h2>
-          <p id="dv-bron" class="lt-hint">Open de patiënt in Bricks, met de onderdelen die ertoe doen (journaal, lab, correspondentie).</p>
-        </div>
-        <button id="dv-lees" class="btn small" title="Dossier opnieuw inlezen en tonen wat er meegaat">Inlezen</button>
-      </div>
-      <details id="dv-details" class="lt-preview hidden">
-        <summary>Toon precies wat er verstuurd wordt</summary>
-        <pre id="dv-preview"></pre>
-      </details>
-      <div id="dv-snel" class="chips dv-snel" aria-label="Snelle vragen"></div>
-      <form id="dv-form" class="dv-form">
-        <textarea id="dv-input" rows="2" maxlength="1000" spellcheck="true"
-                  placeholder="Bijv. Is er ooit een echo van de buik gedaan? Wanneer was de laatste HbA1c?"></textarea>
-        <button id="dv-go" class="btn primary" type="submit">Vraag</button>
-      </form>
-    </section>
-    <p id="dv-status" class="status" role="status"></p>
-    <div id="dv-antwoorden" class="dv-antwoorden" aria-live="polite"></div>
-    <p class="note">Zoekt alleen in wat nu in Bricks geopend is; bij elke vraag wordt het dossier opnieuw ingelezen.
-      Naam, BSN, geboortedatum en adres gaan er niet mee, datums wel. ✓ = de bron staat letterlijk in het dossier.
-      Geen advies: alleen wat er staat.</p>
-  </div>
-
   <div id="view-post" class="view hidden">
     <section class="lt-card">
       <div class="dv-kop">
@@ -397,6 +412,30 @@
       Voorstel: jij beslist.</p>
   </div>
 
+  <section id="dv-balk" class="dv-balk" aria-label="Vraag het dossier">
+    <div id="dv-paneel" class="dv-paneel hidden">
+      <div class="dv-kop">
+        <p id="dv-bron" class="lt-hint">Leest wat nu in Bricks in beeld staat: journaal, lab, correspondentie, of het bericht in de post.</p>
+        <button id="dv-lees" class="btn small" type="button" title="Dossier opnieuw inlezen en tonen wat er meegaat">Inlezen</button>
+        <button id="dv-dicht" class="icon-btn" type="button" title="Antwoorden verbergen" aria-label="Antwoorden verbergen">✕</button>
+      </div>
+      <details id="dv-details" class="lt-preview hidden">
+        <summary>Toon precies wat er verstuurd wordt</summary>
+        <pre id="dv-preview"></pre>
+      </details>
+      <div id="dv-snel" class="chips dv-snel" aria-label="Snelle vragen"></div>
+      <p id="dv-status" class="status" role="status"></p>
+      <div id="dv-antwoorden" class="dv-antwoorden" aria-live="polite"></div>
+      <p class="note">Naam, BSN, geboortedatum en adres gaan er niet mee, datums wel. ✓ = de bron staat letterlijk in het
+        dossier. Geen advies: alleen wat er staat.</p>
+    </div>
+    <form id="dv-form" class="dv-form">
+      <textarea id="dv-input" rows="1" maxlength="1000" spellcheck="true"
+                placeholder="Vraag het dossier… bijv. wanneer was de laatste HbA1c?"></textarea>
+      <button id="dv-go" class="btn primary" type="submit">Vraag</button>
+    </form>
+  </section>
+
   <footer class="footer">
     <a href="../help/handleiding.html" target="_blank" id="open-help"><strong>Handleiding</strong></a>
     <span class="sep">·</span>
@@ -436,6 +475,8 @@
   <script src="patient-ui.js"></script>
   <script src="meedenken-ui.js"></script>
   <script src="consult-ui.js"></script>
+  <script src="../lib/tolk.js"></script>
+  <script src="tolk-ui.js"></script>
   <script src="modus-ui.js"></script>
   <script src="../lib/gevoelig.js"></script>
   <script src="gevoelig-ui.js"></script>

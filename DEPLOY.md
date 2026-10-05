@@ -260,7 +260,7 @@ beleidsvoorstel conform NHG; bij een kweek het passende middel met oog op nierfu
 de episodes. Bij een brief: van, reden, conclusie en wat er van de huisarts verwacht wordt. Een bericht
 dat al beoordeeld is, komt uit het geheugen van het paneel. Kosten: ongeveer 1 à 2 cent per bericht.
 
-**Dossiervraag (derde tabblad).** Naast "Dicteren & SOEP" en "Brieven": stel een vraag aan het dossier dat
+**Dossiervraag (balk onderaan het zijpaneel, in elk tabblad).** Stel een vraag aan het dossier dat
 in Bricks open staat ("laatste kweken en resistentie?", "ooit een echo buik?"), of kies een snelle vraag.
 Bij elke vraag leest het paneel de geopende onderdelen opnieuw in; naam, BSN, geboortedatum, adres en
 contactgegevens gaan er niet mee, datums wel. Het antwoord noemt alleen wat er staat, met datum en een
@@ -478,3 +478,28 @@ niet onderbouwt, komt als `soep.markeringen` terug en staat geel gemarkeerd in
 het zijpaneel (vanaf extensie 2.15.0). Er wordt niets weggehaald of
 toegevoegd; de arts beslist. Mislukt de controle, dan blijft het verslag
 zonder markeringen staan. Kosten: ongeveer een halve cent per consult.
+
+### Tolk (vanaf extensie 2.16.0)
+
+Tabblad Tolk in het zijpaneel: arts en patiënt spreken om beurten, VitaScribe
+vertaalt elke beurt en leest hem voor. Endpoints onder `/api/v1/tolk`
+(`talen`, `beurt`, `spreek`, `verslag`); de server bewaart niets.
+
+- **Verstaan:** EU-modus Voxtral (`MISTRAL_API_KEY`), Claude-modus Deepgram
+  (`DEEPGRAM_API_KEY` of de eigen sleutel van de praktijk). Voxtral kent geen
+  Turks, Pools en Oekraïens; in de EU-modus wordt dan alleen de arts verstaan.
+  Marokkaans- en Syrisch-Arabisch gaan in de Claude-modus als eigen dialect
+  naar Deepgram (`ar-MA`, `ar-SY`).
+- **Vertalen:** het taalmodel van de modus (`phi_llm_provider`), snel model.
+- **Voorlezen:** Voxtral TTS van Mistral voor Nederlands, Arabisch, Duits,
+  Frans en Engels. Optioneel: `TOLK_TTS_MODEL` (standaard
+  `voxtral-mini-tts-latest`), `TOLK_STEM` of `TOLK_STEM_<TAAL>` (bijvoorbeeld
+  `TOLK_STEM_NL`) voor een vaste stem; zonder kiest de server er een uit de
+  lijst van Mistral. Lukt het niet, of is de taal Turks, Pools of Oekraïens,
+  dan leest de extensie voor met een stem die op de computer staat.
+- **Kosten:** per beurt een korte spraakherkenning en een kleine vertaling;
+  voorlezen ongeveer 1,6 cent per 1000 tekens. Een tolkgesprek van 15 minuten
+  kost enkele tientallen centen.
+- **Verslag:** "Maak verslag" stuurt de Nederlandse kant van het gesprek door
+  dezelfde pipeline als een opgenomen consult (in de EU-modus met
+  controleronde en markeringen).

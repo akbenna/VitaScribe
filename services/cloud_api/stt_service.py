@@ -376,18 +376,24 @@ async def transcribe_bytes(audio: bytes, provider: str, language: Optional[str] 
 
 
 async def _transcribe_voxtral(audio_path: Union[Path, bytes], language: Optional[str] = None,
-                              naam: str = "consult.webm") -> TranscriptResult:
+                              naam: str = "consult.webm", diarize: bool = True) -> TranscriptResult:
     """Transcribe using Mistral Voxtral Mini Transcribe, with speaker labels.
 
     Batch only: the recording is sent after the consult. Mistral keeps no
-    audio for training on the API (verify the DPA before patient use)."""
+    audio for training on the API (verify the DPA before patient use).
+
+    diarize=False: one speaker (an interpreter turn), so no speaker labels;
+    the Dutch medical vocabulary then only goes along for Dutch speech."""
     config = get_config()
     api_key = config.llm.mistral_api_key
     if not api_key:
         raise ValueError("MISTRAL_API_KEY niet geconfigureerd.")
     # A list value is sent as a repeated form field (context_bias=…&context_bias=…).
-    data = {"model": config.stt.voxtral_model, "diarize": "true",
-            "timestamp_granularities": "segment", "context_bias": voxtral_context_bias()}
+    data = {"model": config.stt.voxtral_model}
+    if diarize:
+        data.update({"diarize": "true", "timestamp_granularities": "segment"})
+    if diarize or _voxtral_taal(language) == "nl":
+        data["context_bias"] = voxtral_context_bias()
     taal = _voxtral_taal(language)
     if taal:
         data["language"] = taal

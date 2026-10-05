@@ -110,7 +110,7 @@ pip install -r tests/requirements-cloud.txt
 pytest -q
 
 # JavaScript in de extensie (koppeltabel Thuisarts, QR)
-node --test tests/js/thuisarts.test.js tests/js/dossiervraag.test.js tests/js/post.test.js
+node --test tests/js/thuisarts.test.js tests/js/dossiervraag.test.js tests/js/post.test.js tests/js/tolk.test.js
 ```
 
 De extensie heeft geen bouwstap en geen npm-afhankelijkheden: de proeven draaien
