@@ -142,12 +142,16 @@ def _parse_json_response(text: str) -> dict:
 
 async def genereer_soep(gesprek: str, llm_provider: Optional[str] = None,
                         taal: Optional[str] = None, model: Optional[str] = None,
-                        taalregel: Optional[str] = None) -> SOEPResult:
+                        taalregel: Optional[str] = None, huisstijl: bool = True) -> SOEPResult:
     """One SOEP call on a (corrected) conversation per speaker. Raises on failure.
 
     taalregel: replaces the language line from talen.py (the interpreter
     brings its own: who spoke which language, and that it was translated)."""
     regel = taalregel if taalregel is not None else talen.prompt_regel(talen.kies(taal))
+    if huisstijl:
+        # What VitaScribe learned from this doctor (leren.py): style and spelling, never content.
+        from . import leren
+        regel = await leren.huisstijl_prompt() + regel
     antwoord = await llm_service.complete(
         system_prompt=SOEP_SYSTEM_PROMPT,
         user_prompt=regel + SOEP_USER_TEMPLATE.format(transcript=gesprek),

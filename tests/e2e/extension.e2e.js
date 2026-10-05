@@ -70,6 +70,16 @@ function check(name, cond, extra) {
         : { spreker: 'arts', origineel: 'Heeft u koorts?', vertaling: 'Ateşiniz var mı?', terugvertaling: 'Heeft u koorts?',
             onzeker: false, twijfel: '', leeg: false }) });
     }
+    if (url.endsWith('/leren/soep')) return r.fulfill({ contentType: 'application/json', body: JSON.stringify({ gewijzigd_pct: 31.5,
+      voorstellen: [{ id: 7, soort: 'soep', taal: '', regel: "Schrijf in S geen 'patiënt geeft aan'.", van: '', naar: '', status: 'voorstel', aantal: 1 }] }) });
+    if (/\/leren\/regel\/\d+$/.test(url)) return r.fulfill({ contentType: 'application/json', body: '{"ok":true}' });
+    if (url.endsWith('/leren/tolk')) return r.fulfill({ contentType: 'application/json', body: '{"voorstellen":[]}' });
+    if (url.endsWith('/leren/overzicht')) return r.fulfill({ contentType: 'application/json', body: JSON.stringify({ opslag: 'register', afgewezen: 0,
+      regels: [{ id: 7, soort: 'soep', taal: '', regel: "Schrijf in S geen 'patiënt geeft aan'.", van: '', naar: '', status: 'actief', aantal: 2 },
+        { id: 8, soort: 'woord', taal: '', regel: 'meta prolol → metoprolol', van: 'meta prolol', naar: 'metoprolol', status: 'voorstel', aantal: 1 },
+        { id: 9, soort: 'tolk', taal: 'ar-MA', regel: 'Zeg voor bloeddruk: tension.', van: '', naar: '', status: 'actief', aantal: 1 }],
+      meting: [{ dag: '2026-09-28', soort: 'soep', aantal: 4, gewijzigd: 80, markeringen: 4, eenvoudiger: 0, weggehaald: 0 },
+        { dag: '2026-10-05', soort: 'soep', aantal: 4, gewijzigd: 24, markeringen: 1, eenvoudiger: 0, weggehaald: 0 }] }) });
     if (url.endsWith('/tolk/spreek')) return r.fulfill({ status: 404, contentType: 'application/json', body: '{"detail":"geen stem"}' });
     if (url.endsWith('/tolk/verslag')) return r.fulfill({ contentType: 'application/json', body: JSON.stringify({
       soep: { s: 'Koorts sinds 3 dagen. Consult in het Turks via AI-tolk.', o: '', e: 'Koorts', p: '', icpc_code: 'A03' },
@@ -400,6 +410,33 @@ function check(name, cond, extra) {
   await sleep(5000);
   check('terug naar het eerdere bericht: uit het geheugen, geen kosten', postReqs().length === 2 && (await panel.textContent('#po-sam')).startsWith('DM-lab'), postReqs().length);
   await panel.click('.view-tab[data-view="dictate"]');
+
+  console.log('Leren van aanpassingen');
+  await panel.evaluate(() => renderSoep({ s: 'Patiënt geeft aan dat hij hoest.', o: 'Pulm: VAG.', e: 'Hoest', p: 'Afwachten.' }));
+  await panel.evaluate(() => { document.querySelector('.soep-text[data-key="s"]').innerText = 'Hoest.'; });
+  await panel.click('#btn-soep-copy');
+  await sleep(600);
+  const ls = sent.filter((x) => x.url.endsWith('/leren/soep'))[0];
+  check('na kopiëren: concept en versie van de arts naar de server', ls && ls.body.concept.s === 'Patiënt geeft aan dat hij hoest.'
+    && ls.body.definitief.s === 'Hoest.' && ls.body.definitief.p === 'Afwachten.', ls && ls.body);
+  check('voorstel getoond onder het verslag', await panel.isVisible('#leer-kaart') && (await panel.textContent('#leer-lijst')).includes('patiënt geeft aan'));
+  await panel.click('#leer-lijst button:has-text("Onthoud")');
+  await sleep(400);
+  const lr = sent.filter((x) => /\/leren\/regel\/7$/.test(x.url))[0];
+  check('onthouden zet de regel aan', lr && lr.body.status === 'actief' && (await panel.textContent('#leer-lijst')).startsWith('stijlOnthouden'), lr && lr.body);
+  await panel.click('#btn-soep-copy');
+  await sleep(300);
+  check('hetzelfde deel leert maar één keer', sent.filter((x) => x.url.endsWith('/leren/soep')).length === 1);
+  const lp = await ctx.newPage();
+  lp.on('pageerror', (e) => errs.push(e.message));
+  await lp.goto(`chrome-extension://${id}/leren/leren.html`);
+  await sleep(700);
+  check('overzicht: stijl, woord (voorstel) en tolk per taal', (await lp.textContent('#lijst-soep')).includes('patiënt geeft aan')
+    && (await lp.getAttribute('#lijst-woord li', 'class')) === 'voorstel' && (await lp.textContent('#lijst-tolk')).includes('Marokkaans-Arabisch'));
+  check('trend: minder aanpassen dan in het begin', (await lp.textContent('#trend')).includes('van 20% naar 6%'), await lp.textContent('#trend'));
+  check('grafiek per week', (await lp.$$('#grafiek rect')).length === 2);
+  await lp.close();
+  await panel.click('#leer-dicht');
 
   console.log('Tolk');
   await page.goto('https://test.bfrcloud.com/patient');

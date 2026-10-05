@@ -40,7 +40,7 @@ import structlog
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel, Field
 
-from . import data_policy, pipeline, register, stt_service
+from . import data_policy, leren, pipeline, register, stt_service
 from .medical_vocabulary import correct_transcript_full
 from .beheer import CSP, _pagina, vereis_beheerder
 
@@ -170,6 +170,7 @@ async def _soep(gesprek: str, aanbieder: str, taal: Optional[str]) -> dict:
     try:
         # The same steps as a real consult: vocabulary, then the PHI model.
         verbeterd, _ = correct_transcript_full(gesprek)
+        leren.zet_eigenaar("")   # the speech test measures the system, not one doctor's style
         soep = await pipeline.genereer_soep(verbeterd, aanbieder, taal)
     except Exception as exc:  # one failing side does not hide the other
         logger.warning("spraaktest.soep_fout", error=type(exc).__name__)

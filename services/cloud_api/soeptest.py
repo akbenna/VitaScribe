@@ -41,7 +41,7 @@ import structlog
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
-from . import data_policy, icpc_controle, pipeline, register
+from . import data_policy, icpc_controle, leren, pipeline, register
 from .beheer import vereis_beheerder
 from .config import get_config
 from .medical_vocabulary import correct_transcript_full
@@ -222,6 +222,7 @@ async def _een(gesprek: str, aanbieder: str, taal: Optional[str], model: Optiona
     start = time.monotonic()
     try:
         verbeterd, _ = correct_transcript_full(gesprek)
+        leren.zet_eigenaar("")   # the test set measures the system, not one doctor's style
         soep = await pipeline.genereer_soep(verbeterd, aanbieder, taal, model=model)
     except Exception as exc:  # one failing model does not hide the other
         logger.warning("soeptest.fout", aanbieder=aanbieder, error=type(exc).__name__)

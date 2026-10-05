@@ -56,6 +56,13 @@ jouw verantwoordelijkheid (WGBO). Dat verandert niet door de software.
   wel spreken en laten voorlezen, maar het antwoord van de patiënt niet laten
   vertalen.
 
+## Wat VitaScribe van je leert
+
+VitaScribe stelt na invoegen regels voor uit wat je aanpaste. Keur alleen een
+**algemene** regel goed, nooit een met een naam, datum of gegeven van een
+patiënt. Kijk af en toe onder "Wat VitaScribe leerde" of je minder hoeft aan
+te passen, en zet een regel uit die niet klopt.
+
 ## Wat VitaScribe niet doet
 
 VitaScribe stelt geen diagnose, geeft geen behandeladvies en waarschuwt niet

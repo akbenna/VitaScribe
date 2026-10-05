@@ -122,3 +122,36 @@ CREATE TRIGGER vs_auditlog_rij BEFORE UPDATE OR DELETE ON vs_auditlog
 DROP TRIGGER IF EXISTS vs_auditlog_leeg ON vs_auditlog;
 CREATE TRIGGER vs_auditlog_leeg BEFORE TRUNCATE ON vs_auditlog
     FOR EACH STATEMENT EXECUTE FUNCTION vs_auditlog_bewaken();
+
+-- Wat VitaScribe per arts leert (leren.py): stijlregels voor de SOEP, woorden
+-- voor de spraakherkenning en afspraken voor de tolk. Nooit patiëntgegevens:
+-- alleen algemene regels, die de arts zelf goedkeurt.
+CREATE TABLE IF NOT EXISTS vs_leren (
+    id          BIGSERIAL PRIMARY KEY,
+    eigenaar    TEXT NOT NULL,
+    soort       TEXT NOT NULL,              -- soep | woord | tolk
+    taal        TEXT NOT NULL DEFAULT '',   -- bij tolk: de taal van de patiënt
+    sleutel     TEXT NOT NULL,              -- genormaliseerd, tegen dubbelen
+    regel       TEXT NOT NULL,
+    van         TEXT NOT NULL DEFAULT '',
+    naar        TEXT NOT NULL DEFAULT '',
+    status      TEXT NOT NULL DEFAULT 'voorstel',   -- voorstel | actief | afgewezen
+    aantal      INTEGER NOT NULL DEFAULT 1,
+    gemaakt     TIMESTAMPTZ NOT NULL DEFAULT now(),
+    bijgewerkt  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (eigenaar, soort, taal, sleutel)
+);
+
+-- Alleen getallen per arts per dag: hoeveel er werd aangepast, hoe vaak de tolk
+-- iets eenvoudiger moest zeggen. Om te zien of het leren werkt.
+CREATE TABLE IF NOT EXISTS vs_leermeting (
+    eigenaar     TEXT NOT NULL,
+    dag          DATE NOT NULL,
+    soort        TEXT NOT NULL,             -- soep | tolk
+    aantal       INTEGER NOT NULL DEFAULT 0,
+    gewijzigd    REAL NOT NULL DEFAULT 0,   -- som van de percentages
+    markeringen  INTEGER NOT NULL DEFAULT 0,
+    eenvoudiger  INTEGER NOT NULL DEFAULT 0,
+    weggehaald   INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (eigenaar, dag, soort)
+);

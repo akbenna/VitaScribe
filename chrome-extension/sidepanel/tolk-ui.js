@@ -39,7 +39,8 @@ window.SVTolkUI = (function () {
   }
 
   function bewaar() {
-    chrome.storage.session.set({ svTolk: { taal: tk.taal, gestart: tk.gestart, beurten: tk.beurten } }).catch(function () {});
+    chrome.storage.session.set({ svTolk: { taal: tk.taal, gestart: tk.gestart, beurten: tk.beurten,
+      eenvoudiger: tk.eenvoudiger || [], weggehaald: tk.weggehaald || 0 } }).catch(function () {});
   }
 
   async function aanvraag(pad, opties) {
@@ -157,6 +158,7 @@ window.SVTolkUI = (function () {
     }
     acties.appendChild(knop('✕', 'Verkeerd verstaan: deze beurt weghalen (gaat niet mee in het verslag)', function () {
       tk.beurten = tk.beurten.filter(function (x) { return x.id !== b.id; });
+      tk.weggehaald = (tk.weggehaald || 0) + 1;
       bewaar();
       teken();
     }));
@@ -480,6 +482,8 @@ window.SVTolkUI = (function () {
       var resp = await aanvraag('/api/v1/tolk/beurt', { method: 'POST', body: fd });
       if (!resp.ok) throw await fout(resp);
       var d = await resp.json();
+      // Remember what was too difficult and what worked: the interpreter learns from it (leren.py).
+      tk.eenvoudiger = (tk.eenvoudiger || []).concat([{ voor: b.vertaling || '', na: d.vertaling || '' }]);
       Object.assign(b, { vertaling: d.vertaling, terugvertaling: d.terugvertaling || '', onzeker: !!d.onzeker, twijfel: d.twijfel || '' });
       bewaar();
       teken();
@@ -515,6 +519,7 @@ window.SVTolkUI = (function () {
       });
       if (!resp.ok) throw await fout(resp);
       bericht = { fase: 'klaar', data: await resp.json() };
+      if (window.SVLerenUI) window.SVLerenUI.naTolk(tk.taal, beurten.length, tk.eenvoudiger || [], tk.weggehaald || 0);
     } catch (e) {
       bericht = { fase: 'fout', message: e.message };
     }

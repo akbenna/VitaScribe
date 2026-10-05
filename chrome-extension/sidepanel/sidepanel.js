@@ -449,8 +449,13 @@ var soepDelen = null;    // [{titel, s, o, e, p, icpc_code, icpc_titel}] or null
 var deelIdx = 0;
 var soepAlgemeen = {};   // aandachtspunten and markeringen, shared by all parts
 
+var soepConcept = [];      // the report as VitaScribe wrote it, per part: to learn from the doctor's edits
+
 function renderSoep(soep) {
   var delen = Array.isArray(soep.problemen) ? soep.problemen : [];
+  soepConcept = (delen.length > 1 ? delen : [soep]).map(function (d) {
+    return { s: d.s || '', o: d.o || '', e: d.e || '', p: d.p || '', geleerd: false };
+  });
   soepAlgemeen = { aandachtspunten: soep.aandachtspunten,
                    markeringen: Array.isArray(soep.markeringen) ? soep.markeringen : [] };
   var bar = document.getElementById('soep-delen');
@@ -805,6 +810,7 @@ els.soepBtn.addEventListener('click', function () { processText('soep'); });
 // Empty the SOEP block: report, parts, markings, checks, thinking along and
 // patient instruction. Used when a consult is closed or a new one starts.
 function wisSoepBlok() {
+  soepConcept = [];
   els.soep.classList.add('hidden');
   els.soepRows.textContent = '';
   soepDelen = null;
@@ -835,13 +841,26 @@ async function nieuwConsult() {
 }
 els.clear.addEventListener('click', nieuwConsult);
 document.getElementById('btn-consult-afsluiten').addEventListener('click', nieuwConsult);
-els.soepInsert.addEventListener('click', insertSoepPerField);
+// After inserting or copying: what the doctor changed is where VitaScribe learns (leren-ui.js).
+function leerVanDeel(deel) {
+  var concept = soepConcept[deel.index];
+  if (!concept || concept.geleerd || !window.SVLerenUI) return;
+  concept.geleerd = true;
+  var mark = (soepAlgemeen && soepAlgemeen.markeringen || []).filter(function (m) { return (m.probleem || 0) === deel.index; }).length;
+  window.SVLerenUI.naInvoegen(concept, deel.soep, mark);
+}
+els.soepInsert.addEventListener('click', async function () {
+  var deel = huidigDeel();
+  await insertSoepPerField();
+  leerVanDeel(deel);
+});
 document.getElementById('btn-map-fields').addEventListener('click', startFieldMapping);
 document.getElementById('map-fields-link').addEventListener('click', function (e) {
   e.preventDefault();
   startFieldMapping();
 });
 els.soepCopy.addEventListener('click', function () {
+  leerVanDeel(huidigDeel());
   navigator.clipboard.writeText(soepAsText()).then(function () { setStatus('SOEP gekopieerd.'); });
 });
 document.getElementById('btn-fix').addEventListener('click', function () { openLearnForm('fix'); });

@@ -287,7 +287,8 @@ async def relay_dictation(
         await ws.close(code=4500)
         return
 
-    user_terms = sanitize_user_keyterms(auth.get("keyterms"))
+    from . import leren
+    user_terms = sanitize_user_keyterms(leren.met_woorden(await leren.woordenlijst(), auth.get("keyterms")))
     upstream = None
     last_exc: Optional[Exception] = None
     # Deepgram counts keyterm tokens with its own tokenizer; codes and unusual

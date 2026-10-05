@@ -1,0 +1,36 @@
+:root { --text: #0f172a; --muted: #64748b; --brand: #047857; --ai: #4f46e5; --border: #e2e8f0; --bg: #f8fafc; --panel: #fff; }
+* { box-sizing: border-box; }
+body { margin: 0 auto; max-width: 760px; padding: 24px 16px 48px; font: 14px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  color: var(--text); background: var(--bg); }
+h1 { font-size: 22px; color: var(--brand); margin: 0 0 6px; }
+h2 { font-size: 15px; margin: 0 0 10px; color: var(--brand); }
+.lead { color: var(--muted); margin: 0 0 18px; }
+.kaart { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; margin-bottom: 14px; }
+.regels { list-style: none; margin: 0 0 10px; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.regels li { display: flex; gap: 8px; align-items: center; border: 1px solid var(--border); border-radius: 8px; padding: 6px 9px; }
+.regels li .tekst { flex: 1; }
+.regels li.voorstel { border-style: dashed; background: #f5f3ff; }
+.regels li .tag { font-size: 11px; color: var(--muted); white-space: nowrap; }
+.leeg { color: var(--muted); font-style: italic; margin: 0 0 10px; }
+.toevoegen { display: flex; gap: 6px; flex-wrap: wrap; }
+.toevoegen input, .toevoegen select { flex: 1; min-width: 140px; font: inherit; padding: 6px 8px; border: 1px solid var(--border); border-radius: 8px; }
+.btn { font: inherit; font-size: 13px; padding: 5px 11px; border: 1px solid var(--border); background: var(--panel); border-radius: 8px; cursor: pointer; }
+.btn.klein { font-size: 12px; padding: 2px 8px; }
+.btn.aan { background: var(--brand); color: #fff; border-color: var(--brand); }
+.taal { font-weight: 600; margin: 8px 0 4px; }
+.trend { font-weight: 600; margin: 0 0 10px; }
+.grafiek svg { width: 100%; height: auto; display: block; }
+.grafiek .staaf { fill: #a7f3d0; }
+.grafiek .as { stroke: var(--border); }
+.grafiek text { font-size: 10px; fill: var(--muted); }
+.weken { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 8px; }
+.weken th, .weken td { text-align: right; padding: 4px 6px; border-bottom: 1px solid var(--border); }
+.weken th:first-child, .weken td:first-child { text-align: left; }
+.noot { color: var(--muted); font-size: 12px; margin: 8px 0 0; }
+.status { min-height: 1.2em; color: var(--muted); }
+.status.fout { color: #b91c1c; }
+@media (prefers-color-scheme: dark) {
+  :root { --text: #e2e8f0; --muted: #94a3b8; --border: #334155; --bg: #0f172a; --panel: #111827; --brand: #34d399; }
+  .regels li.voorstel { background: #1e1b4b; }
+  .grafiek .staaf { fill: #065f46; }
+}
