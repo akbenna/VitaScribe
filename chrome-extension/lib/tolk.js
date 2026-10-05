@@ -4,7 +4,9 @@
  * - welke stem op deze computer een taal kan voorlezen (alleen stemmen die op
  *   de computer zelf staan: een online stem stuurt de tekst naar Microsoft of
  *   Google, en die staan niet in de lijst van verwerkers);
- * - wanneer een beurt vanzelf stopt (stilte na spraak);
+ * - wanneer een beurt vanzelf stopt (stilte na spraak), en in de handsfree-
+ *   stand wanneer iemand begint en ophoudt met praten;
+ * - een opname als WAV (handsfree);
  * - welke tekst van een beurt Nederlands is (voor de context en het verslag).
  */
 var SVTolk = (function () {
@@ -92,9 +94,72 @@ var SVTolk = (function () {
       : { tekst: beurt.vertaling, taal: 'nl' };
   }
 
+
+  /**
+   * Hands-free voice activity detection, one step per audio frame.
+   * Keeps a slowly adapting noise floor, so a humming fan or a quiet street
+   * does not count as speech. Returns {st, gebeurtenis: 'begin'|'einde'|null}.
+   * 'einde' comes after `stilteMs` of silence following at least `minSpraakMs`
+   * of speech, or when a turn reaches `maxMs`.
+   */
+  function vadStap(st, rms, nu, opties) {
+    var o = Object.assign({ minDrempel: 0.012, factor: 3.2, minSpraakMs: 350, stilteMs: 1200, maxMs: 45000, frameMs: 64,
+      kalibratieMs: 500 }, opties || {});
+    st = st || { ruis: null, kalibratie: 0, inSpraak: false, begin: 0, spraak: 0, laatsteGeluid: 0 };
+    // The first half second only measures the room: the quietest frame is the
+    // noise floor (robust when someone already talks during part of it).
+    if (st.kalibratie < o.kalibratieMs) {
+      st.kalibratie += o.frameMs;
+      st.ruis = Math.max(0.003, st.ruis === null ? rms : Math.min(st.ruis, rms));
+      return { st: st, gebeurtenis: null };
+    }
+    var drempel = Math.max(o.minDrempel, st.ruis * o.factor);
+    var luid = rms >= drempel;
+    if (!st.inSpraak) {
+      // Noise floor follows the room while nobody speaks.
+      st.ruis = st.ruis * 0.95 + Math.min(rms, drempel) * 0.05;
+      if (luid) {
+        st.spraak += o.frameMs;
+        if (st.spraak >= o.minSpraakMs) {
+          st.inSpraak = true;
+          st.begin = nu - st.spraak;
+          st.laatsteGeluid = nu;
+          return { st: st, gebeurtenis: 'begin' };
+        }
+      } else {
+        st.spraak = Math.max(0, st.spraak - o.frameMs);
+      }
+      return { st: st, gebeurtenis: null };
+    }
+    if (luid) st.laatsteGeluid = nu;
+    if (nu - st.laatsteGeluid >= o.stilteMs || nu - st.begin >= o.maxMs) {
+      st.inSpraak = false;
+      st.spraak = 0;
+      return { st: st, gebeurtenis: 'einde' };
+    }
+    return { st: st, gebeurtenis: null };
+  }
+
+  /** 16-bit PCM WAV from float samples (-1..1). */
+  function wav(samples, sampleRate) {
+    var n = samples.length;
+    var buf = new ArrayBuffer(44 + n * 2);
+    var v = new DataView(buf);
+    var tekst = function (o, t) { for (var i = 0; i < t.length; i++) v.setUint8(o + i, t.charCodeAt(i)); };
+    tekst(0, 'RIFF'); v.setUint32(4, 36 + n * 2, true); tekst(8, 'WAVE');
+    tekst(12, 'fmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+    v.setUint32(24, sampleRate, true); v.setUint32(28, sampleRate * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true);
+    tekst(36, 'data'); v.setUint32(40, n * 2, true);
+    for (var i = 0; i < n; i++) {
+      var x = Math.max(-1, Math.min(1, samples[i]));
+      v.setInt16(44 + i * 2, x < 0 ? x * 0x8000 : x * 0x7fff, true);
+    }
+    return new Uint8Array(buf);
+  }
+
   return {
     STEMTALEN: STEMTALEN, kiesStem: kiesStem, spraakTag: spraakTag, rtl: rtl, stemHint: stemHint,
-    stilteStap: stilteStap, nl: nl, verslagBeurten: verslagBeurten, eerder: eerder, voorlezen: voorlezen,
+    stilteStap: stilteStap, vadStap: vadStap, wav: wav, nl: nl, verslagBeurten: verslagBeurten, eerder: eerder, voorlezen: voorlezen,
   };
 })();
 if (typeof module !== 'undefined') module.exports = SVTolk;

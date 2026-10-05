@@ -109,6 +109,9 @@ window.SVTolkUI = (function () {
     $('tk-patient-wie').textContent = t.eigen ? t.eigen : 'Patiënt spreekt';
     $('tk-patient-taal').textContent = 'Patiënt · ' + t.naam + ' · Enter';
     $('tk-patient').disabled = !t.verstaat;
+    $('tk-handsfree').disabled = !t.verstaat;
+    $('tk-handsfree').title = t.verstaat ? 'Eén keer aanzetten; daarna hoort VitaScribe aan de taal wie er spreekt' : t.waarom;
+    if (!t.verstaat) stopHandsfree();
     $('tk-patient').title = t.verstaat ? 'Enter' : t.waarom;
     $('tk-verslag').disabled = SVTolk.verslagBeurten(tk.beurten).length === 0;
   }
@@ -134,7 +137,8 @@ window.SVTolkUI = (function () {
     var t = taalInfo(tk.taal) || {};
     var kaart = el('div', 'tk-beurt ' + b.spreker + (b.bezig ? ' bezig' : ''));
     kaart.dataset.id = b.id;
-    kaart.appendChild(el('span', 'tk-wie', b.spreker === 'arts' ? 'Arts' : 'Patiënt · ' + (t.naam || '')));
+    var wie = b.spreker === 'auto' ? 'Herkennen…' : b.spreker === 'arts' ? 'Arts' : 'Patiënt · ' + (t.naam || '');
+    kaart.appendChild(el('span', 'tk-wie', wie + (b.auto ? ' · herkend aan de taal' : '')));
     if (b.bezig) {
       kaart.appendChild(el('p', 'tk-orig', b.bezig));
       return kaart;
@@ -178,7 +182,7 @@ window.SVTolkUI = (function () {
   async function serverStem(tekst, taal) {
     var resp = await aanvraag('/api/v1/tolk/spreek', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tekst: tekst, taal: taal }),
+      body: JSON.stringify({ tekst: tekst, taal: taal, geslacht: $('tk-stem').value }),
     });
     if (!resp.ok) return null;
     return resp.blob();
@@ -223,16 +227,136 @@ window.SVTolkUI = (function () {
     if (!b || !b.vertaling) return;
     var wat = SVTolk.voorlezen(b, tk.taal);
     stopVoorlezen();
-    var info = wat.taal === 'nl' ? { stem: nlStem, naam: 'Nederlands' } : (taalInfo(wat.taal) || {});
-    if (info.stem === 'mistral') {
-      var blob = await serverStem(wat.tekst, wat.taal).catch(function () { return null; });
-      if (blob && blob.size) { await speelAf(blob); return; }
+    // Hands-free: let someone who is still speaking finish, then stop
+    // listening while the voice plays, or the interpreter would translate itself.
+    await wachtTotStil();
+    pauzeer(true);
+    try {
+      var info = wat.taal === 'nl' ? { stem: nlStem, naam: 'Nederlands' } : (taalInfo(wat.taal) || {});
+      if (info.stem && info.stem !== 'computer') {
+        var blob = await serverStem(wat.tekst, wat.taal).catch(function () { return null; });
+        if (blob && blob.size) { await speelAf(blob); return; }
+      }
+      var gelukt = await computerStem(wat.tekst, wat.taal);
+      if (!gelukt) {
+        status(SVTolk.stemHint(info.naam || wat.taal), true);
+        if (b.spreker === 'arts') toonGroot(wat.tekst, wat.taal);
+      }
+    } finally {
+      pauzeer(false);
     }
-    var gelukt = await computerStem(wat.tekst, wat.taal);
-    if (!gelukt) {
-      status(SVTolk.stemHint(info.naam || wat.taal), true);
-      if (b.spreker === 'arts') toonGroot(wat.tekst, wat.taal);
+  }
+
+  // ── Hands-free: one start, then the voices decide ──
+  //
+  // The microphone stays open. A turn begins when someone starts speaking and
+  // ends after a short silence (SVTolk.vadStap); half a second before the
+  // start is kept, so the first word is not cut off. The turn goes to the
+  // server as spreker=auto: the language tells who spoke. While a translation
+  // is read aloud, the microphone is ignored.
+
+  var hf = null;
+
+  function hfLabel(tekst, aan) {
+    var k = $('tk-handsfree');
+    k.querySelector('.tk-hf-status').textContent = tekst;
+    k.classList.toggle('hoort', !!aan);
+  }
+
+  function pauzeer(aan) {
+    if (!hf) return;
+    if (aan) {
+      hf.pauze = true;
+      hf.preroll = [];
+      hfLabel('🔊 leest voor…');
+    } else {
+      setTimeout(function () {
+        if (!hf) return;
+        hf.pauze = false;
+        hf.st = null;   // fresh start: the voice is not a speaker
+        hfLabel('luistert');
+      }, 350);
     }
+  }
+
+  function wachtTotStil() {
+    return new Promise(function (klaar) {
+      var tot = Date.now() + 10000;
+      (function kijk() {
+        if (!hf || !hf.segment || Date.now() > tot) return klaar();
+        setTimeout(kijk, 100);
+      })();
+    });
+  }
+
+  function stuurSegment(frames, rate) {
+    var n = frames.reduce(function (t, f) { return t + f.length; }, 0);
+    var alles = new Float32Array(n);
+    var o = 0;
+    frames.forEach(function (f) { alles.set(f, o); o += f.length; });
+    verwerk('auto', new Blob([SVTolk.wav(alles, rate)], { type: 'audio/wav' }), 'beurt.wav');
+  }
+
+  async function startHandsfree() {
+    if (hf) return;
+    if (window.SVConsultUI && window.SVConsultUI.bezig()) { status('Er loopt een consultopname; stop die eerst.', true); return; }
+    if (typeof state !== 'undefined' && state !== 'idle') { status('Stop eerst het dicteren.', true); return; }
+    stopBeurt();
+    var config = await getConfig();
+    var stream;
+    try {
+      stream = await openMicrophone(config.micDevice);   // echo cancellation on
+    } catch (e) {
+      status(e.message, true);
+      return;
+    }
+    var ctx = new AudioContext({ sampleRate: 16000 });
+    var bron = ctx.createMediaStreamSource(stream);
+    var proc = ctx.createScriptProcessor(1024, 1, 1);
+    var frameMs = 1024 / ctx.sampleRate * 1000;
+    hf = { stream: stream, ctx: ctx, proc: proc, st: null, preroll: [], segment: null, pauze: false };
+    proc.onaudioprocess = function (e) {
+      if (!hf || hf.pauze) return;
+      var frame = new Float32Array(e.inputBuffer.getChannelData(0));
+      var som = 0;
+      for (var i = 0; i < frame.length; i++) som += frame[i] * frame[i];
+      var r = SVTolk.vadStap(hf.st, Math.sqrt(som / frame.length), Date.now(), { frameMs: frameMs });
+      hf.st = r.st;
+      if (r.gebeurtenis === 'begin') {
+        hf.segment = hf.preroll.concat([frame]);
+        hf.preroll = [];
+        hfLabel('● hoort spraak…', true);
+      } else if (hf.segment) {
+        hf.segment.push(frame);
+        if (r.gebeurtenis === 'einde') {
+          var seg = hf.segment;
+          hf.segment = null;
+          hfLabel('luistert');
+          stuurSegment(seg, ctx.sampleRate);
+        }
+      } else {
+        hf.preroll.push(frame);
+        if (hf.preroll.length > Math.ceil(600 / frameMs)) hf.preroll.shift();
+      }
+    };
+    bron.connect(proc);
+    proc.connect(ctx.destination);   // a ScriptProcessor only runs when connected; it outputs silence
+    $('tk-handsfree').classList.add('aan');
+    $('tk-gesprek').classList.add('handsfree');
+    hfLabel('luistert');
+    status('Handsfree: praat gewoon om beurten. VitaScribe hoort aan de taal wie er spreekt.');
+  }
+
+  function stopHandsfree() {
+    if (!hf) return;
+    var h = hf;
+    hf = null;
+    try { h.proc.disconnect(); } catch (e) { /* ignore */ }
+    h.stream.getTracks().forEach(function (t) { t.stop(); });
+    h.ctx.close().catch(function () {});
+    $('tk-handsfree').classList.remove('aan', 'hoort');
+    $('tk-gesprek').classList.remove('handsfree');
+    $('tk-handsfree').querySelector('.tk-hf-status').textContent = 'uit';
   }
 
   // ── Recording a turn ──
@@ -305,8 +429,9 @@ window.SVTolkUI = (function () {
   }
 
   // One turn after the other, so the context and the reading aloud keep their order.
-  function verwerk(spreker, blob) {
-    var b = { id: 'b' + (++volgnummer) + '-' + Date.now(), spreker: spreker, bezig: 'Vertalen…' };
+  function verwerk(spreker, blob, naam) {
+    var b = { id: 'b' + (++volgnummer) + '-' + Date.now(), spreker: spreker,
+      bezig: spreker === 'auto' ? 'Verstaan en vertalen…' : 'Vertalen…' };
     tk.beurten.push(b);
     teken();
     status('');
@@ -314,7 +439,7 @@ window.SVTolkUI = (function () {
     bezigMet = bezigMet.then(async function () {
       try {
         var fd = new FormData();
-        fd.append('audio', blob, 'beurt.webm');
+        fd.append('audio', blob, naam || 'beurt.webm');
         fd.append('spreker', spreker);
         fd.append('taal', tk.taal);
         fd.append('consent', 'true');
@@ -329,11 +454,11 @@ window.SVTolkUI = (function () {
           teken();
           return;
         }
-        Object.assign(b, { origineel: d.origineel, vertaling: d.vertaling, terugvertaling: d.terugvertaling || '',
-          onzeker: !!d.onzeker, twijfel: d.twijfel || '' });
+        Object.assign(b, { spreker: d.spreker || spreker, auto: spreker === 'auto', origineel: d.origineel,
+          vertaling: d.vertaling, terugvertaling: d.terugvertaling || '', onzeker: !!d.onzeker, twijfel: d.twijfel || '' });
         bewaar();
         teken();
-        if (spreker === 'arts' || $('tk-nl-voorlezen').checked) await leesVoor(b);
+        if (b.spreker === 'arts' || $('tk-nl-voorlezen').checked) await leesVoor(b);
       } catch (e) {
         tk.beurten = tk.beurten.filter(function (x) { return x !== b; });
         teken();
@@ -397,6 +522,7 @@ window.SVTolkUI = (function () {
   }
 
   function wis() {
+    stopHandsfree();
     stopBeurt();
     stopVoorlezen();
     tk = { taal: tk.taal, gestart: false, beurten: [] };
@@ -413,12 +539,23 @@ window.SVTolkUI = (function () {
     tk = { taal: $('tk-taal').value, gestart: true, beurten: [] };
     bewaar();
     teken();
-    status('Tik op "Ik spreek" (spatie) of op de knop van de patiënt (Enter).');
+    var t = taalInfo(tk.taal);
+    if (t && t.verstaat) startHandsfree();
+    else status('Tik op "Ik spreek" (spatie). ' + (t ? t.waarom : ''));
   });
   // Blur after a click, so a later space or Enter does not press the button a second time.
   $('tk-arts').addEventListener('click', function () { this.blur(); startBeurt('arts'); });
   $('tk-patient').addEventListener('click', function () { this.blur(); startBeurt('patient'); });
-  $('tk-verslag').addEventListener('click', maakVerslag);
+  $('tk-verslag').addEventListener('click', function () { stopHandsfree(); maakVerslag(); });
+  $('tk-handsfree').addEventListener('click', function () {
+    this.blur();
+    if (hf) { stopHandsfree(); status('Handsfree uit. Gebruik de knoppen, of zet handsfree weer aan.'); }
+    else startHandsfree();
+  });
+  try { $('tk-stem').value = localStorage.getItem('svTolkStem') || 'vrouw'; } catch (e) { /* ignore */ }
+  $('tk-stem').addEventListener('change', function () {
+    try { localStorage.setItem('svTolkStem', this.value); } catch (e) { /* ignore */ }
+  });
   $('tk-stop').addEventListener('click', function () {
     if (!tk.beurten.length || window.confirm('Dit tolkgesprek wissen?')) wis();
   });
@@ -435,6 +572,7 @@ window.SVTolkUI = (function () {
     var doel = e.target;
     if (doel && (doel.tagName === 'TEXTAREA' || doel.tagName === 'INPUT' || doel.tagName === 'SELECT' || doel.isContentEditable)) return;
     if (e.key === 'Escape' && !$('tk-scherm').classList.contains('hidden')) { $('tk-scherm').classList.add('hidden'); return; }
+    if (hf) return;   // hands-free: the voices decide, keys do nothing
     if (e.code === 'Space' || e.key === ' ') { e.preventDefault(); startBeurt('arts'); }
     else if (e.key === 'Enter') { e.preventDefault(); startBeurt('patient'); }
   });

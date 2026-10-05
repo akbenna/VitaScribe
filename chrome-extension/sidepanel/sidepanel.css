@@ -366,3 +366,14 @@ body.consult-running .consult { border-color: var(--rec); }
   align-items: center; justify-content: center; gap: 20px; padding: 20px; }
 .tk-scherm-tekst { font-size: 30px; line-height: 1.35; font-weight: 600; text-align: center; margin: 0; white-space: pre-wrap; }
 body.consult-running .dv-balk { border-top-color: var(--rec); }
+.tk-handsfree { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; padding: 10px 14px;
+  border-radius: 12px; border: 2px solid var(--border); background: var(--panel); font: inherit; cursor: pointer; }
+.tk-hf-titel { font-weight: 700; }
+.tk-hf-status { font-size: 13px; color: var(--muted); }
+.tk-handsfree.aan { border-color: var(--brand); background: #ecfdf5; }
+.tk-handsfree.aan .tk-hf-status { color: var(--brand-dark); font-weight: 600; }
+.tk-handsfree.hoort { border-color: var(--rec); background: #fef2f2; }
+.tk-handsfree.hoort .tk-hf-status { color: var(--rec); }
+.tk-handsfree:disabled { opacity: .5; cursor: default; }
+.tk-gesprek.handsfree .tk-knoppen { display: none; }
+.tk-stem { font: inherit; font-size: 12px; padding: 2px 4px; border: 1px solid var(--border); border-radius: 6px; background: var(--panel); }
