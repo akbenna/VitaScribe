@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wat VitaScribe leerde</title>
+  <link rel="stylesheet" href="leren.css">
+</head>
+<body>
+  <header>
+    <h1>Wat VitaScribe van jou leerde</h1>
+    <p class="lead">Uit wat je aanpast voordat je invoegt, haalt VitaScribe algemene regels: hoe jij schrijft, welke woorden
+      de spraakherkenning verkeerd hoort, hoe de tolk iets het best zegt. Er wordt nooit iets over een patiënt bewaard.
+      Alleen regels die je onthoudt, gaan mee; een woord ook vanzelf als je het drie keer zo verbeterde.</p>
+  </header>
+
+  <section class="kaart">
+    <h2>Wordt het beter?</h2>
+    <p id="trend" class="trend"></p>
+    <div id="grafiek" class="grafiek" role="img" aria-label="Percentage aangepast per consult, per week"></div>
+    <table id="weken" class="weken"></table>
+    <p class="noot">Alleen getallen: hoeveel procent je per consult aanpaste, hoeveel gele markeringen er waren, en hoe vaak
+      de tolk iets eenvoudiger moest zeggen.</p>
+  </section>
+
+  <section class="kaart">
+    <h2>Huisstijl van je SOEP</h2>
+    <ul id="lijst-soep" class="regels"></ul>
+    <form class="toevoegen" data-soort="soep">
+      <input name="regel" maxlength="200" placeholder="Bijv. Schrijf lateraliteit als li en re.">
+      <button class="btn" type="submit">Toevoegen</button>
+    </form>
+  </section>
+
+  <section class="kaart">
+    <h2>Woorden voor de spraakherkenning</h2>
+    <ul id="lijst-woord" class="regels"></ul>
+    <form class="toevoegen" data-soort="woord">
+      <input name="van" maxlength="60" placeholder="Zo verstaat hij het (bijv. furabit)">
+      <input name="naar" maxlength="60" placeholder="Zo hoort het (bijv. Furabid)">
+      <button class="btn" type="submit">Toevoegen</button>
+    </form>
+  </section>
+
+  <section class="kaart">
+    <h2>Afspraken voor de tolk</h2>
+    <div id="lijst-tolk"></div>
+    <form class="toevoegen" data-soort="tolk">
+      <select name="taal">
+        <option value="ar-MA">Marokkaans-Arabisch</option>
+        <option value="ar-SY">Syrisch-Arabisch</option>
+        <option value="ar">Arabisch</option>
+        <option value="tr">Turks</option>
+        <option value="pl">Pools</option>
+        <option value="uk">Oekraïens</option>
+        <option value="de">Duits</option>
+        <option value="fr">Frans</option>
+        <option value="en">Engels</option>
+      </select>
+      <input name="regel" maxlength="200" placeholder="Bijv. Zeg voor bloeddruk: tension.">
+      <button class="btn" type="submit">Toevoegen</button>
+    </form>
+  </section>
+
+  <p id="status" class="status" role="status"></p>
+  <p class="noot" id="opslag"></p>
+
+  <script src="../lib/modus.js"></script>
+  <script src="../lib/praktijk.js"></script>
+  <script src="../lib/instellingen.js"></script>
+  <script src="../lib/leren.js"></script>
+  <script src="leren.js"></script>
+</body>
+</html>

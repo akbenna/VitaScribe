@@ -62,6 +62,8 @@ Zie stuk 02 (register) en stuk 05 (subverwerkers).
 | Geluid | Browser → server (Railway, NL) → Voxtral (Mistral, FR) | Server: nee. Mistral: volgens de overeenkomst, met ZDR: nee |
 | Tekst en verslag | Server → Mistral Large → server → browser | Server: nee. Browser: werkgeheugen tot "Nieuw consult" |
 | Tolk: beurt (geluid en tekst) | Browser → server → Voxtral (verstaan) → Mistral Large (vertalen) → Voxtral TTS of stem op de computer (voorlezen) | Server: nee. Browser: werkgeheugen tot "Wissen" of "Consult afsluiten" |
+| Leren: concept en aangepaste versie | Browser → server → taalmodel van de modus (regels afleiden) | Teksten: nee. Alleen algemene regels die de arts goedkeurt, per arts, in het register |
+| Leren: meting | Server, database bij Railway | Getallen per dag, zonder inhoud |
 | Auditlog | Server, database bij Railway | 5 jaar, zonder inhoud |
 | Definitief verslag | Bricks, door de arts | WGBO: 20 jaar |
 
@@ -114,6 +116,7 @@ in hoofdstuk 4.
 | R9 | Een verslag blijft op een gedeelde computer staan voor de volgende gebruiker | laag | midden | laag |
 | R10 | Te veel vertrouwen op de software (automation bias) | midden | midden | midden |
 | R11 | Een vertaling van de tolk is onjuist, en arts of patiënt begrijpt iets anders dan bedoeld | midden | hoog | midden |
+| R12 | Een geleerde regel bevat toch een patiëntgegeven, of stuurt verslagen de verkeerde kant op | laag | midden | laag |
 
 ## 4 Maatregelen
 
@@ -130,6 +133,7 @@ in hoofdstuk 4.
 | R9 | Het verslag staat alleen in `chrome.storage.session`, dus in het werkgeheugen. De knop "Consult afsluiten" wist het verslag en de opname. Elke gebruiker heeft een eigen Windows-account `[controleren]`. |
 | R10 | Werkinstructie (stuk 09): elk verslag lezen, en de gele markeringen eerst. Periodiek steekproeven in de eigen verslagen. |
 | R11 | Terugvertaling onder elke zin van de arts; ⚠ bij twijfel over het verstaan; knop "Eenvoudiger"; vertalen naar gewone woorden zonder iets toe te voegen. Bij slecht nieuws, ingrijpende keuzes of twijfel een professionele tolk (stuk 09). Het verslag vermeldt dat het consult via een AI-tolk ging. |
+| R12 | Het taalmodel krijgt de opdracht geen patiëntgegevens in een regel te zetten; de server filtert datums en identificatoren; een stijl- of tolkregel gaat pas mee na goedkeuring door de arts; alles is te zien en te verwijderen onder "Wat VitaScribe leerde". De testset draait altijd zonder persoonlijke regels; de weekmeting laat zien of het verslag beter of slechter wordt. |
 
 ## 5 Conclusie en besluit
 

@@ -525,3 +525,22 @@ vertaalt elke beurt en leest hem voor. Endpoints onder `/api/v1/tolk`
 - **Verslag:** "Maak verslag" stuurt de Nederlandse kant van het gesprek door
   dezelfde pipeline als een opgenomen consult (in de EU-modus met
   controleronde en markeringen).
+
+### Leren per arts (vanaf extensie 2.18.0)
+
+`/api/v1/leren`: na invoegen of kopiëren stuurt de extensie het concept en de
+aangepaste versie; het taalmodel van de modus leidt er algemene regels uit af
+(huisstijl, verkeerd verstane woorden). Alleen die regels worden bewaard
+(`vs_leren`, per arts: `gebruiker:<id>` uit het register, of de naam uit
+`API_USERS`), plus getallen per dag (`vs_leermeting`). Een stijl- of tolkregel
+gaat mee na goedkeuring; een woord ook vanzelf na drie keer. Gebruik:
+
+- SOEP (consult, dictaat, tolk): "HUISSTIJL VAN DEZE ARTS" en "JUISTE SPELLING"
+  in de opdracht. De testset en de spraaktest draaien zonder.
+- Spraakherkenning: geleerde woorden eerst in Voxtral `context_bias` en in de
+  Deepgram-keyterms (dicteren, live consult).
+- Tolk: afspraken per taal in elke vertaling.
+
+Zonder `DATABASE_URL` staat het geleerde in het geheugen en is het weg na een
+herstart. Een gedeelde sleutel (`API_KEYS`) leert voor iedereen samen: geef
+elke arts een eigen sleutel.

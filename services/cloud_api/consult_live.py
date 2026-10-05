@@ -240,7 +240,8 @@ async def volg_consult(
         await ws.close(code=4500)
         return
 
-    user_terms = sanitize_user_keyterms(auth.get("keyterms"))
+    from . import leren
+    user_terms = sanitize_user_keyterms(leren.met_woorden(await leren.woordenlijst(), auth.get("keyterms")))
     taal = talen.kies(auth.get("taal"))
     upstream = None
     last_exc: Optional[Exception] = None

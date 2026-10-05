@@ -393,7 +393,10 @@ async def _transcribe_voxtral(audio_path: Union[Path, bytes], language: Optional
     if diarize:
         data.update({"diarize": "true", "timestamp_granularities": "segment"})
     if diarize or _voxtral_taal(language) == "nl":
-        data["context_bias"] = voxtral_context_bias()
+        # Words this doctor taught VitaScribe first (leren.py), then the standard list.
+        from . import leren
+        geleerd = [w for w in await leren.woordenlijst() if w and not re.search(r"[\s,]", w) and len(w) <= 40]
+        data["context_bias"] = list(dict.fromkeys(geleerd + voxtral_context_bias()))[:MAX_CONTEXT_BIAS]
     taal = _voxtral_taal(language)
     if taal:
         data["language"] = taal

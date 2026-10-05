@@ -189,7 +189,15 @@ def _omgevingstabel() -> Dict[str, str]:
 
 
 async def identificeer(sleutel: Optional[str], praktijk_kop: Optional[str] = None) -> Identiteit:
-    """De identiteit bij een sleutel, of LicentieFout met een melding voor de arts."""
+    """De identiteit bij een sleutel, of LicentieFout met een melding voor de arts.
+    Zet ook voor wie wat VitaScribe leert (leren.py: per arts)."""
+    ident = await _identificeer(sleutel, praktijk_kop)
+    from . import leren
+    leren.zet_eigenaar(f"gebruiker:{ident.gebruiker_id}" if ident.gebruiker_id else f"naam:{ident.label}")
+    return ident
+
+
+async def _identificeer(sleutel: Optional[str], praktijk_kop: Optional[str] = None) -> Identiteit:
     tabel = _omgevingstabel()
     if not tabel and not register.actief():
         from .auth import open_mode

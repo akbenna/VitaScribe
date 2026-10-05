@@ -213,6 +213,14 @@
     <p class="note">Controleer altijd voor opslaan. De tekst is geredigeerd en geordend; er is niets bijverzonnen. Twijfel staat als [?].</p>
   </section>
 
+  <section id="leer-kaart" class="leer-kaart hidden" aria-live="polite">
+    <div class="leer-kop"><strong>VitaScribe leerde van je aanpassing</strong>
+      <button id="leer-dicht" class="icon-btn" type="button" aria-label="Sluiten">✕</button></div>
+    <ul id="leer-lijst" class="leer-lijst"></ul>
+    <p class="note">Alleen wat je onthoudt, gaat voortaan mee; niets over deze patiënt. Alles terugzien en aanpassen:
+      <a href="#" id="leer-alles">wat VitaScribe leerde</a>.</p>
+  </section>
+
   <p id="status" class="status" role="status"></p>
   </div>
 
@@ -460,6 +468,8 @@
     <span class="sep">·</span>
     <a href="#" id="map-fields-link">S/O/E/P-velden koppelen</a>
     <span class="sep">·</span>
+    <a href="#" id="open-leren" title="Wat VitaScribe van jouw aanpassingen leerde, en of het beter wordt">Wat VitaScribe leerde</a>
+    <span class="sep">·</span>
     <a href="#" id="open-settings">Instellingen</a>
     <span class="sep">·</span>
     <a href="#" id="open-beheer" title="Beheerpagina van de VitaScribe-server (spraaktest, SOEP-test, licenties)">Beheer</a>
@@ -494,6 +504,7 @@
   <script src="consult-ui.js"></script>
   <script src="../lib/tolk.js"></script>
   <script src="tolk-ui.js"></script>
+  <script src="leren-ui.js"></script>
   <script src="modus-ui.js"></script>
   <script src="../lib/gevoelig.js"></script>
   <script src="gevoelig-ui.js"></script>

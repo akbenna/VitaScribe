@@ -380,3 +380,10 @@ body.consult-running .dv-balk { border-top-color: var(--rec); }
 .tk-eigen { font-size: 13px; }
 .tk-eigen summary { cursor: pointer; color: var(--brand-dark); font-weight: 600; }
 .tk-eigen[open] { display: flex; flex-direction: column; gap: 6px; }
+.leer-kaart { background: #f5f3ff; border: 1px solid #c7d2fe; border-radius: 10px; padding: 9px 11px; display: flex; flex-direction: column; gap: 6px; }
+.leer-kop { display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: var(--ai); }
+.leer-lijst { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
+.leer-lijst li { display: flex; gap: 6px; align-items: flex-start; font-size: 13px; }
+.leer-lijst li span { flex: 1; }
+.leer-lijst li .leer-soort { flex: none; font-size: 10px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); padding-top: 2px; }
+.leer-lijst li.klaar { color: var(--muted); }

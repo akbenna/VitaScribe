@@ -192,10 +192,10 @@ class Eerder(BaseModel):
 
 
 def vertaal_prompts(tekst: str, spreker: str, taal: Taal, eerder: List[Eerder],
-                    eenvoudiger: bool = False) -> "tuple[str, str]":
+                    eenvoudiger: bool = False, afspraken: str = "") -> "tuple[str, str]":
     bron, doel = (ARTS_TAAL, taal) if spreker == "arts" else (taal, ARTS_TAAL)
     system = VERTAAL_SYSTEM.format(bron=bron.prompt, doel=doel.prompt,
-                                   eenvoudiger=EENVOUDIGER if eenvoudiger else "")
+                                   eenvoudiger=(EENVOUDIGER if eenvoudiger else "") + afspraken)
     delen = []
     if eerder:
         regels = [f"{'Arts' if e.spreker == 'arts' else 'Patiënt'}: {e.nl.strip()}" for e in eerder[-MAX_EERDER:]]
@@ -217,7 +217,8 @@ def _parse(tekst: str) -> dict:
 
 
 async def vertaal(tekst: str, spreker: str, taal: Taal, eerder: List[Eerder], eenvoudiger: bool = False) -> dict:
-    system, user = vertaal_prompts(tekst, spreker, taal, eerder, eenvoudiger)
+    from . import leren
+    system, user = vertaal_prompts(tekst, spreker, taal, eerder, eenvoudiger, await leren.tolk_prompt(taal.code))
     raw = await llm_service.complete(system, user, provider=data_policy.phi_llm_provider(), json_mode=True,
                                      max_tokens=VERTAAL_MAX_TOKENS, json_schema=VERTAAL_SCHEMA)
     data = _parse(raw)
@@ -285,9 +286,10 @@ async def kandidaten(audio: bytes, patient: Taal, sleutel: Optional[str],
     return uit
 
 
-def vertaal_auto_prompts(kand: List["tuple[str, str]"], patient: Taal, eerder: List[Eerder]) -> "tuple[str, str]":
+def vertaal_auto_prompts(kand: List["tuple[str, str]"], patient: Taal, eerder: List[Eerder],
+                         afspraken: str = "") -> "tuple[str, str]":
     dubbel = ", twee keer: " + " en ".join(n for n, _ in kand) if len(kand) > 1 else ""
-    system = VERTAAL_AUTO_SYSTEM.format(patient=patient.naam, doel=patient.prompt, dubbel=dubbel)
+    system = VERTAAL_AUTO_SYSTEM.format(patient=patient.naam, doel=patient.prompt, dubbel=dubbel) + afspraken
     delen = []
     if eerder:
         regels = [f"{'Arts' if e.spreker == 'arts' else 'Patiënt'}: {e.nl.strip()}" for e in eerder[-MAX_EERDER:]]
@@ -298,7 +300,8 @@ def vertaal_auto_prompts(kand: List["tuple[str, str]"], patient: Taal, eerder: L
 
 
 async def vertaal_auto(kand: List["tuple[str, str]"], patient: Taal, eerder: List[Eerder]) -> dict:
-    system, user = vertaal_auto_prompts(kand, patient, eerder)
+    from . import leren
+    system, user = vertaal_auto_prompts(kand, patient, eerder, await leren.tolk_prompt(patient.code))
     raw = await llm_service.complete(system, user, provider=data_policy.phi_llm_provider(), json_mode=True,
                                      max_tokens=VERTAAL_MAX_TOKENS, json_schema=VERTAAL_AUTO_SCHEMA)
     data = _parse(raw)
