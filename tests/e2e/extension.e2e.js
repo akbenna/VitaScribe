@@ -94,6 +94,8 @@ function check(name, cond, extra) {
         eu_probleem: euToegestaan ? null : 'Op de server is geen Mistral-sleutel ingesteld.' }) });
     }
     if (url.endsWith('/letters/extract')) return r.fulfill({ contentType: 'application/json', body: JSON.stringify({ text: 'Journaal\nHoofdpijn\nMedicatie\nParacetamol' }) });
+    if (url.endsWith('/letters/generate') && body && body.kind === 'verwijzing') return r.fulfill({ contentType: 'text/plain; charset=utf-8',
+      body: 'Geachte collega,\n\n**Reden van verwijzing en vraagstelling**\nRecidiverende UWI.\n\n**Anamnese en beloop**\n[aanvullen: aantal UWI afgelopen jaar]\n\nMet collegiale groet,\n\n[Naam huisarts]' });
     if (url.endsWith('/letters/generate')) return r.fulfill({ contentType: 'text/plain; charset=utf-8', body: LETTER });
     if (url.endsWith('/dictation/process')) return r.fulfill({ contentType: 'application/json', body: JSON.stringify({ mode: 'soep', soep: {
       s: '2 wk hoesten, gebruikt meta prolol 50 mg', o: 'RR 150/90 mmHg', e: 'Pneumonie', p: 'Amoxicilline 3dd 500 mg', icpc_code: 'R81', icpc_titel: 'Pneumonie',
@@ -283,7 +285,8 @@ function check(name, cond, extra) {
   const secs = await panel.$$eval('.lt-sec span:nth-child(2)', (e) => e.map((x) => x.textContent));
   check('onderdelen uit Bricks, ook uit ingebed frame', ['Journaal', 'Medicatie', 'Correspondentie', 'Lab'].every((s) => secs.includes(s)), secs);
   const prev = await panel.textContent('#lt-preview');
-  check('preview zonder naam/BSN/telefoon/postcode/datums', !/Pieter|123456789|12345678|6041 AB|14-05-2024/.test(prev), prev.slice(0, 200));
+  check('preview zonder naam/BSN/telefoon/postcode/geboortedatum', !/Pieter|123456789|12345678|6041 AB|12-03-1961/.test(prev), prev.slice(0, 200));
+  check('consultdatums gaan standaard mee (een verwijsbrief heeft ze nodig)', prev.includes('14-05-2024') && await panel.isChecked('#lt-keep-dates'));
   await panel.setInputFiles('#lt-pdf-file', vraagPdf);
   await sleep(1500);
   const secs2 = await panel.$$eval('.lt-sec span:nth-child(2)', (e) => e.map((x) => x.textContent));
@@ -319,6 +322,11 @@ function check(name, cond, extra) {
   await panel.click('#lt-generate');
   await sleep(1500);
   const verw = sent.filter((s) => s.url.endsWith('/letters/generate')).pop();
+  check('dun journaal: ook alles wat in beeld staat gaat mee', /== DOSSIER \(IN BEELD\) ==/.test(verw.body.dossier) && /== JOURNAAL ==/.test(verw.body.dossier));
+  const brief = await panel.textContent('#lt-out');
+  check('brief zonder sterretjes, koppen als gewone regel', !brief.includes('**') && brief.includes('\nReden van verwijzing en vraagstelling\n'), brief.slice(0, 120));
+  check('status noemt wat nog ingevuld moet worden (niet de eigen naam)', (await panel.textContent('#lt-status')).includes('Nog invullen: [aanvullen: aantal UWI afgelopen jaar]')
+    && !(await panel.textContent('#lt-status')).includes('Naam huisarts'), await panel.textContent('#lt-status'));
   await panel.click('.lt-tegel[data-kind="verklaring"]');
   check('verklaring: doel en knop', await panel.isVisible('#lt-doel') && (await panel.textContent('#lt-generate')) === 'Schrijf verklaring');
   await panel.selectOption('#lt-doel', 'woningurgentie');

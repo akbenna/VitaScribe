@@ -318,11 +318,27 @@
   }
   window.SVBricksDossier = { lees: leesBricks };
 
+  // For a letter: the recognised sections, and when the journal is missing or
+  // thin, also everything in view (like Dossiervraag), so history, findings and
+  // policy are not lost. The doctor can switch either off under "Onderdelen".
+  async function leesVoorBrief() {
+    var d = await leesBricks().catch(function () { return { secties: {}, naam: '', geboren: '' }; });
+    if (SVBrief.journaalGenoeg(d.secties)) return d;
+    var breed = await leesBricks(40000, true).catch(function () { return null; });
+    var alles = breed && breed.secties['Dossier (in beeld)'];
+    if (!alles) {
+      if (!Object.keys(d.secties).length) throw new Error('Weinig tekst gevonden. Is het dossier volledig geladen?');
+      return d;
+    }
+    d.secties['Dossier (in beeld)'] = SVDossiervraag.ontdubbel(alles);
+    return { secties: d.secties, naam: d.naam || breed.naam, geboren: d.geboren || breed.geboren };
+  }
+
   $('lt-scrape').addEventListener('click', async function () {
     var btn = this;
     btn.disabled = true; status('Dossier ophalen…');
     try {
-      var d = await leesBricks();
+      var d = await leesVoorBrief();
       setDossier(d.secties, d.naam, 'Bricks', d.geboren);
       status('Dossier opgehaald: ' + Object.keys(d.secties).join(', ') + '. Controleer de naam en de onderdelen.');
     } catch (e) {
@@ -482,7 +498,7 @@
     if (!Object.keys(lt.secties).length) {
       status('Dossier ophalen uit Bricks…');
       try {
-        var opgehaald = await leesBricks();
+        var opgehaald = await leesVoorBrief();
         setDossier(opgehaald.secties, opgehaald.naam, 'Bricks', opgehaald.geboren);
       } catch (e) {
         status(e.message + ' Open de patiënt in Bricks, of voeg een PDF of schermafdruk toe.', true);
@@ -539,7 +555,12 @@
         out.textContent += dec.decode(chunk.value, { stream: true });
         out.scrollTop = out.scrollHeight;
       }
-      status('Concept klaar. Controleer de brief voordat je hem verstuurt.');
+      // Plain text for Bricks and mail; then say what is still open.
+      out.textContent = SVBrief.schoon(out.textContent);
+      var open = SVBrief.openPlekken(out.textContent).filter(function (x) { return !/^\[Naam huisarts\]$/i.test(x); });
+      status(open.length
+        ? 'Concept klaar. Nog invullen: ' + open.join(' · ') + '. Controleer de brief voordat je hem verstuurt.'
+        : 'Concept klaar. Controleer de brief voordat je hem verstuurt.', false);
     } catch (e) {
       if (!out.textContent) $('lt-output').classList.add('hidden');
       status(e.message, true);
