@@ -320,8 +320,13 @@ async function listenPill(page, clickStop) {
   await sleep(500);
   p = await pill(tab);
   check('nadicteren zichtbaar, knop weg', p.text.includes('nadicteren') && p.buttons.nadictaat.hidden, p.text);
+  // Stop on the pill opens the side panel. Record the call instead of opening a
+  // real panel: a second panel next to the test's own would race with it.
+  await sw.evaluate(() => { self.__paneel = []; chrome.sidePanel.open = async (o) => { self.__paneel.push(o); }; });
   await clickPill(tab, 'stop');
   await sleep(2000);
+  const geopend = await sw.evaluate(() => self.__paneel);
+  check('Stop in het bolletje opent het zijpaneel bij dit tabblad', geopend.length === 1 && typeof geopend[0].tabId === 'number', geopend);
   p = await pill(tab);
   check('verslag klaar in het bolletje', p.text.includes('Verslag klaar') && !p.buttons.insert.hidden && !p.buttons.show.hidden, p.text);
   check('✓ op het icoon', (await badge()) === '✓');
