@@ -68,7 +68,8 @@ dossiervragen voor Bricks Huisarts*.
 > VitaScribe er een Nederlands verslag van.
 >
 > Onderaan het zijpaneel stel je een vraag aan het dossier dat open staat, met een
-> letterlijke bron bij elk antwoord. Informatie- en verwijsbrieven en de beoordeling
+> letterlijke bron bij elk antwoord. Informatie- en verwijsbrieven, een
+> concept-antwoord op een e-consult (in de woorden van jouw beleid) en de beoordeling
 > van uitslagen uit de post doe je in het zijpaneel; naam, BSN, adres en
 > geboortedatum worden verwijderd voordat er iets verstuurd wordt.
 >
@@ -164,7 +165,8 @@ PERMISSIONS
     reads page content and never sends it anywhere.
   - Page text is read only from the side panel (chrome.scripting on the
     active tab), and only when the doctor starts it: composing a letter,
-    asking a question in "Dossiervraag", or while the "Post" tab is open.
+    asking a question in "Dossiervraag", answering an "E-consult", or while
+    the "Post" tab is open.
     Names, dates of birth, BSN and addresses are removed in the browser
     before anything is sent to the practice's server.
   - Host permissions: the Bricks EHR domains (field detection and insertion)
@@ -200,7 +202,7 @@ DATA
   written by Claude (Anthropic, US) under commercial terms that exclude
   training. Referral letters are pseudonymised first (name, date of birth,
   BSN, address removed) and then sent to Claude, or to the practice's own AI
-  provider. Dossier questions and messages from the EHR inbox ("Post") are
+  provider. Dossier questions, e-consults and messages from the EHR inbox ("Post") are
   pseudonymised the same way and sent to Claude; nothing is stored on the
   server. No analytics, no advertising,
   no remote code. Privacy policy: https://www.provita-care.nl/vitascribe/privacy

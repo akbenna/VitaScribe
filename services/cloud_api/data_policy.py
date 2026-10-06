@@ -156,6 +156,17 @@ def clinical_decision_support() -> bool:
     return _env("CLINICAL_DECISION_SUPPORT", "false") == "true"
 
 
+def econsult_nhg() -> bool:
+    """NHG input in an e-consult answer (advice the doctor did not give) is
+    clinical decision support too. Outside the eu mode it follows
+    CLINICAL_DECISION_SUPPORT. In the eu mode it stays off unless the practice
+    explicitly allows this one use (ECONSULT_NHG_IN_EU=true); the doctor then
+    still ticks it per e-consult, it is never on by default."""
+    if eu_modus():
+        return _env("ECONSULT_NHG_IN_EU", "false") == "true"
+    return clinical_decision_support()
+
+
 def summary() -> dict:
     """For /health and the settings page: where data goes."""
     return {
@@ -170,6 +181,7 @@ def summary() -> dict:
         "stt_eu_endpoint": True,
         "stt_training_opt_out": True,
         "clinical_decision_support": clinical_decision_support(),
+        "econsult_nhg": econsult_nhg(),
     }
 
 

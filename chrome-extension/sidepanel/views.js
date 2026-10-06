@@ -1,7 +1,8 @@
 /**
  * VitaScribe - Tabbladen van het zijpaneel en "Minimaliseren"
  *
- * Vier tabbladen: Consult (opnemen, dicteren, SOEP), Tolk, Brieven en Post. De
+ * Vijf tabbladen: Consult (opnemen, dicteren, SOEP), Tolk, Brieven, Post en
+ * E-consult. De
  * dossiervraag is geen tabblad maar de balk onderaan, in elk tabblad (die heb
  * je overal nodig). De laatste keuze blijft bewaard; knoppen in de popup
  * kunnen een tabblad kiezen (svOpenView), of "dossier": dan krijgt de balk
@@ -17,7 +18,7 @@
 (function () {
   'use strict';
 
-  var VIEWS = ['dictate', 'tolk', 'letters', 'post'];
+  var VIEWS = ['dictate', 'tolk', 'letters', 'post', 'econsult'];
   var $ = function (id) { return document.getElementById(id); };
 
   function showView(view) {

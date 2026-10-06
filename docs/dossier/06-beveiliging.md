@@ -17,7 +17,7 @@ gemaakt worden.
 | Eigen sleutels van praktijken | Versleuteld in de database (Fernet, `SLEUTELKLUIS`), met wisselbare kluissleutel | ingericht |
 | Toestemming | De server weigert een opname zonder bevestigde toestemming (`REQUIRE_RECORDING_CONSENT`, standaard aan) | ingericht |
 | Modus | De EU-modus stuurt niets naar een Amerikaanse AI-dienst, ook niet met een eigen sleutel van de praktijk. Live dicteren is daar geweigerd. | ingericht |
-| Klinisch meedenken | Op de server uit (`CLINICAL_DECISION_SUPPORT`); in de EU-modus altijd uit | **te controleren** in Railway |
+| Klinisch meedenken | Op de server uit (`CLINICAL_DECISION_SUPPORT`); in de EU-modus altijd uit, behalve met `ECONSULT_NHG_IN_EU` (NHG bij e-consult, per e-consult aan te vinken) | **te controleren** in Railway |
 | Fase | `VITASCRIBE_FASE=intern`: openbare aanmelding dicht | ingericht |
 | Filter op identificatoren | Brieven, dossiervragen en post: naam, geboortedatum, BSN, adres en contact gefilterd in de browser, en op de server nog eens | ingericht |
 | Versiecontrole | De extensie meldt haar versie; de server meldt de minimumversie, en het zijpaneel waarschuwt bij een te oude versie | ingericht |

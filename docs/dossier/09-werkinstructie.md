@@ -56,6 +56,16 @@ jouw verantwoordelijkheid (WGBO). Dat verandert niet door de software.
   wel spreken en laten voorlezen, maar het antwoord van de patiënt niet laten
   vertalen.
 
+## E-consult
+
+- Schrijf je beleid zelf, kort. Het concept zet het in gewone taal; het
+  verzint zelf geen advies. Staat er *[beleid aanvullen]*, vul dat in.
+- Controleer de feiten met **?** in Bricks, en lees het antwoord helemaal
+  voor je het verstuurt.
+- **NHG meedenken** vink je alleen aan als je dat voor dit e-consult bewust
+  wilt. Het is een voorstel; jouw beleid gaat voor. Zegt het dat de vraag niet
+  schriftelijk kan, bel de patiënt of plan een afspraak.
+
 ## Wat VitaScribe van je leert
 
 VitaScribe stelt na invoegen regels voor uit wat je aanpaste. Keur alleen een
@@ -66,7 +76,8 @@ te passen, en zet een regel uit die niet klopt.
 ## Wat VitaScribe niet doet
 
 VitaScribe stelt geen diagnose, geeft geen behandeladvies en waarschuwt niet
-voor alarmsymptomen. Klinisch meedenken staat uit. Mis je een rode vlag in
+voor alarmsymptomen. Klinisch meedenken staat uit, behalve NHG meedenken bij
+een e-consult als de praktijk dat toestaat en jij het per e-consult aanvinkt. Mis je een rode vlag in
 het verslag, dan ligt dat aan het gesprek of aan het model, niet aan een
 bewuste keuze van het systeem.
 

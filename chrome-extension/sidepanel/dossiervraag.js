@@ -68,6 +68,8 @@
       + (b.ingekort ? ' · ingekort, heel dik dossier' : '');
     $('dv-preview').textContent = b.tekst;
     $('dv-details').classList.remove('hidden');
+    // An e-consult on screen: offer the concept answer right here.
+    $('dv-econsult').classList.toggle('hidden', !SVEconsult.inBeeld(b.tekst));
     return b;
   }
 
@@ -169,6 +171,13 @@
     tekst = String(tekst || '').trim();
     if (dv.bezig) return;
     if (tekst.length < 2) { status('Typ een vraag of kies er een hierboven.', true); $('dv-input').focus(); return; }
+    // "beantwoord e-consult: <beleid>" goes to the E-consult tab.
+    if (SVEconsult.isOpdracht(tekst) && window.SVEconsultUI) {
+      $('dv-input').value = '';
+      open(false);
+      window.SVEconsultUI.start(SVEconsult.beleidUit(tekst));
+      return;
+    }
     dv.bezig = true;
     $('dv-go').disabled = true;
     var kaart = null;
@@ -213,6 +222,10 @@
     this.style.height = Math.min(this.scrollHeight + 2, 120) + 'px';
   });
   $('dv-dicht').addEventListener('click', function () { open(false); });
+  $('dv-econsult').addEventListener('click', function () {
+    open(false);
+    if (window.SVEconsultUI) window.SVEconsultUI.start('');
+  });
   $('dv-input').addEventListener('keydown', function (e) {
     if (e.key === 'Escape') { open(false); $('dv-input').blur(); }
   });

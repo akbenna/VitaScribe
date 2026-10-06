@@ -62,6 +62,7 @@ Zie stuk 02 (register) en stuk 05 (subverwerkers).
 | Geluid | Browser → server (Railway, NL) → Voxtral (Mistral, FR) | Server: nee. Mistral: volgens de overeenkomst, met ZDR: nee |
 | Tekst en verslag | Server → Mistral Large → server → browser | Server: nee. Browser: werkgeheugen tot "Nieuw consult" |
 | Tolk: beurt (geluid en tekst) | Browser → server → Voxtral (verstaan) → Mistral Large (vertalen) → Voxtral TTS of stem op de computer (voorlezen) | Server: nee. Browser: werkgeheugen tot "Wissen" of "Consult afsluiten" |
+| E-consult: dossier in beeld, bericht, beleid van de arts | Browser → server → Mistral Large → server → browser | Server: nee. Browser: werkgeheugen tot "Wissen" of "Consult afsluiten" |
 | Leren: concept en aangepaste versie | Browser → server → taalmodel van de modus (regels afleiden) | Teksten: nee. Alleen algemene regels die de arts goedkeurt, per arts, in het register |
 | Leren: meting | Server, database bij Railway | Getallen per dag, zonder inhoud |
 | Auditlog | Server, database bij Railway | 5 jaar, zonder inhoud |
@@ -117,6 +118,7 @@ in hoofdstuk 4.
 | R10 | Te veel vertrouwen op de software (automation bias) | midden | midden | midden |
 | R11 | Een vertaling van de tolk is onjuist, en arts of patiënt begrijpt iets anders dan bedoeld | midden | hoog | midden |
 | R12 | Een geleerde regel bevat toch een patiëntgegeven, of stuurt verslagen de verkeerde kant op | laag | midden | laag |
+| R13 | Een concept-antwoord op een e-consult bevat een fout of een advies dat de arts niet gaf, en gaat ongelezen naar de patiënt | laag | hoog | laag tot midden |
 
 ## 4 Maatregelen
 
@@ -134,6 +136,7 @@ in hoofdstuk 4.
 | R10 | Werkinstructie (stuk 09): elk verslag lezen, en de gele markeringen eerst. Periodiek steekproeven in de eigen verslagen. |
 | R11 | Terugvertaling onder elke zin van de arts; ⚠ bij twijfel over het verstaan; knop "Eenvoudiger"; vertalen naar gewone woorden zonder iets toe te voegen. Bij slecht nieuws, ingrijpende keuzes of twijfel een professionele tolk (stuk 09). Het verslag vermeldt dat het consult via een AI-tolk ging. |
 | R12 | Het taalmodel krijgt de opdracht geen patiëntgegevens in een regel te zetten; de server filtert datums en identificatoren; een stijl- of tolkregel gaat pas mee na goedkeuring door de arts; alles is te zien en te verwijderen onder "Wat VitaScribe leerde". De testset draait altijd zonder persoonlijke regels; de weekmeting laat zien of het verslag beter of slechter wordt. |
+| R13 | Zonder NHG meedenken geeft het concept geen advies dat de arts niet gaf, maar zet het "[beleid aanvullen]"; het paneel toont wat nog ingevuld moet worden. Feiten uit het dossier krijgen een letterlijk citaat dat de server controleert. NHG meedenken is een vinkje per e-consult, nooit standaard aan, en in de EU-modus alleen als de praktijk het toestaat. VitaScribe verstuurt niets: de arts kopieert en verstuurt zelf (stuk 09). |
 
 ## 5 Conclusie en besluit
 

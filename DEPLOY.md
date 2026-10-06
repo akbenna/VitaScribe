@@ -372,6 +372,10 @@ met één klik; de keuze gaat met elke aanvraag mee (kopregel
   weigert de server; vraagsuggesties kunnen niet, en klinische ondersteuning
   (`CLINICAL_DECISION_SUPPORT`) staat in deze modus altijd uit: de EU-modus is
   alleen verslaglegging.
+  Eén uitzondering, alleen als de praktijk daar bewust voor kiest:
+  `ECONSULT_NHG_IN_EU=true` staat in de EU-modus "NHG meedenken" bij een
+  e-consult toe. De arts vinkt het dan nog per e-consult aan; het staat nooit
+  vanzelf aan. Andere klinische ondersteuning blijft uit.
 
 De arts kiest; de server volgt die keuze altijd en verandert hem nooit. Kan
 de EU-modus niet werken (geen `MISTRAL_API_KEY`), dan mislukt de aanvraag met

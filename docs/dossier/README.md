@@ -71,7 +71,7 @@ Bespreek dat met je accountant of jurist.
 - [ ] Mistral: verwerkersovereenkomst, ZDR, verwerking in de EU, geen training
 - [x] Rollen vastgesteld: praktijkhouder, één rechtspersoon (stuk 04 vervalt intern)
 - [ ] Handelsregister gecontroleerd; overeenkomsten op naam van de juiste rechtspersoon
-- [ ] Stuk 01 ondertekend; op de server `CLINICAL_DECISION_SUPPORT` uit
+- [ ] Stuk 01 ondertekend; op de server `CLINICAL_DECISION_SUPPORT` en `ECONSULT_NHG_IN_EU` uit, of de keuze vastgelegd
 - [ ] Stuk 02 in het verwerkingsregister van de praktijk
 - [ ] Stuk 03 (DPIA) ingevuld, besproken en ondertekend
 - [ ] Persoonlijke sleutels per gebruiker (`API_USERS`); de gedeelde sleutel ingetrokken
