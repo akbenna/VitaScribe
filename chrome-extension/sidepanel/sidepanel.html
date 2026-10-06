@@ -284,136 +284,166 @@
   </div>
 
   <div id="view-letters" class="view hidden">
-    <section class="lt-card">
-      <h2><span class="lt-step">1</span> Dossier</h2>
-      <div class="seg" id="lt-src">
-        <button class="seg-btn active" data-src="bricks">Bricks</button>
-        <button class="seg-btn" data-src="shot">Schermafdruk</button>
-        <button class="seg-btn" data-src="pdf">PDF</button>
-      </div>
-      <div class="lt-src-pane" data-pane="bricks">
-        <button id="lt-scrape" class="btn primary">Ophalen uit Bricks</button>
-        <p class="lt-hint">Open de patiënt en de onderdelen die mee moeten (journaal, medicatie, voorgeschiedenis, lab).</p>
-      </div>
-      <div class="lt-src-pane hidden" data-pane="shot">
-        <div class="lt-drop" id="lt-shot-drop" tabindex="0">Klik hier en plak een schermafdruk (Ctrl+V / ⌘V)</div>
-        <img id="lt-shot-img" class="lt-shot hidden" alt="">
-        <button id="lt-shot-read" class="btn primary hidden">Lees schermafdruk</button>
-        <p class="lt-hint">De schermafdruk gaat naar de server om te lezen; naam, BSN en adres worden daarbij weggelaten.</p>
-      </div>
-      <div class="lt-src-pane hidden" data-pane="pdf">
-        <div class="lt-drop" id="lt-pdf-drop" tabindex="0">Sleep een PDF-export hierheen of klik om te kiezen</div>
-        <input type="file" id="lt-pdf-file" accept="application/pdf" hidden>
-      </div>
-
-      <div id="lt-dossier" class="hidden">
-        <div class="lt-name" id="lt-name"></div>
-        <div id="lt-sections" class="lt-sections"></div>
-        <label class="lt-check"><input type="checkbox" id="lt-keep-dates"> Consultdatums meesturen <span class="muted">(geboortedatum gaat nooit mee)</span></label>
-        <details class="lt-preview">
-          <summary>Toon precies wat er verstuurd wordt</summary>
-          <pre id="lt-preview"></pre>
-        </details>
-        <button id="lt-clear" class="btn ghost small">Dossier wissen</button>
+    <section class="lt-card lt-keuze">
+      <div class="lt-tegels" id="lt-kind" role="radiogroup" aria-label="Soort brief">
+        <button class="lt-tegel active" data-kind="verwijzing" type="button" role="radio">
+          <b>Verwijzing</b><span>specialist, GGZ, paramedicus</span></button>
+        <button class="lt-tegel" data-kind="informatiebrief" type="button" role="radio">
+          <b>Informatiebrief</b><span>advocaat, SMA, UWV, gemeente</span></button>
       </div>
     </section>
 
-    <section class="lt-card">
-      <h2><span class="lt-step">2</span> Brief</h2>
-      <div class="seg" id="lt-kind">
-        <button class="seg-btn active" data-kind="informatiebrief">Informatiebrief</button>
-        <button class="seg-btn" data-kind="verwijzing">Verwijzing</button>
+    <section class="lt-card lt-formulier">
+      <div id="lt-verw">
+        <div class="lt-rij2">
+          <label class="lt-veld lt-breed"><span class="lt-label">Naar</span>
+          <select id="lt-spec" class="lt-input">
+            <optgroup label="Beschouwend">
+              <option value="cardioloog" selected>Cardiologie</option>
+              <option value="internist">Interne geneeskunde</option>
+              <option value="maag-darm-leverarts">Maag-darm-lever</option>
+              <option value="longarts">Longziekten</option>
+              <option value="neuroloog">Neurologie</option>
+              <option value="dermatoloog">Dermatologie</option>
+              <option value="reumatoloog">Reumatologie</option>
+              <option value="kinderarts">Kindergeneeskunde</option>
+              <option value="klinisch geriater">Geriatrie</option>
+              <option value="internist-endocrinoloog">Endocrinologie</option>
+              <option value="internist-nefroloog">Nefrologie</option>
+              <option value="internist-hematoloog">Hematologie</option>
+              <option value="internist-oncoloog">Oncologie</option>
+              <option value="internist-infectioloog">Infectieziekten</option>
+              <option value="allergoloog">Allergologie</option>
+              <option value="klinisch geneticus">Klinische genetica</option>
+            </optgroup>
+            <optgroup label="Snijdend">
+              <option value="chirurg">Chirurgie</option>
+              <option value="vaatchirurg">Vaatchirurgie</option>
+              <option value="orthopedisch chirurg">Orthopedie</option>
+              <option value="uroloog">Urologie</option>
+              <option value="gynaecoloog">Gynaecologie en verloskunde</option>
+              <option value="KNO-arts">KNO</option>
+              <option value="oogarts">Oogheelkunde</option>
+              <option value="plastisch chirurg">Plastische chirurgie</option>
+              <option value="neurochirurg">Neurochirurgie</option>
+              <option value="kaakchirurg">Kaakchirurgie</option>
+              <option value="anesthesioloog">Anesthesiologie / pijnpoli</option>
+            </optgroup>
+            <optgroup label="GGZ">
+              <option value="psychiater">Psychiatrie</option>
+              <option value="kinder- en jeugdpsychiater">Kinder- en jeugdpsychiatrie</option>
+              <option value="GGZ">GGZ (basis/specialistisch)</option>
+              <option value="verslavingsarts">Verslavingszorg</option>
+            </optgroup>
+            <optgroup label="Overig">
+              <option value="revalidatiearts">Revalidatiegeneeskunde</option>
+              <option value="sportarts">Sportgeneeskunde</option>
+              <option value="radioloog">Radiologie</option>
+              <option value="specialist ouderengeneeskunde">Specialist ouderengeneeskunde</option>
+              <option value="fysiotherapeut">Fysiotherapie</option>
+              <option value="diëtist">Diëtetiek</option>
+            </optgroup>
+            <option value="">Anders…</option>
+          </select>
+          </label>
+          <div class="lt-veld"><span class="lt-label">Urgentie</span>
+            <div class="chips lt-urg" id="lt-urg">
+              <button class="chip active" data-v="regulier" type="button">Regulier</button>
+              <button class="chip" data-v="semi-spoed" type="button">Semi-spoed</button>
+              <button class="chip" data-v="spoed" type="button">Spoed</button>
+            </div>
+          </div>
+        </div>
+        <input type="text" id="lt-spec-free" class="lt-input hidden" placeholder="Bijv. podotherapeut, logopedist, pijnpoli">
+        <div class="lt-labelrij">
+          <label class="lt-label" for="lt-reden">Reden en vraagstelling</label>
+          <button id="lt-reden-from-dictate" class="lt-link" type="button" title="Neem de tekst uit het tabblad Consult over">← dictaat overnemen</button>
+        </div>
+        <textarea id="lt-reden" rows="4" placeholder="Bijv. graag beoordeling persisterende knieklachten re ondanks NSAID; MRI-indicatie?"></textarea>
       </div>
 
-      <div id="lt-info">
-        <label class="lt-label">Aanvrager</label>
-        <div class="chips" id="lt-aanvrager">
-          <button class="chip active" data-v="advocaat">Advocaat</button>
-          <button class="chip" data-v="sma">SMA</button>
-          <button class="chip" data-v="gemeente">Gemeente</button>
-          <button class="chip" data-v="verzekeraar">Verzekeraar</button>
-          <button class="chip" data-v="uwv">UWV</button>
-          <button class="chip" data-v="overig">Overig</button>
+      <div id="lt-info" class="hidden">
+        <div class="lt-veld"><span class="lt-label">Aanvrager</span>
+          <div class="chips" id="lt-aanvrager">
+            <button class="chip active" data-v="advocaat" type="button">Advocaat</button>
+            <button class="chip" data-v="sma" type="button">SMA</button>
+            <button class="chip" data-v="gemeente" type="button">Gemeente</button>
+            <button class="chip" data-v="verzekeraar" type="button">Verzekeraar</button>
+            <button class="chip" data-v="uwv" type="button">UWV</button>
+            <button class="chip" data-v="overig" type="button">Overig</button>
+          </div>
         </div>
-        <label class="lt-label" for="lt-vraag">Vraag van de aanvrager</label>
-        <textarea id="lt-vraag" rows="4" placeholder="Plak de vragen, of laad ze uit een PDF of schermafdruk."></textarea>
-        <div class="lt-row">
-          <button id="lt-vraag-pdf" class="btn small">Uit PDF</button>
-          <button id="lt-vraag-shot" class="btn small" title="Kopieer eerst een schermafdruk, klik dan hier">Uit schermafdruk (klembord)</button>
+        <div class="lt-labelrij">
+          <label class="lt-label" for="lt-vraag">Vraag van de aanvrager</label>
+          <span class="lt-links">
+            <button id="lt-vraag-pdf" class="lt-link" type="button">uit PDF</button>
+            <button id="lt-vraag-shot" class="lt-link" type="button" title="Kopieer eerst een schermafdruk, klik dan hier">uit schermafdruk</button>
+          </span>
           <input type="file" id="lt-vraag-file" accept="application/pdf" hidden>
         </div>
-        <label class="lt-check lt-consent"><input type="checkbox" id="lt-consent"> Er is een gerichte vraag én schriftelijke toestemming van de patiënt</label>
-        <p class="lt-hint">De brief geeft alleen feitelijke gegevens en geen oordeel over beperkingen, arbeidsgeschiktheid of causaliteit (KNMG).</p>
+        <textarea id="lt-vraag" rows="4" placeholder="Plak de vragen, of laad ze uit een PDF of schermafdruk."></textarea>
+        <div class="lt-afbakening">
+          <div class="lt-labelrij"><span class="lt-label">Afbakening</span><span class="lt-hint">alleen wat gevraagd is</span></div>
+          <div class="lt-rij2">
+            <label class="lt-veld lt-breed"><span class="lt-sublabel">Over welke klachten</span>
+              <input type="text" id="lt-onderwerp" class="lt-input" placeholder="Bijv. rugklachten na ongeval maart 2024"></label>
+            <label class="lt-veld lt-periode"><span class="lt-sublabel">Periode</span>
+              <input type="text" id="lt-periode" class="lt-input" placeholder="Bijv. 2023 – heden"></label>
+          </div>
+        </div>
+        <label class="lt-check lt-consent"><input type="checkbox" id="lt-consent"> Gerichte vraag én schriftelijke toestemming van de patiënt</label>
+        <p class="lt-hint">Alleen feiten, geen oordeel over beperkingen, arbeidsgeschiktheid of causaliteit (KNMG).</p>
       </div>
 
-      <div id="lt-verw" class="hidden">
-        <label class="lt-label">Specialisme</label>
-        <select id="lt-spec" class="lt-input">
-          <optgroup label="Beschouwend">
-            <option value="cardioloog" selected>Cardiologie</option>
-            <option value="internist">Interne geneeskunde</option>
-            <option value="maag-darm-leverarts">Maag-darm-lever</option>
-            <option value="longarts">Longziekten</option>
-            <option value="neuroloog">Neurologie</option>
-            <option value="dermatoloog">Dermatologie</option>
-            <option value="reumatoloog">Reumatologie</option>
-            <option value="kinderarts">Kindergeneeskunde</option>
-            <option value="klinisch geriater">Geriatrie</option>
-            <option value="internist-endocrinoloog">Endocrinologie</option>
-            <option value="internist-nefroloog">Nefrologie</option>
-            <option value="internist-hematoloog">Hematologie</option>
-            <option value="internist-oncoloog">Oncologie</option>
-            <option value="internist-infectioloog">Infectieziekten</option>
-            <option value="allergoloog">Allergologie</option>
-            <option value="klinisch geneticus">Klinische genetica</option>
-          </optgroup>
-          <optgroup label="Snijdend">
-            <option value="chirurg">Chirurgie</option>
-            <option value="vaatchirurg">Vaatchirurgie</option>
-            <option value="orthopedisch chirurg">Orthopedie</option>
-            <option value="uroloog">Urologie</option>
-            <option value="gynaecoloog">Gynaecologie en verloskunde</option>
-            <option value="KNO-arts">KNO</option>
-            <option value="oogarts">Oogheelkunde</option>
-            <option value="plastisch chirurg">Plastische chirurgie</option>
-            <option value="neurochirurg">Neurochirurgie</option>
-            <option value="kaakchirurg">Kaakchirurgie</option>
-            <option value="anesthesioloog">Anesthesiologie / pijnpoli</option>
-          </optgroup>
-          <optgroup label="GGZ">
-            <option value="psychiater">Psychiatrie</option>
-            <option value="kinder- en jeugdpsychiater">Kinder- en jeugdpsychiatrie</option>
-            <option value="GGZ">GGZ (basis/specialistisch)</option>
-            <option value="verslavingsarts">Verslavingszorg</option>
-          </optgroup>
-          <optgroup label="Overig">
-            <option value="revalidatiearts">Revalidatiegeneeskunde</option>
-            <option value="sportarts">Sportgeneeskunde</option>
-            <option value="radioloog">Radiologie</option>
-            <option value="specialist ouderengeneeskunde">Specialist ouderengeneeskunde</option>
-            <option value="fysiotherapeut">Fysiotherapie</option>
-            <option value="diëtist">Diëtetiek</option>
-          </optgroup>
-          <option value="">Anders…</option>
-        </select>
-        <input type="text" id="lt-spec-free" class="lt-input hidden" placeholder="Bijv. uroloog, reumatoloog, KNO-arts">
-        <label class="lt-label" for="lt-reden">Reden en vraagstelling</label>
-        <textarea id="lt-reden" rows="3" placeholder="Bijv. graag beoordeling persisterende knieklachten re ondanks NSAID; MRI-indicatie?"></textarea>
-        <div class="lt-row" id="lt-dictate-reason-row">
-          <button id="lt-reden-from-dictate" class="btn small" title="Neem de tekst uit Dicteren over">Neem dictaat over</button>
-        </div>
-        <label class="lt-label">Urgentie</label>
-        <div class="chips" id="lt-urg">
-          <button class="chip active" data-v="regulier">Regulier</button>
-          <button class="chip" data-v="semi-spoed">Semi-spoed</button>
-          <button class="chip" data-v="spoed">Spoed</button>
-        </div>
-      </div>
-
-      <label class="lt-label" for="lt-extra">Aanwijzing <span class="muted">(optioneel)</span></label>
-      <textarea id="lt-extra" rows="2" placeholder="Bijv. alleen periode 2023-2025; vraag 2 en 3."></textarea>
-      <button id="lt-generate" class="btn primary lt-go">Schrijf informatiebrief</button>
+      <details class="lt-meer">
+        <summary>Overige aanwijzing <span class="muted">(optioneel)</span></summary>
+        <textarea id="lt-extra" rows="2" placeholder="Bijv. alleen periode 2023-2025; vraag 2 en 3; kort houden."></textarea>
+      </details>
     </section>
+
+    <section class="lt-card lt-dossierkaart">
+      <div class="lt-dossierkop">
+        <div>
+          <span class="lt-label">Dossier</span>
+          <p id="lt-dossier-kort" class="lt-hint">Nog niet opgehaald. Bij <b>Schrijf</b> haalt VitaScribe op wat in Bricks open staat.</p>
+        </div>
+        <button id="lt-scrape" class="btn small" type="button" title="Nu ophalen uit Bricks en de onderdelen tonen">Ophalen</button>
+      </div>
+      <details id="lt-dossier-meer" class="lt-meer">
+        <summary>Onderdelen kiezen, PDF of schermafdruk toevoegen</summary>
+        <div class="seg" id="lt-src">
+          <button class="seg-btn active" data-src="bricks" type="button">Bricks</button>
+          <button class="seg-btn" data-src="shot" type="button">Schermafdruk</button>
+          <button class="seg-btn" data-src="pdf" type="button">PDF</button>
+        </div>
+        <div class="lt-src-pane" data-pane="bricks">
+          <p class="lt-hint">Open de patiënt en de onderdelen die mee moeten (journaal, medicatie, voorgeschiedenis, lab) en kies Ophalen.</p>
+        </div>
+        <div class="lt-src-pane hidden" data-pane="shot">
+          <div class="lt-drop" id="lt-shot-drop" tabindex="0">Klik hier en plak een schermafdruk (Ctrl+V / ⌘V)</div>
+          <img id="lt-shot-img" class="lt-shot hidden" alt="">
+          <button id="lt-shot-read" class="btn primary hidden" type="button">Lees schermafdruk</button>
+          <p class="lt-hint">De schermafdruk gaat naar de server om te lezen; naam, BSN en adres worden daarbij weggelaten.</p>
+        </div>
+        <div class="lt-src-pane hidden" data-pane="pdf">
+          <div class="lt-drop" id="lt-pdf-drop" tabindex="0">Sleep een PDF-export hierheen of klik om te kiezen</div>
+          <input type="file" id="lt-pdf-file" accept="application/pdf" hidden>
+        </div>
+        <div id="lt-dossier" class="hidden">
+          <div class="lt-name" id="lt-name"></div>
+          <div id="lt-sections" class="lt-sections"></div>
+          <label class="lt-check"><input type="checkbox" id="lt-keep-dates"> Consultdatums meesturen <span class="muted">(geboortedatum gaat nooit mee)</span></label>
+          <details class="lt-preview">
+            <summary>Toon precies wat er verstuurd wordt</summary>
+            <pre id="lt-preview"></pre>
+          </details>
+          <button id="lt-clear" class="btn ghost small" type="button">Dossier wissen</button>
+        </div>
+      </details>
+    </section>
+
+    <button id="lt-generate" class="btn primary lt-go" type="button">Schrijf verwijsbrief</button>
+    <p id="lt-status" class="status" role="status"></p>
 
     <section id="lt-output" class="lt-card hidden">
       <h2>Concept</h2>
@@ -426,7 +456,6 @@
       <p class="note">Concept: controleer en vul [Naam huisarts] en eventuele [aanvullen] in voordat je verstuurt.</p>
     </section>
 
-    <p id="lt-status" class="status" role="status"></p>
   </div>
 
   <div id="view-post" class="view hidden">

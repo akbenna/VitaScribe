@@ -27,7 +27,7 @@
     aan: {},           // name -> bool
     naamRauw: '',
     initialen: 'P.X.',
-    kind: 'informatiebrief',
+    kind: 'verwijzing',
     aanvrager: 'advocaat',
     spec: 'cardioloog',
     urgentie: 'regulier',
@@ -57,6 +57,7 @@
   });
   segment('lt-kind', 'kind', function (kind) {
     lt.kind = kind;
+    document.querySelectorAll('#lt-kind button').forEach(function (b) { b.setAttribute('aria-checked', b.dataset.kind === kind ? 'true' : 'false'); });
     $('lt-info').classList.toggle('hidden', kind !== 'informatiebrief');
     $('lt-verw').classList.toggle('hidden', kind !== 'verwijzing');
     $('lt-generate').textContent = kind === 'verwijzing' ? 'Schrijf verwijsbrief' : 'Schrijf informatiebrief';
@@ -130,8 +131,23 @@
     return true;
   }
 
+  // One line about the dossier, so the doctor does not have to open the details.
+  function dossierKort(bron) {
+    var names = Object.keys(lt.secties);
+    var kort = $('lt-dossier-kort');
+    if (!names.length) {
+      kort.innerHTML = 'Nog niet opgehaald. Bij <b>Schrijf</b> haalt VitaScribe op wat in Bricks open staat.';
+      return;
+    }
+    var aan = names.filter(function (k) { return lt.aan[k]; });
+    kort.textContent = 'Opgehaald (' + lt.initialen + (bron ? ', ' + bron : '') + '): ' + aan.join(', ')
+      + (aan.length < names.length ? ' · ' + (names.length - aan.length) + ' uit' : '');
+  }
+
   function renderDossier(bron) {
     var names = Object.keys(lt.secties);
+    lt.bron = bron || lt.bron;
+    dossierKort(lt.bron);
     $('lt-dossier').classList.toggle('hidden', names.length === 0);
     if (!names.length) return;
     var name = $('lt-name');
@@ -153,7 +169,7 @@
       row.className = 'lt-sec';
       var cb = document.createElement('input');
       cb.type = 'checkbox'; cb.checked = !!lt.aan[k];
-      cb.addEventListener('change', function () { lt.aan[k] = cb.checked; updatePreview(); });
+      cb.addEventListener('change', function () { lt.aan[k] = cb.checked; updatePreview(); dossierKort(lt.bron); });
       var title = document.createElement('span'); title.textContent = k;
       var meta = document.createElement('span'); meta.className = 'meta';
       var n = lt.secties[k].length;
@@ -453,18 +469,39 @@
 
   $('lt-reden-from-dictate').addEventListener('click', function () {
     var t = (els.text && els.text.value || '').trim();
-    if (!t) { status('Er staat nog geen dictaat in Dicteren.', true); return; }
+    if (!t) { status('Er staat nog geen dictaat in het tabblad Consult.', true); return; }
     $('lt-reden').value = t;
   });
 
   // ── Generate ──
   $('lt-generate').addEventListener('click', async function () {
     if (lt.busy) return;
+    // No dossier yet: fetch what is open in Bricks now, in the same click.
+    if (!Object.keys(lt.secties).length) {
+      status('Dossier ophalen uit Bricks…');
+      try {
+        var opgehaald = await leesBricks();
+        setDossier(opgehaald.secties, opgehaald.naam, 'Bricks', opgehaald.geboren);
+      } catch (e) {
+        status(e.message + ' Open de patiënt in Bricks, of voeg een PDF of schermafdruk toe.', true);
+        $('lt-dossier-meer').open = true;
+        return;
+      }
+    }
     var dossier = dossierTekst();
     if (!Object.keys(lt.aan).some(function (k) { return lt.aan[k]; })) {
-      status('Haal eerst een dossier op (stap 1) en laat minstens één onderdeel aan staan.', true); return;
+      $('lt-dossier-meer').open = true;
+      status('Er staat geen onderdeel van het dossier aan. Zet er minstens één aan.', true); return;
     }
-    var extra = SVPrivacy.filter($('lt-extra').value, filterOpts()).trim();
+    // The frame of an information letter (which complaints, which period) goes
+    // to the letter as an explicit instruction, before any free remark.
+    var kader = [];
+    if (lt.kind === 'informatiebrief') {
+      var onderwerp = $('lt-onderwerp').value.trim(), periode = $('lt-periode').value.trim();
+      if (onderwerp) kader.push('Beperk de brief tot: ' + onderwerp + '. Noem niets over andere klachten.');
+      if (periode) kader.push('Beperk de brief tot de periode ' + periode + '.');
+    }
+    var extra = SVPrivacy.filter(kader.concat([$('lt-extra').value.trim()]).filter(Boolean).join(' '), filterOpts()).trim();
     var body = { kind: lt.kind, initialen: lt.initialen, dossier: dossier, extra: extra || null };
     if (lt.kind === 'informatiebrief') {
       if (!$('lt-consent').checked) { status('Vink aan dat er een gerichte vraag en toestemming van de patiënt is.', true); return; }
@@ -516,7 +553,7 @@
   $('lt-new').addEventListener('click', function () {
     $('lt-output').classList.add('hidden');
     $('lt-out').textContent = '';
-    ['lt-vraag', 'lt-reden', 'lt-extra'].forEach(function (id) { $(id).value = ''; });
+    ['lt-vraag', 'lt-reden', 'lt-extra', 'lt-onderwerp', 'lt-periode'].forEach(function (id) { $(id).value = ''; });
     $('lt-consent').checked = false;
     status('');
   });

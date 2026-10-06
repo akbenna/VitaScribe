@@ -261,6 +261,9 @@ function check(name, cond, extra) {
   console.log('Brieven');
   await panel.click('.view-tab[data-view="letters"]');
   check('specialismen in een uitklaplijst, gegroepeerd', (await panel.$$('#lt-spec option')).length >= 35 && (await panel.$$('#lt-spec optgroup')).length === 4);
+  check('eerst de keuze: verwijzing staat voorop, met de knop erbij', (await panel.getAttribute('.lt-tegel.active', 'data-kind')) === 'verwijzing'
+    && (await panel.textContent('#lt-generate')) === 'Schrijf verwijsbrief' && await panel.isVisible('#lt-reden') && await panel.isHidden('#lt-vraag'));
+  check('dossier in één regel: nog niet opgehaald', (await panel.textContent('#lt-dossier-kort')).includes('Nog niet opgehaald'));
   await panel.click('#lt-scrape');
   await sleep(1200);
   const secs = await panel.$$eval('.lt-sec span:nth-child(2)', (e) => e.map((x) => x.textContent));
@@ -270,20 +273,37 @@ function check(name, cond, extra) {
   await panel.setInputFiles('#lt-pdf-file', vraagPdf);
   await sleep(1500);
   const secs2 = await panel.$$eval('.lt-sec span:nth-child(2)', (e) => e.map((x) => x.textContent));
+  check('na ophalen staat het dossier in één regel', /Opgehaald \(P\.V\., Bricks.*\): .*Journaal/.test(await panel.textContent('#lt-dossier-kort')), await panel.textContent('#lt-dossier-kort'));
   check('PDF komt bij het Bricks-dossier, vervangt het niet', secs2.includes('Journaal') && secs2.some((x) => x.startsWith('PDF ')), secs2);
   check('naamfilter uit Bricks werkt ook op de PDF', !/Pieter|123456789/.test(await panel.textContent('#lt-preview')));
+  await panel.click('.lt-tegel[data-kind="informatiebrief"]');
   await panel.setInputFiles('#lt-vraag-file', vraagPdf);
   await sleep(1500);
   check('vraag uit PDF', (await panel.inputValue('#lt-vraag')).includes('Welke diagnose'));
   await panel.click('#lt-generate');
   await sleep(400);
   check('zonder toestemming niets verstuurd', !sent.some((s) => s.url.endsWith('/letters/generate')));
+  check('afbakening zichtbaar bij de informatiebrief', await panel.isVisible('#lt-onderwerp') && await panel.isVisible('#lt-periode'));
+  await panel.fill('#lt-onderwerp', 'rugklachten na ongeval');
+  await panel.fill('#lt-periode', '2023 – heden');
   await panel.check('#lt-consent');
   await panel.click('#lt-generate');
   await sleep(1000);
   const gen = sent.find((s) => s.url.endsWith('/letters/generate'));
+  check('afbakening gaat als opdracht mee', gen && /Beperk de brief tot: rugklachten na ongeval/.test(gen.body.extra) && /periode 2023 – heden/.test(gen.body.extra), gen && gen.body.extra);
   check('brief via eigen server, gefilterd', gen && !/Pieter|123456789/.test(JSON.stringify(gen.body)) && gen.body.toestemming === true);
   check('concept getoond', (await panel.textContent('#lt-out')).includes('[Naam huisarts]'));
+  await panel.click('#lt-new');
+  await panel.evaluate(() => { document.getElementById('lt-dossier-meer').open = true; });
+  await panel.click('#lt-clear');
+  await panel.click('.lt-tegel[data-kind="verwijzing"]');
+  await panel.selectOption('#lt-spec', 'uroloog');
+  await panel.fill('#lt-reden', 'Graag beoordeling recidiverende urineweginfecties.');
+  await panel.click('#lt-generate');
+  await sleep(1500);
+  const verw = sent.filter((s) => s.url.endsWith('/letters/generate')).pop();
+  check('verwijzing in één klik: dossier vanzelf opgehaald', verw && verw.body.kind === 'verwijzing' && verw.body.specialisme === 'uroloog'
+    && /Journaal|JOURNAAL/i.test(verw.body.dossier) && !/Pieter|123456789/.test(verw.body.dossier), verw && verw.body.kind);
 
   console.log('Dossiervraag');
   const weergave = () => sw.evaluate(async () => ({
