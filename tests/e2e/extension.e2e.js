@@ -71,6 +71,8 @@ function check(name, cond, extra) {
         : { spreker: 'arts', origineel: 'Heeft u koorts?', vertaling: 'Ateşiniz var mı?', terugvertaling: 'Heeft u koorts?',
             onzeker: false, twijfel: '', leeg: false }) });
     }
+    if (url.endsWith('/leren/brief')) return r.fulfill({ contentType: 'application/json', body: JSON.stringify({ gewijzigd_pct: 18,
+      voorstellen: [{ id: 92, soort: 'brief', taal: body.soort, regel: "Begin met 'Beste collega,'.", van: '', naar: '', status: 'voorstel', aantal: 1 }] }) });
     if (url.endsWith('/leren/econsult')) return r.fulfill({ contentType: 'application/json', body: JSON.stringify({ gewijzigd_pct: 22,
       voorstellen: [{ id: 91, soort: 'econsult', taal: '', regel: "Begin met 'Goedemorgen,'.", van: '', naar: '', status: 'voorstel', aantal: 1 }] }) });
     if (url.endsWith('/leren/soep')) return r.fulfill({ contentType: 'application/json', body: JSON.stringify({ gewijzigd_pct: 31.5,
@@ -327,6 +329,17 @@ function check(name, cond, extra) {
   check('brief zonder sterretjes, koppen als gewone regel', !brief.includes('**') && brief.includes('\nReden van verwijzing en vraagstelling\n'), brief.slice(0, 120));
   check('status noemt wat nog ingevuld moet worden (niet de eigen naam)', (await panel.textContent('#lt-status')).includes('Nog invullen: [aanvullen: aantal UWI afgelopen jaar]')
     && !(await panel.textContent('#lt-status')).includes('Naam huisarts'), await panel.textContent('#lt-status'));
+  await panel.evaluate(() => { const o = document.getElementById('lt-out'); o.textContent = o.textContent.replace('Geachte collega,', 'Beste collega,'); });
+  await panel.click('#lt-copy').catch(() => {});
+  await sleep(600);
+  const lb = sent.filter((x) => x.url.endsWith('/leren/brief'));
+  check('leert van de aangepaste verwijsbrief, per briefsoort', lb.length === 1 && lb[0].body.soort === 'verwijzing'
+    && lb[0].body.concept.startsWith('Geachte collega') && lb[0].body.definitief.startsWith('Beste collega'), lb.map((x) => x.body && x.body.soort));
+  check('voorstel onder de brief', await panel.isVisible('#leer-kaart') && await panel.evaluate(() => !!document.getElementById('leer-kaart').closest('#view-letters')));
+  await panel.click('#lt-copy').catch(() => {});
+  await sleep(300);
+  check('dezelfde brief leert maar één keer', sent.filter((x) => x.url.endsWith('/leren/brief')).length === 1);
+  await panel.click('#leer-dicht');
   await panel.click('.lt-tegel[data-kind="verklaring"]');
   check('verklaring: doel en knop', await panel.isVisible('#lt-doel') && (await panel.textContent('#lt-generate')) === 'Schrijf verklaring');
   await panel.selectOption('#lt-doel', 'woningurgentie');

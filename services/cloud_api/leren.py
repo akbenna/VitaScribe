@@ -14,6 +14,9 @@ meegeeft, per arts:
          begrijpen. Gaan mee in elke vertaling.
   econsult  schrijfstijl van antwoorden op e-consulten: aanhef, toon,
          afsluiting, lengte. Gaan mee in elk concept-antwoord.
+  brief  schrijfstijl per briefsoort (verwijzing, informatiebrief,
+         verklaring; in de kolom taal): opbouw, lengte, formulering. Gaan mee
+         in elke brief van die soort.
 
 De bron is wat de arts verandert: het verschil tussen het concept en wat er in
 Bricks komt, en in de tolk de beurten die eenvoudiger moesten. Dat verschil
@@ -33,6 +36,7 @@ Endpoints (API-sleutel verplicht; alles van de arts zelf):
   POST /api/v1/leren/soep       {concept, definitief, markeringen}
   POST /api/v1/leren/tolk       {taal, eenvoudiger: [{voor, na}], weggehaald, beurten}
   POST /api/v1/leren/econsult   {concept, definitief}
+  POST /api/v1/leren/brief      {soort, concept, definitief}
   GET  /api/v1/leren/overzicht  -> regels en meting
   POST /api/v1/leren/regel      {soort, taal?, regel? | van, naar}   (zelf toevoegen)
   POST /api/v1/leren/regel/{id} {status: actief | afgewezen | weg}
@@ -58,9 +62,10 @@ from .auth import verify_api_key
 logger = structlog.get_logger()
 router = APIRouter(prefix="/api/v1/leren", tags=["leren"])
 
-SOORTEN = ("soep", "woord", "tolk", "econsult")
+SOORTEN = ("soep", "woord", "tolk", "econsult", "brief")
+BRIEFSOORTEN = ("verwijzing", "informatiebrief", "verklaring")
 STATUSSEN = ("voorstel", "actief", "afgewezen")
-MAX_ACTIEF = {"soep": 25, "woord": 60, "tolk": 30, "econsult": 20}
+MAX_ACTIEF = {"soep": 25, "woord": 60, "tolk": 30, "econsult": 20, "brief": 20}
 WOORD_VANZELF = 3            # zo vaak dezelfde verbetering: dan gaat het woord vanzelf mee
 MIN_GEWIJZIGD = 2.0          # minder dan 2% veranderd: niets te leren, alleen meten
 MAX_REGEL = 200
@@ -268,6 +273,18 @@ async def econsult_prompt() -> str:
             + "\n".join(f"- {r['regel']}" for r in regels) + "\n\n")
 
 
+async def brief_prompt(soort: str) -> str:
+    """Line for a letter prompt: how this doctor writes this kind of letter."""
+    if soort not in BRIEFSOORTEN:
+        return ""
+    regels = await actief("brief", soort)
+    if not regels:
+        return ""
+    return ("SCHRIJFSTIJL VAN DEZE ARTS VOOR DIT SOORT BRIEF (alleen opbouw, lengte en formulering; "
+            "voeg nooit inhoud toe die niet in het dossier staat):\n"
+            + "\n".join(f"- {r['regel']}" for r in regels) + "\n\n")
+
+
 # ── Learning from what the doctor changed ──
 
 def gewijzigd_pct(concept: Dict[str, str], definitief: Dict[str, str]) -> float:
@@ -311,6 +328,22 @@ Strikt:
 - Liever geen regel dan een twijfelachtige. Maximaal 3. Kort, in het Nederlands, als opdracht ("Begin met …", "Spreek de patiënt aan met …").
 
 Antwoord alleen met JSON: {"regels": ["..."]}"""
+
+
+BRIEF_LEER_SYSTEM = """Je helpt een huisarts zijn software voor brieven te verbeteren. Je krijgt een {soort} die de software schreef, en de versie die de arts na aanpassen verstuurde.
+
+Leid hieruit af hoe deze arts dit soort brief in het vervolg wil: opbouw en volgorde, welke kopjes hij gebruikt of weglaat, lengte, telegramstijl of volzinnen, afkortingen, hoe hij datums noteert, aanhef en afsluiting, wat hij standaard toevoegt of schrapt.
+
+Strikt:
+- Alleen vorm en werkwijze, die voor elke volgende brief van deze soort gelden.
+- Geen enkel gegeven van deze patiënt: geen naam, klacht, diagnose, medicijn, datum of waarde; geen naam van een collega of instelling.
+- Een inhoudelijke verbetering van één feit is geen regel; sla die over.
+- Liever geen regel dan een twijfelachtige. Maximaal 3. Kort, in het Nederlands, als opdracht ("Schrijf …", "Laat … weg", "Zet … bovenaan").
+
+Antwoord alleen met JSON: {{"regels": ["..."]}}"""
+
+BRIEF_NAAM = {"verwijzing": "verwijsbrief", "informatiebrief": "informatiebrief aan een derde",
+              "verklaring": "verklaring op verzoek van de patiënt"}
 
 
 def _parse(tekst: str) -> dict:
@@ -448,6 +481,32 @@ async def leer_econsult(body: EconsultLeren, user: str = Depends(verify_api_key)
     return {"gewijzigd_pct": pct, "voorstellen": voorstellen}
 
 
+class BriefLeren(BaseModel):
+    soort: str = Field(..., pattern="^(verwijzing|informatiebrief|verklaring)$")
+    concept: str = Field(..., max_length=MAX_VELD * 2)
+    definitief: str = Field(..., max_length=MAX_VELD * 2)
+
+
+@router.post("/brief")
+async def leer_brief(body: BriefLeren, user: str = Depends(verify_api_key)):
+    wie = eigenaar() or f"naam:{user}"
+    pct = gewijzigd_pct({"s": body.concept}, {"s": body.definitief})
+    await opslag().meet(wie, "brief", gewijzigd=pct)
+    voorstellen: List[dict] = []
+    if pct >= MIN_GEWIJZIGD:
+        user_prompt = f"CONCEPT VAN DE SOFTWARE:\n{body.concept}\n\nVERSTUURD DOOR DE ARTS:\n{body.definitief}"
+        try:
+            data = _parse(await llm_service.complete(BRIEF_LEER_SYSTEM.format(soort=BRIEF_NAAM[body.soort]),
+                                                     user_prompt, provider=data_policy.phi_llm_provider(),
+                                                     json_mode=True, max_tokens=500))
+            voorstellen = await _voorstellen(wie, "brief", body.soort, list(data.get("regels") or []), [])
+        except Exception as exc:   # learning is a bonus; never an error for the doctor
+            logger.warning("leren.brief_fout", error=type(exc).__name__)
+    logger.info("leren.brief", soort=body.soort, gewijzigd=pct, voorstellen=len(voorstellen))
+    audit.log_event(user, "leren.brief", soort=body.soort, gewijzigd=pct, voorstellen=len(voorstellen))
+    return {"gewijzigd_pct": pct, "voorstellen": voorstellen}
+
+
 @router.get("/overzicht")
 async def overzicht(user: str = Depends(verify_api_key)):
     wie = eigenaar() or f"naam:{user}"
@@ -463,7 +522,7 @@ async def overzicht(user: str = Depends(verify_api_key)):
 
 
 class NieuweRegel(BaseModel):
-    soort: str = Field(..., pattern="^(soep|woord|tolk|econsult)$")
+    soort: str = Field(..., pattern="^(soep|woord|tolk|econsult|brief)$")
     taal: str = Field(default="", max_length=10)
     regel: str = Field(default="", max_length=MAX_REGEL)
     van: str = Field(default="", max_length=60)
@@ -482,7 +541,10 @@ async def nieuwe_regel(body: NieuweRegel, user: str = Depends(verify_api_key)):
         regel = schoon(body.regel)
         if len(regel) < 8:
             raise HTTPException(status_code=400, detail="Schrijf de regel iets uitgebreider, zonder patiëntgegevens.")
-        rij = await opslag().bewaar(wie, body.soort, body.taal if body.soort == "tolk" else "", regel, "", "", "actief")
+        if body.soort == "brief" and body.taal not in BRIEFSOORTEN:
+            raise HTTPException(status_code=400, detail="Kies voor welke brief de regel geldt.")
+        rij = await opslag().bewaar(wie, body.soort, body.taal if body.soort in ("tolk", "brief") else "",
+                                    regel, "", "", "actief")
     _vergeet(wie)
     audit.log_event(user, "leren.regel", soort=body.soort, status="actief")
     return {k: rij[k] for k in ("id", "soort", "taal", "regel", "van", "naar", "status", "aantal")}

@@ -183,3 +183,35 @@ def test_econsult_weinig_veranderd_alleen_meten(api, monkeypatch):
     t = "Beste [naam patiënt],\n\nU kunt paracetamol gebruiken.\n\nMet vriendelijke groet,\n[Naam huisarts]"
     d = api.post("/api/v1/leren/econsult", headers=A, json={"concept": t, "definitief": t}).json()
     assert d == {"gewijzigd_pct": 0.0, "voorstellen": []} and gezien == []
+
+
+def test_brief_stijl_per_soort_leren_en_meegeven(api, monkeypatch):
+    from services.cloud_api import letters
+    concept = "Geachte collega,\n\nReden van verwijzing en vraagstelling\nZwelling.\n\nMet collegiale groet,\n[Naam huisarts]"
+    verstuurd = "Beste collega,\n\nVraagstelling: zwelling.\n\nMet vriendelijke groet,\nA. Bennaghmouch"
+    monkeypatch.setattr(llm_service, "complete", nep_llm({"regels": ["Begin met 'Beste collega,'.", "Zet de vraagstelling op één regel."]}))
+    d = api.post("/api/v1/leren/brief", headers=A, json={"soort": "verwijzing", "concept": concept, "definitief": verstuurd}).json()
+    assert [(v["soort"], v["taal"]) for v in d["voorstellen"]] == [("brief", "verwijzing")] * 2
+    for v in d["voorstellen"]:
+        api.post(f"/api/v1/leren/regel/{v['id']}", headers=A, json={"status": "actief"})
+
+    seen = []
+
+    async def stream(provider, system, user, max_tokens, quality=False, api_key=None):
+        seen.append(system)
+        yield "Beste collega,"
+
+    monkeypatch.setattr(letters.llm_service, "stream_llm", stream)
+    dossier = "PATIËNT: J.J.\n== JOURNAAL ==\n12-03-2026 zwelling re enkel."
+    verw = {"kind": "verwijzing", "dossier": dossier, "specialisme": "vaatchirurg", "reden": "Zwelling"}
+    assert api.post("/api/v1/letters/generate", headers=A, json=verw).status_code == 200
+    assert api.post("/api/v1/letters/generate", headers=B, json=verw).status_code == 200
+    assert api.post("/api/v1/letters/generate", headers=A, json={
+        "kind": "verklaring", "dossier": dossier, "doel": "woningurgentie", "toestemming": True}).status_code == 200
+    # dr A's referral carries the style; dr B's does not; another kind of letter does not either
+    assert "Beste collega" in seen[0] and "SCHRIJFSTIJL VAN DEZE ARTS VOOR DIT SOORT BRIEF" in seen[0]
+    assert "SCHRIJFSTIJL" not in seen[1] and "SCHRIJFSTIJL" not in seen[2]
+    # adding by hand needs the kind of letter
+    assert api.post("/api/v1/leren/regel", headers=A, json={"soort": "brief", "regel": "Schrijf in volzinnen."}).status_code == 400
+    assert api.post("/api/v1/leren/regel", headers=A, json={"soort": "brief", "taal": "verklaring",
+                                                            "regel": "Schrijf in volzinnen."}).status_code == 200

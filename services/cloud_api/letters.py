@@ -22,7 +22,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
-from . import audit, data_policy, llm_service
+from . import audit, data_policy, leren, llm_service
 from .auth import huidige_identiteit, verify_api_key
 from .praktijk_sleutels import kies_brieven
 
@@ -390,6 +390,8 @@ async def generate_letter(body: GenerateRequest, ident=Depends(huidige_identitei
     Letters are the only thing that may go there: they are pseudonymised."""
     user_name = ident.label
     system, user, quality, max_tokens = build_letter_prompts(body)
+    # How this doctor writes this kind of letter (learned, approved by the doctor).
+    system = await leren.brief_prompt(body.kind) + system
     provider, eigen_sleutel = await kies_brieven(ident)
     audit.log_event(user_name, "letters.generate", kind=body.kind,
                     aanvrager=body.aanvrager or "", consent=bool(body.toestemming),

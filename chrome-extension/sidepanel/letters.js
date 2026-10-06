@@ -557,6 +557,7 @@
       }
       // Plain text for Bricks and mail; then say what is still open.
       out.textContent = SVBrief.schoon(out.textContent);
+      lt.concept = { soort: body.kind, tekst: out.textContent };
       var open = SVBrief.openPlekken(out.textContent).filter(function (x) { return !/^\[Naam huisarts\]$/i.test(x); });
       status(open.length
         ? 'Concept klaar. Nog invullen: ' + open.join(' · ') + '. Controleer de brief voordat je hem verstuurt.'
@@ -569,16 +570,27 @@
     }
   });
 
+  // The letter as the doctor sends it: learn from what was changed, once per concept.
+  function leer() {
+    var c = lt.concept;
+    if (!c || c.geleerd || !window.SVLerenUI) return;
+    c.geleerd = true;
+    window.SVLerenUI.naBrief(c.soort, c.tekst, $('lt-out').innerText.trim());
+  }
+
   $('lt-copy').addEventListener('click', async function () {
+    leer();
     await navigator.clipboard.writeText($('lt-out').innerText);
     status('Gekopieerd.');
   });
   $('lt-insert').addEventListener('click', async function () {
+    leer();
     var res = await insertOrCopy($('lt-out').innerText);
     if (res && res.ok) status('Ingevoegd in het veld.');
     else status(((res && res.error) || 'Invoegen lukte niet') + ' De brief staat op het klembord; plak met Ctrl+V.', true);
   });
   $('lt-new').addEventListener('click', function () {
+    lt.concept = null;
     $('lt-output').classList.add('hidden');
     $('lt-out').textContent = '';
     ['lt-vraag', 'lt-reden', 'lt-extra', 'lt-onderwerp', 'lt-periode', 'lt-verkl-vraag'].forEach(function (id) { $(id).value = ''; });

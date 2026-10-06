@@ -129,8 +129,8 @@ CREATE TRIGGER vs_auditlog_leeg BEFORE TRUNCATE ON vs_auditlog
 CREATE TABLE IF NOT EXISTS vs_leren (
     id          BIGSERIAL PRIMARY KEY,
     eigenaar    TEXT NOT NULL,
-    soort       TEXT NOT NULL,              -- soep | woord | tolk | econsult
-    taal        TEXT NOT NULL DEFAULT '',   -- bij tolk: de taal van de patiënt
+    soort       TEXT NOT NULL,              -- soep | woord | tolk | econsult | brief
+    taal        TEXT NOT NULL DEFAULT '',   -- bij tolk: de taal van de patiënt; bij brief: de briefsoort
     sleutel     TEXT NOT NULL,              -- genormaliseerd, tegen dubbelen
     regel       TEXT NOT NULL,
     van         TEXT NOT NULL DEFAULT '',
@@ -147,7 +147,7 @@ CREATE TABLE IF NOT EXISTS vs_leren (
 CREATE TABLE IF NOT EXISTS vs_leermeting (
     eigenaar     TEXT NOT NULL,
     dag          DATE NOT NULL,
-    soort        TEXT NOT NULL,             -- soep | tolk | econsult
+    soort        TEXT NOT NULL,             -- soep | tolk | econsult | brief
     aantal       INTEGER NOT NULL DEFAULT 0,
     gewijzigd    REAL NOT NULL DEFAULT 0,   -- som van de percentages
     markeringen  INTEGER NOT NULL DEFAULT 0,
