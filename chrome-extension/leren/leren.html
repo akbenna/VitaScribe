@@ -20,7 +20,7 @@
     <div id="grafiek" class="grafiek" role="img" aria-label="Percentage aangepast per consult, per week"></div>
     <table id="weken" class="weken"></table>
     <p class="noot">Alleen getallen: hoeveel procent je per consult aanpaste, hoeveel gele markeringen er waren, en hoe vaak
-      de tolk iets eenvoudiger moest zeggen.</p>
+      de tolk iets eenvoudiger moest zeggen, en hoeveel je aan e-consulten en brieven veranderde.</p>
   </section>
 
   <section class="kaart">
@@ -47,6 +47,20 @@
     <ul id="lijst-econsult" class="regels"></ul>
     <form class="toevoegen" data-soort="econsult">
       <input name="regel" maxlength="200" placeholder="Bijv. Begin met 'Goedemorgen,' en sluit af met je voornaam.">
+      <button class="btn" type="submit">Toevoegen</button>
+    </form>
+  </section>
+
+  <section class="kaart">
+    <h2>Stijl van je brieven</h2>
+    <div id="lijst-brief"></div>
+    <form class="toevoegen" data-soort="brief">
+      <select name="taal">
+        <option value="verwijzing">Verwijsbrief</option>
+        <option value="informatiebrief">Informatiebrief</option>
+        <option value="verklaring">Verklaring</option>
+      </select>
+      <input name="regel" maxlength="200" placeholder="Bijv. Begin met 'Beste collega,' en schrijf in telegramstijl.">
       <button class="btn" type="submit">Toevoegen</button>
     </form>
   </section>

@@ -117,12 +117,15 @@
     t.textContent = '';
     if (!weken.length) return;
     var kop = el('tr');
-    ['Week van', 'Consulten', '% aangepast', 'Markeringen', 'Tolkgesprekken', 'Eenvoudiger per gesprek'].forEach(function (k) { kop.appendChild(el('th', '', k)); });
+    ['Week van', 'Consulten', '% aangepast', 'Markeringen', 'Tolkgesprekken', 'Eenvoudiger per gesprek',
+      'E-consulten', '% aangepast', 'Brieven', '% aangepast'].forEach(function (k) { kop.appendChild(el('th', '', k)); });
     t.appendChild(kop);
     weken.slice(-12).reverse().forEach(function (w) {
       var rij = el('tr');
       [w.label, w.consulten, w.gewijzigdGem === null ? '–' : w.gewijzigdGem + '%', w.markeringenGem === null ? '–' : w.markeringenGem,
-        w.gesprekken, w.eenvoudigerGem === null ? '–' : w.eenvoudigerGem].forEach(function (v) { rij.appendChild(el('td', '', String(v))); });
+        w.gesprekken, w.eenvoudigerGem === null ? '–' : w.eenvoudigerGem,
+        w.econsulten, w.econsultGem === null ? '–' : w.econsultGem + '%',
+        w.brieven, w.briefGem === null ? '–' : w.briefGem + '%'].forEach(function (v) { rij.appendChild(el('td', '', String(v))); });
       t.appendChild(rij);
     });
   }
@@ -134,6 +137,17 @@
       vul($('lijst-soep'), g.soep, 'Nog niets geleerd. Pas een verslag aan en voeg het in; dan doet VitaScribe hier voorstellen.');
       vul($('lijst-woord'), g.woord, 'Nog geen woorden.');
       vul($('lijst-econsult'), g.econsult, 'Nog niets geleerd. Pas een concept-antwoord aan en zet het in Bricks; dan doet VitaScribe hier voorstellen.');
+      var BRIEVEN = { verwijzing: 'Verwijsbrief', informatiebrief: 'Informatiebrief', verklaring: 'Verklaring' };
+      var brief = $('lijst-brief');
+      brief.textContent = '';
+      var soorten = Object.keys(g.brief);
+      if (!soorten.length) brief.appendChild(el('p', 'leeg', 'Nog niets geleerd. Pas een brief aan en kopieer of voeg hem in; dan doet VitaScribe hier voorstellen.'));
+      soorten.forEach(function (s) {
+        brief.appendChild(el('p', 'taal', BRIEVEN[s] || s));
+        var ul = el('ul', 'regels');
+        vul(ul, g.brief[s], '');
+        brief.appendChild(ul);
+      });
       var tolk = $('lijst-tolk');
       tolk.textContent = '';
       var talen = Object.keys(g.tolk);

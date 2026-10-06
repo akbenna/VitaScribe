@@ -63,7 +63,7 @@ Zie stuk 02 (register) en stuk 05 (subverwerkers).
 | Tekst en verslag | Server → Mistral Large → server → browser | Server: nee. Browser: werkgeheugen tot "Nieuw consult" |
 | Tolk: beurt (geluid en tekst) | Browser → server → Voxtral (verstaan) → Mistral Large (vertalen) → Voxtral TTS of stem op de computer (voorlezen) | Server: nee. Browser: werkgeheugen tot "Wissen" of "Consult afsluiten" |
 | E-consult: dossier in beeld, bericht, beleid van de arts | Browser → server → Mistral Large → server → browser | Server: nee. Browser: werkgeheugen tot "Wissen" of "Consult afsluiten" |
-| Leren: concept en aangepaste versie (SOEP, e-consultantwoord) | Browser → server → taalmodel van de modus (regels afleiden) | Teksten: nee. Alleen algemene regels die de arts goedkeurt, per arts, in het register |
+| Leren: concept en aangepaste versie (SOEP, e-consultantwoord, brief) | Browser → server → taalmodel van de modus (regels afleiden) | Teksten: nee. Alleen algemene regels die de arts goedkeurt, per arts, in het register |
 | Leren: meting | Server, database bij Railway | Getallen per dag, zonder inhoud |
 | Auditlog | Server, database bij Railway | 5 jaar, zonder inhoud |
 | Definitief verslag | Bricks, door de arts | WGBO: 20 jaar |

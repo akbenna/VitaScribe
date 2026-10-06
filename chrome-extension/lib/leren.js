@@ -1,7 +1,8 @@
 /**
  * VitaScribe - Wat VitaScribe leerde: logica zonder DOM (testbaar in Node)
  *
- * - de regels per groep (huisstijl, woorden, e-consult, tolk per taal);
+ * - de regels per groep (huisstijl, woorden, e-consult, brief per soort,
+ *   tolk per taal);
  * - de dagmetingen samengevat per week, om te zien of het beter wordt.
  */
 var SVLeren = (function () {
@@ -28,7 +29,7 @@ var SVLeren = (function () {
     (meting || []).forEach(function (m) {
       var k = maandag(m.dag);
       var w = weken[k] || (weken[k] = { week: k, label: weekLabel(k), consulten: 0, gewijzigd: 0, markeringen: 0,
-        gesprekken: 0, eenvoudiger: 0, weggehaald: 0 });
+        gesprekken: 0, eenvoudiger: 0, weggehaald: 0, econsulten: 0, econsultGewijzigd: 0, brieven: 0, briefGewijzigd: 0 });
       if (m.soort === 'soep') {
         w.consulten += m.aantal;
         w.gewijzigd += m.gewijzigd;
@@ -37,6 +38,12 @@ var SVLeren = (function () {
         w.gesprekken += m.aantal;
         w.eenvoudiger += m.eenvoudiger;
         w.weggehaald += m.weggehaald;
+      } else if (m.soort === 'econsult') {
+        w.econsulten += m.aantal;
+        w.econsultGewijzigd += m.gewijzigd;
+      } else if (m.soort === 'brief') {
+        w.brieven += m.aantal;
+        w.briefGewijzigd += m.gewijzigd;
       }
     });
     return Object.keys(weken).sort().map(function (k) {
@@ -46,15 +53,18 @@ var SVLeren = (function () {
         gewijzigdGem: w.consulten ? Math.round(w.gewijzigd / w.consulten * 10) / 10 : null,
         markeringenGem: w.consulten ? Math.round(w.markeringen / w.consulten * 10) / 10 : null,
         eenvoudigerGem: w.gesprekken ? Math.round(w.eenvoudiger / w.gesprekken * 10) / 10 : null,
+        econsulten: w.econsulten, brieven: w.brieven,
+        econsultGem: w.econsulten ? Math.round(w.econsultGewijzigd / w.econsulten * 10) / 10 : null,
+        briefGem: w.brieven ? Math.round(w.briefGewijzigd / w.brieven * 10) / 10 : null,
       };
     });
   }
 
   /** Rules in groups for the overview page. */
   function groepen(regels) {
-    var uit = { soep: [], woord: [], econsult: [], tolk: {} };
+    var uit = { soep: [], woord: [], econsult: [], tolk: {}, brief: {} };
     (regels || []).forEach(function (r) {
-      if (r.soort === 'tolk') (uit.tolk[r.taal] = uit.tolk[r.taal] || []).push(r);
+      if (r.soort === 'tolk' || r.soort === 'brief') (uit[r.soort][r.taal] = uit[r.soort][r.taal] || []).push(r);
       else if (uit[r.soort]) uit[r.soort].push(r);
     });
     return uit;

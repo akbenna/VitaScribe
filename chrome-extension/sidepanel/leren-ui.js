@@ -13,7 +13,7 @@ window.SVLerenUI = (function () {
   'use strict';
 
   var $ = function (id) { return document.getElementById(id); };
-  var SOORT = { soep: 'stijl', woord: 'woord', tolk: 'tolk', econsult: 'e-consult' };
+  var SOORT = { soep: 'stijl', woord: 'woord', tolk: 'tolk', econsult: 'e-consult', brief: 'brief' };
   // The card lives under the SOEP; for an e-consult it moves under the answer.
   var thuis = { ouder: null, na: null };
 
@@ -90,6 +90,12 @@ window.SVLerenUI = (function () {
       .then(function (d) { toon(d.voorstellen, 'ec-uit'); }).catch(function () { /* learning is a bonus */ });
   }
 
+  /** The doctor copied or inserted a letter: learn its style, per kind of letter. */
+  function naBrief(soort, concept, definitief) {
+    aanvraag('/api/v1/leren/brief', { soort: soort, concept: concept, definitief: definitief })
+      .then(function (d) { toon(d.voorstellen, 'lt-output'); }).catch(function () { /* learning is a bonus */ });
+  }
+
   function naTolk(taal, beurten, eenvoudiger, weggehaald) {
     aanvraag('/api/v1/leren/tolk', { taal: taal, beurten: beurten, eenvoudiger: eenvoudiger.slice(-20), weggehaald: weggehaald })
       .then(function (d) { toon(d.voorstellen); }).catch(function () {});
@@ -109,5 +115,5 @@ window.SVLerenUI = (function () {
   $('leer-alles').addEventListener('click', openOverzicht);
   $('open-leren').addEventListener('click', openOverzicht);
 
-  return { naInvoegen: naInvoegen, naTolk: naTolk, naEconsult: naEconsult, toon: toon, sluit: sluit };
+  return { naInvoegen: naInvoegen, naTolk: naTolk, naEconsult: naEconsult, naBrief: naBrief, toon: toon, sluit: sluit };
 })();
