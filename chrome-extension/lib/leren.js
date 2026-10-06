@@ -1,7 +1,7 @@
 /**
  * VitaScribe - Wat VitaScribe leerde: logica zonder DOM (testbaar in Node)
  *
- * - de regels per groep (huisstijl, woorden, tolk per taal);
+ * - de regels per groep (huisstijl, woorden, e-consult, tolk per taal);
  * - de dagmetingen samengevat per week, om te zien of het beter wordt.
  */
 var SVLeren = (function () {
@@ -52,7 +52,7 @@ var SVLeren = (function () {
 
   /** Rules in groups for the overview page. */
   function groepen(regels) {
-    var uit = { soep: [], woord: [], tolk: {} };
+    var uit = { soep: [], woord: [], econsult: [], tolk: {} };
     (regels || []).forEach(function (r) {
       if (r.soort === 'tolk') (uit.tolk[r.taal] = uit.tolk[r.taal] || []).push(r);
       else if (uit[r.soort]) uit[r.soort].push(r);

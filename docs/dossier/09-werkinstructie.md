@@ -65,6 +65,8 @@ jouw verantwoordelijkheid (WGBO). Dat verandert niet door de software.
 - **NHG meedenken** vink je alleen aan als je dat voor dit e-consult bewust
   wilt. Het is een voorstel; jouw beleid gaat voor. Zegt het dat de vraag niet
   schriftelijk kan, bel de patiënt of plan een afspraak.
+- Pas je het antwoord aan, dan stelt VitaScribe een stijlregel voor (aanhef,
+  toon, afsluiting). Onthoud alleen regels over vorm, nooit over inhoud.
 
 ## Wat VitaScribe van je leert
 

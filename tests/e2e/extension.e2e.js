@@ -71,6 +71,8 @@ function check(name, cond, extra) {
         : { spreker: 'arts', origineel: 'Heeft u koorts?', vertaling: 'Ateşiniz var mı?', terugvertaling: 'Heeft u koorts?',
             onzeker: false, twijfel: '', leeg: false }) });
     }
+    if (url.endsWith('/leren/econsult')) return r.fulfill({ contentType: 'application/json', body: JSON.stringify({ gewijzigd_pct: 22,
+      voorstellen: [{ id: 91, soort: 'econsult', taal: '', regel: "Begin met 'Goedemorgen,'.", van: '', naar: '', status: 'voorstel', aantal: 1 }] }) });
     if (url.endsWith('/leren/soep')) return r.fulfill({ contentType: 'application/json', body: JSON.stringify({ gewijzigd_pct: 31.5,
       voorstellen: [{ id: 7, soort: 'soep', taal: '', regel: "Schrijf in S geen 'patiënt geeft aan'.", van: '', naar: '', status: 'voorstel', aantal: 1 }] }) });
     if (/\/leren\/regel\/\d+$/.test(url)) return r.fulfill({ contentType: 'application/json', body: '{"ok":true}' });
@@ -453,10 +455,23 @@ function check(name, cond, extra) {
   await panel.bringToFront();
   await sleep(300);
   check('daarna: "Zet in Bricks" bij antwoord en journaal, uitleg weg', await panel.isVisible('#ec-zet-antwoord') && await panel.isVisible('#ec-zet-journaal') && await panel.isHidden('#ec-veld'));
+  await panel.evaluate(() => {
+    const a = document.getElementById('ec-antwoord');
+    a.textContent = a.textContent.replace('Beste [naam patiënt],', 'Goedemorgen,');
+  });
   await panel.click('#ec-zet-antwoord');
   await panel.click('#ec-zet-journaal');
   await sleep(1200);
-  check('antwoord en journaal staan in de aangewezen velden', (await page.inputValue('#ec-antw')).includes('Beste [naam patiënt]') && (await page.inputValue('#ec-journ')).startsWith('S: vraag'),
+  const le = sent.filter((x) => x.url.endsWith('/leren/econsult'));
+  check('leert van het aangepaste antwoord: concept en wat erin ging', le.length === 1 && le[0].body.concept.startsWith('Beste') && le[0].body.definitief.startsWith('Goedemorgen'), le.map((x) => x.body));
+  check('voorstel onder het e-consult, niet onder de SOEP', await panel.isVisible('#leer-kaart')
+    && (await panel.evaluate(() => document.getElementById('leer-kaart').closest('#view-econsult') !== null))
+    && (await panel.textContent('#leer-lijst')).includes('Goedemorgen'));
+  await panel.click('#ec-kop-antwoord').catch(() => {});
+  await sleep(300);
+  check('hetzelfde concept leert maar één keer', sent.filter((x) => x.url.endsWith('/leren/econsult')).length === 1);
+  await panel.click('#leer-dicht');
+  check('antwoord en journaal staan in de aangewezen velden', (await page.inputValue('#ec-antw')).includes('Goedemorgen,') && (await page.inputValue('#ec-journ')).startsWith('S: vraag'),
     [await page.inputValue('#ec-antw'), await page.inputValue('#ec-journ')]);
   await panel.click('#modus [data-modus="eu"]');
   await sleep(800);
