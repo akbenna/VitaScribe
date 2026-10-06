@@ -615,7 +615,9 @@ window.SVTolkUI = (function () {
   // "Maak verslag", "Eenvoudiger" and ✕ work as usual.
   var TEL_STATUS = { luistert: 'Telefoon luistert.', hoort: 'Telefoon hoort iemand…', verwerkt: 'Telefoon: vertalen…',
     spreekt: 'Telefoon leest voor…', pauze: 'Telefoon staat op pauze.', gestopt: 'Telefoon luistert niet meer (Start op de telefoon).' };
-  $('tk-telefoon').addEventListener('click', async function () {
+  // Guarded: with an older sidepanel.html (files mixed during an update) the
+  // rest of the interpreter must keep working.
+  if ($('tk-telefoon')) $('tk-telefoon').addEventListener('click', async function () {
     var t = taalInfo($('tk-taal').value);
     if (!t) { $('tk-taal-uitleg').textContent = 'Kies eerst een taal.'; return; }
     tk = { taal: t.code, gestart: true, beurten: [], telefoon: true };
