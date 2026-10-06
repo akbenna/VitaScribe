@@ -97,6 +97,35 @@ Leg medische termen in gewone taal uit.",
 Alleen gegevens die direct op de vraag betrekking hebben.",
     "uwv": "De aanvrager is (de verzekeringsarts van) UWV. Je mag medische \
 terminologie gebruiken en afsluiten met \"Met collegiale groet\".",
+    "letselschade": "De aanvrager is de medisch adviseur in een letselschadezaak \
+(verzekeraar of belangenbehartiger). Strikt feitelijk en alleen voor de \
+gevraagde periode en klachten; geen uitspraken over oorzaak, ongevalsgevolgen, \
+prognose of eindtoestand.",
+    "bedrijfsarts": "De aanvrager is de bedrijfsarts (arbodienst). Je mag \
+medische terminologie gebruiken en afsluiten met \"Met collegiale groet\". Geen \
+oordeel over arbeidsgeschiktheid of belastbaarheid: dat is aan de bedrijfsarts.",
+    "ciz": "De aanvrager is het CIZ (indicatie Wet langdurige zorg). Noem \
+diagnoses, beperkingen zoals ze in het dossier beschreven staan (beoordeel ze niet \
+zelf), hulpmiddelen en betrokken zorgverleners. Leg medische termen in gewone \
+taal uit.",
+    "ind": "De aanvrager is de IND, meestal via het Bureau Medische Advisering \
+(BMA), dat de vragen opstelt. Beantwoord elke vraag volledig en precies, want \
+de beoordeling hangt af van details: alle diagnoses met datum van vaststelling, \
+de huidige behandeling en wie die geeft (huisarts, specialisten, GGZ), alle \
+huidige medicatie met exacte sterkte, dosering en frequentie, het beloop en de \
+geplande behandeling of controles, zoals ze in het dossier staan. Je mag \
+medische terminologie gebruiken en afsluiten met \"Met collegiale groet\". Geef \
+geen oordeel over een medische noodsituatie, over de gevolgen van stoppen met \
+de behandeling, over reisgeschiktheid of over de beschikbaarheid van zorg in \
+het land van herkomst: dat beoordeelt het BMA.",
+    "duo": "De aanvrager is DUO (Dienst Uitvoering Onderwijs), bijvoorbeeld bij \
+een verzoek om studievertraging door ziekte of een beperking. Alleen feiten: \
+welke aandoening, zo beperkt als de vraag toelaat, sinds wanneer, en in welke \
+periode klachten of behandeling in het dossier staan. Geen oordeel over de \
+invloed op de studie. Leg medische termen in gewone taal uit.",
+    "cbr": "De aanvrager is het CBR (rijgeschiktheid). Alleen feitelijke \
+gegevens over de aandoening waarnaar gevraagd wordt; geen oordeel over \
+rijgeschiktheid.",
     "overig": "De aanvrager is een externe instantie.",
 }
 
@@ -153,7 +182,8 @@ class GenerateRequest(BaseModel):
     initialen: str = Field("P.X.", max_length=12)
     dossier: str = Field(..., min_length=10, max_length=MAX_DOSSIER_CHARS)
     # informatiebrief
-    aanvrager: Optional[Literal["advocaat", "sma", "gemeente", "verzekeraar", "uwv", "overig"]] = None
+    aanvrager: Optional[Literal["advocaat", "letselschade", "uwv", "bedrijfsarts", "sma", "verzekeraar",
+                                "gemeente", "ciz", "ind", "duo", "cbr", "overig"]] = None
     vraag: Optional[str] = Field(None, max_length=MAX_TEXT_CHARS)
     toestemming: bool = False
     # verwijzing

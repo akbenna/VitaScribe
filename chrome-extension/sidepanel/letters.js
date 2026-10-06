@@ -62,7 +62,7 @@
     $('lt-verw').classList.toggle('hidden', kind !== 'verwijzing');
     $('lt-generate').textContent = kind === 'verwijzing' ? 'Schrijf verwijsbrief' : 'Schrijf informatiebrief';
   });
-  segment('lt-aanvrager', 'v', function (v) { lt.aanvrager = v; });
+  $('lt-aanvrager').addEventListener('change', function () { lt.aanvrager = this.value; });
   segment('lt-urg', 'v', function (v) { lt.urgentie = v; });
   $('lt-spec').addEventListener('change', function () {
     var v = this.value;

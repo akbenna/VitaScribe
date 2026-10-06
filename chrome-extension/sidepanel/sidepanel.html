@@ -364,14 +364,26 @@
 
       <div id="lt-info" class="hidden">
         <div class="lt-veld"><span class="lt-label">Aanvrager</span>
-          <div class="chips" id="lt-aanvrager">
-            <button class="chip active" data-v="advocaat" type="button">Advocaat</button>
-            <button class="chip" data-v="sma" type="button">SMA</button>
-            <button class="chip" data-v="gemeente" type="button">Gemeente</button>
-            <button class="chip" data-v="verzekeraar" type="button">Verzekeraar</button>
-            <button class="chip" data-v="uwv" type="button">UWV</button>
-            <button class="chip" data-v="overig" type="button">Overig</button>
-          </div>
+          <select id="lt-aanvrager" class="lt-input">
+            <optgroup label="Juridisch">
+              <option value="advocaat" selected>Advocaat</option>
+              <option value="letselschade">Letselschade (medisch adviseur)</option>
+            </optgroup>
+            <optgroup label="Werk en inkomen">
+              <option value="uwv">UWV (verzekeringsarts)</option>
+              <option value="bedrijfsarts">Bedrijfsarts / arbodienst</option>
+              <option value="sma">Sociaal-medisch adviseur</option>
+              <option value="verzekeraar">Verzekeraar (medisch adviseur)</option>
+            </optgroup>
+            <optgroup label="Overheid">
+              <option value="ind">IND (via het BMA)</option>
+              <option value="duo">DUO</option>
+              <option value="gemeente">Gemeente (Wmo, Jeugdwet, Participatie)</option>
+              <option value="ciz">CIZ (Wet langdurige zorg)</option>
+              <option value="cbr">CBR (rijgeschiktheid)</option>
+            </optgroup>
+            <option value="overig">Andere instantie</option>
+          </select>
         </div>
         <div class="lt-labelrij">
           <label class="lt-label" for="lt-vraag">Vraag van de aanvrager</label>

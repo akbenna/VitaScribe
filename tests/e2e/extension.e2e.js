@@ -283,6 +283,8 @@ function check(name, cond, extra) {
   await panel.click('#lt-generate');
   await sleep(400);
   check('zonder toestemming niets verstuurd', !sent.some((s) => s.url.endsWith('/letters/generate')));
+  check('aanvragers in een uitklaplijst, met IND en DUO', (await panel.$$eval('#lt-aanvrager option', (o) => o.map((x) => x.value))).join() === 'advocaat,letselschade,uwv,bedrijfsarts,sma,verzekeraar,ind,duo,gemeente,ciz,cbr,overig');
+  await panel.selectOption('#lt-aanvrager', 'ind');
   check('afbakening zichtbaar bij de informatiebrief', await panel.isVisible('#lt-onderwerp') && await panel.isVisible('#lt-periode'));
   await panel.fill('#lt-onderwerp', 'rugklachten na ongeval');
   await panel.fill('#lt-periode', '2023 – heden');
@@ -290,6 +292,7 @@ function check(name, cond, extra) {
   await panel.click('#lt-generate');
   await sleep(1000);
   const gen = sent.find((s) => s.url.endsWith('/letters/generate'));
+  check('gekozen aanvrager gaat mee (IND)', gen && gen.body.aanvrager === 'ind', gen && gen.body.aanvrager);
   check('afbakening gaat als opdracht mee', gen && /Beperk de brief tot: rugklachten na ongeval/.test(gen.body.extra) && /periode 2023 – heden/.test(gen.body.extra), gen && gen.body.extra);
   check('brief via eigen server, gefilterd', gen && !/Pieter|123456789/.test(JSON.stringify(gen.body)) && gen.body.toestemming === true);
   check('concept getoond', (await panel.textContent('#lt-out')).includes('[Naam huisarts]'));
