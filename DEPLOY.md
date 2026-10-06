@@ -548,3 +548,20 @@ gaat mee na goedkeuring; een woord ook vanzelf na drie keer. Gebruik:
 Zonder `DATABASE_URL` staat het geleerde in het geheugen en is het weg na een
 herstart. Een gedeelde sleutel (`API_KEYS`) leert voor iedereen samen: geef
 elke arts een eigen sleutel.
+
+## Telefoon of iPad (koppeling, `/m`)
+
+De arts koppelt een telefoon met een QR-code uit het zijpaneel; de telefoon
+opent `https://<server>/m`. Geen app en geen extra variabelen. Twee eisen:
+
+- **https.** Safari geeft de microfoon alleen aan een https-pagina. Railway
+  en elke Europese host met TLS volstaan.
+- **Eén replica.** Koppelingen en berichten tussen telefoon en paneel staan
+  in het geheugen van het serverproces (niets op schijf). Draai daarom één
+  replica; met meer replica's moeten koppelingen naar een gedeelde opslag
+  (Redis) verhuizen.
+
+De telefoon doet alles namens de arts die koppelde, in de modus van dat
+moment. De tolk via de telefoon gebruikt dus dezelfde aanbieders als het
+zijpaneel. Voorlezen gebeurt met de stemmen van het toestel zelf; alleen
+zonder stem voor een taal valt hij terug op de stem van de server.

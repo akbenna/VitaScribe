@@ -68,6 +68,16 @@ jouw verantwoordelijkheid (WGBO). Dat verandert niet door de software.
 - Pas je het antwoord aan, dan stelt VitaScribe een stijlregel voor (aanhef,
   toon, afsluiting). Onthoud alleen regels over vorm, nooit over inhoud.
 
+## Telefoon of iPad
+
+- Koppel met de QR-code in het zijpaneel (de knop met de telefoon, of "Tolk
+  via telefoon"). Laat niemand anders die code scannen.
+- Je telefoon heeft een code of Face ID en vergrendelt vanzelf.
+- Foto's van een patiënt maak je via VitaScribe, niet met de gewone camera:
+  dan komen ze niet in je fotorol of iCloud.
+- Klik na de patiënt op "Consult afsluiten": de koppeling en de foto's zijn
+  dan weg. Sluit na het spreekuur het tabblad op de telefoon.
+
 ## Wat VitaScribe van je leert
 
 VitaScribe stelt na invoegen regels voor uit wat je aanpaste. Keur alleen een

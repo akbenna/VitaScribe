@@ -51,6 +51,7 @@ from .soeptest import router as soeptest_router
 from .tolk import router as tolk_router
 from .leren import router as leren_router
 from .econsult import router as econsult_router
+from .telefoon import router as telefoon_router
 from . import register
 from . import audit, data_policy, leren, llm_service
 from .medical_vocabulary import (
@@ -130,7 +131,9 @@ async def modus_per_aanvraag(request: Request, call_next):
 @app.middleware("http")
 async def add_permissions_policy(request: Request, call_next):
     response = await call_next(request)
-    response.headers["Permissions-Policy"] = "microphone=*"
+    # A page that sets its own policy (the phone page: microphone and camera) keeps it.
+    if "permissions-policy" not in response.headers:
+        response.headers["Permissions-Policy"] = "microphone=*"
     return response
 
 
@@ -395,6 +398,7 @@ app.include_router(soeptest_router)
 app.include_router(tolk_router)
 app.include_router(leren_router)
 app.include_router(econsult_router)
+app.include_router(telefoon_router)
 
 
 @app.get("/vitascribe-logo.svg", include_in_schema=False)

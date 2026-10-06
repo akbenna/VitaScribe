@@ -848,6 +848,7 @@ async function nieuwConsult() {
   document.getElementById('mw').classList.add('hidden');
   if (window.SVTolkUI) window.SVTolkUI.wis();   // the interpreter conversation belongs to this consult
   if (window.SVEconsultUI) window.SVEconsultUI.wis();
+  if (window.SVTelefoon) window.SVTelefoon.wisFotos();   // photos belong to this patient
   verversAfsluiten();
   setStatus('Klaar voor het volgende consult.');
 }
