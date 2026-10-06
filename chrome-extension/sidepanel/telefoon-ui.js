@@ -71,7 +71,9 @@ window.SVTelefoon = (function () {
     if (k && (k.taal || null) === (opts.taal || null)) { toonQr(); return; }
     if (k) await ontkoppel(true);
     var h = await headers({ 'Content-Type': 'application/json' });
-    if (!/^https:/.test(h.url) && !/localhost|127\.0\.0\.1/.test(h.url)) {
+    // http only for a server on this computer (development; a host name without dots, or 127.x).
+    var host = new URL(h.url).hostname;
+    if (!/^https:/.test(h.url) && /\./.test(host) && !/^127\./.test(host)) {
       throw new Error('De telefoon kan de microfoon alleen gebruiken via https. Stel een https-adres van de server in.');
     }
     var resp;
