@@ -13,6 +13,12 @@
  * uit, en gaat na elk concept, bij Wissen en bij een nieuw consult weer uit.
  * De server heeft het laatste woord (/api/v1/econsult/status).
  *
+ * Waar het antwoord in Bricks hoort, wijst de arts één keer aan (bij het
+ * eerste concept staat de uitleg er meteen bij): het antwoordveld en, als dat
+ * er is, het journaalveld. De service worker onthoudt die velden per
+ * Bricks-domein (svEconsultFields), net als de S/O/E/P-velden; daarna zet
+ * "Zet in Bricks" de tekst er direct in.
+ *
  * Alles staat alleen in het geheugen van dit paneel.
  *
  * Uses from sidepanel.js: getConfig()
@@ -153,7 +159,70 @@
     $('ec-antwoord').textContent = c.antwoord || '';
     $('ec-journaal').textContent = c.journaal || '';
     verversOpen();
+    verversVeld();
   }
+
+  // ── The Bricks fields for the answer and the journal ──
+  async function actiefTab() {
+    var tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+    return tabs[0] && /^https?:/.test(tabs[0].url || '') ? tabs[0] : null;
+  }
+
+  async function verversVeld() {
+    var tab = await actiefTab();
+    var s = tab ? await chrome.runtime.sendMessage({ action: 'SV_FIELD_MAP_STATUS', tabId: tab.id, set: 'econsult' }).catch(function () { return null; }) : null;
+    var keys = (s && s.mapped && s.keys) || [];
+    var antwoord = keys.indexOf('antwoord') !== -1;
+    var journaal = keys.indexOf('journaal') !== -1;
+    $('ec-zet-antwoord').classList.toggle('hidden', !antwoord);
+    $('ec-zet-journaal').classList.toggle('hidden', !journaal);
+    $('ec-kop-antwoord').classList.toggle('primary', !antwoord);
+    // Not pointed at yet: show how, right with the (first) answer.
+    $('ec-veld').classList.toggle('hidden', antwoord);
+    $('ec-veld-info').classList.toggle('hidden', !antwoord);
+    $('ec-veld-tekst').textContent = antwoord ? 'Gekoppeld: antwoordveld' + (journaal ? ' en journaalveld.' : '.') : '';
+  }
+
+  async function aanwijzen() {
+    var tab = await actiefTab();
+    if (!tab) { status('Open eerst Bricks in dit venster.', true); return; }
+    var res = await chrome.runtime.sendMessage({ action: 'SV_CALIBRATE_START', tabId: tab.id, set: 'econsult' }).catch(function () { return null; });
+    if (res && res.ok) status('Klik in Bricks in het antwoordveld, daarna in het journaalveld (of Overslaan). Het label rechtsonder wijst de weg.');
+    else status((res && res.error) || 'Aanwijzen kon niet starten. Ververs Bricks en probeer opnieuw.', true);
+  }
+  $('ec-aanwijzen').addEventListener('click', aanwijzen);
+  $('ec-opnieuw').addEventListener('click', function (e) { e.preventDefault(); aanwijzen(); });
+  chrome.storage.onChanged.addListener(function (changes, area) {
+    if (area === 'local' && changes.svEconsultFields) {
+      verversVeld();
+      if (huidig) status('Veld onthouden. "Zet in Bricks" zet het e-consult er voortaan direct in.');
+    }
+  });
+
+  async function zet(key, btn) {
+    var tekst = $(key === 'antwoord' ? 'ec-antwoord' : 'ec-journaal').innerText.trim();
+    if (!tekst) return;
+    if (key === 'antwoord' && SVEconsult.openPlekken(tekst).some(function (x) { return /beleid aanvullen/i.test(x); })) {
+      status('Vul eerst [beleid aanvullen] in.', true);
+      return;
+    }
+    var tab = await actiefTab();
+    var vals = {};
+    vals[key] = tekst;
+    var res = tab ? await chrome.runtime.sendMessage({ action: 'SV_FILL_MAPPED_REQUEST', tabId: tab.id, set: 'econsult', values: vals }).catch(function () { return null; }) : null;
+    if (res && res.filled && res.filled.indexOf(key) !== -1) {
+      var label = btn.textContent;
+      btn.textContent = 'Erin gezet';
+      setTimeout(function () { btn.textContent = label; }, 1500);
+      status(key === 'antwoord' ? 'Antwoord in Bricks gezet. Lees het daar na en verstuur het zelf.' : 'Journaal in Bricks gezet.');
+      return;
+    }
+    // Field not on this page: copy, and say where it should be.
+    await navigator.clipboard.writeText(tekst).catch(function () {});
+    status((key === 'antwoord' ? 'Het antwoordveld' : 'Het journaalveld') + ' staat niet op deze pagina. Open die pagina in Bricks en klik opnieuw; de tekst staat al op het klembord.', true);
+  }
+  $('ec-zet-antwoord').addEventListener('click', function () { zet('antwoord', this); });
+  $('ec-zet-journaal').addEventListener('click', function () { zet('journaal', this); });
 
   function verversOpen() {
     var open = SVEconsult.openPlekken($('ec-antwoord').textContent);

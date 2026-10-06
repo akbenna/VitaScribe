@@ -583,18 +583,30 @@
         <div id="ec-antwoord" class="po-tekst ec-antwoord" contenteditable="true" spellcheck="true"></div>
         <p id="ec-open" class="ec-open hidden"></p>
         <div class="lt-row">
-          <button id="ec-kop-antwoord" class="btn primary small" type="button">Kopieer antwoord</button>
+          <button id="ec-zet-antwoord" class="btn primary small hidden" type="button" title="In het aangewezen antwoordveld in Bricks zetten">Zet in Bricks</button>
+          <button id="ec-kop-antwoord" class="btn small" type="button">Kopieer antwoord</button>
         </div>
+      </div>
+      <div id="ec-veld" class="ec-veld hidden">
+        <p class="ec-veld-kop"><strong>Waar moet het antwoord in Bricks?</strong> Eén keer aanwijzen, daarna zet VitaScribe het er direct in.</p>
+        <ol class="ec-veld-stappen">
+          <li>Open in Bricks de pagina waar je het e-consult beantwoordt.</li>
+          <li>Klik <em>Veld aanwijzen</em>, en klik dan in het <strong>antwoordveld</strong>.</li>
+          <li>Daarna in het <strong>journaalveld</strong>, of kies <em>Overslaan</em> in Bricks.</li>
+        </ol>
+        <button id="ec-aanwijzen" class="btn primary small" type="button">Veld aanwijzen</button>
       </div>
       <div class="ec-blok">
         <span class="po-label">Journaal</span>
         <div id="ec-journaal" class="po-tekst" contenteditable="true" spellcheck="true"></div>
         <div class="lt-row">
+          <button id="ec-zet-journaal" class="btn small hidden" type="button" title="In het aangewezen journaalveld in Bricks zetten">Zet in Bricks</button>
           <button id="ec-kop-journaal" class="btn small" type="button">Kopieer journaal</button>
           <button id="ec-kop-alles" class="btn small" type="button">Kopieer alles</button>
           <button id="ec-wis" class="btn small" type="button">Wissen</button>
         </div>
       </div>
+      <p id="ec-veld-info" class="lt-hint hidden"><span id="ec-veld-tekst"></span> <a href="#" id="ec-opnieuw">Ander veld aanwijzen</a></p>
     </section>
     <p class="note">Naam, BSN, geboortedatum en adres gaan niet mee. Zonder NHG meedenken geeft het concept geen advies
       dat jij niet gaf: daar staat [beleid aanvullen]. Lees het antwoord helemaal voor je het verstuurt.</p>

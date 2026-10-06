@@ -612,7 +612,22 @@ const SOEP_STEPS = [
   { key: 'e', label: 'Klik in het E-veld (Evaluatie)' },
   { key: 'p', label: 'Klik in het P-veld (Plan)' },
 ];
-let calib = null;   // { tabId, host, step, result }
+// Other sets of fields, pointed at once in the same way (per Bricks domain).
+// The e-consult answer often sits on its own page; the descriptor finds the
+// field again on whichever page it is.
+const FIELD_SETS = {
+  soep: { steps: SOEP_STEPS, store: 'svSoepFields', klaar: (n) => `${n} velden gekoppeld. "Alles invoegen" vult ze voortaan per veld.` },
+  econsult: {
+    steps: [
+      { key: 'antwoord', label: 'Klik in het veld waar het antwoord aan de patiënt komt' },
+      { key: 'journaal', label: 'Klik in het journaalveld van het e-consult (of Overslaan)' },
+    ],
+    store: 'svEconsultFields',
+    klaar: (n) => `${n === 1 ? 'Antwoordveld' : 'Antwoord- en journaalveld'} gekoppeld. VitaScribe zet het e-consult er voortaan direct in.`,
+  },
+};
+function fieldSet(name) { return FIELD_SETS[name] || FIELD_SETS.soep; }
+let calib = null;   // { tabId, host, step, result, set }
 
 // The service worker is stopped after ~30 s idle; keep the calibration in
 // session storage so "Overslaan" and field clicks still work afterwards.
@@ -628,9 +643,17 @@ async function hostOfTab(tabId) {
   try { return new URL((await chrome.tabs.get(tabId)).url).host; } catch (e) { return null; }
 }
 
-async function getFieldMap(host) {
-  const { svSoepFields } = await chrome.storage.local.get('svSoepFields');
-  return (svSoepFields && host && svSoepFields[host]) || null;
+async function getFieldMap(host, set) {
+  const store = fieldSet(set).store;
+  const all = (await chrome.storage.local.get(store))[store];
+  return (all && host && all[host]) || null;
+}
+
+async function saveFieldMap(set, host, result, merge) {
+  const store = fieldSet(set).store;
+  const all = (await chrome.storage.local.get(store))[store] || {};
+  all[host] = merge ? Object.assign({}, all[host] || {}, result) : result;
+  await chrome.storage.local.set({ [store]: all });
 }
 
 function broadcastCalibrate(tabId, active) {
@@ -638,7 +661,7 @@ function broadcastCalibrate(tabId, active) {
 }
 
 function calibPrompt() {
-  const step = SOEP_STEPS[calib.step];
+  const step = fieldSet(calib.set).steps[calib.step];
   pill(calib.tabId, 'calibrate', step.label, { label: 'Overslaan', action: 'SV_CALIBRATE_SKIP', close: true });
 }
 
@@ -646,12 +669,7 @@ function calibPrompt() {
 async function calibCancel(tabId) {
   await loadCalib();
   const target = calib ? calib.tabId : tabId;
-  if (calib && Object.keys(calib.result).length) {
-    const { svSoepFields } = await chrome.storage.local.get('svSoepFields');
-    const all = svSoepFields || {};
-    all[calib.host] = Object.assign({}, all[calib.host] || {}, calib.result);
-    await chrome.storage.local.set({ svSoepFields: all });
-  }
+  if (calib && Object.keys(calib.result).length) await saveFieldMap(calib.set, calib.host, calib.result, true);
   calib = null;
   await saveCalib();
   if (target !== undefined && target !== null) {
@@ -662,23 +680,21 @@ async function calibCancel(tabId) {
 
 async function calibAdvance() {
   calib.step += 1;
-  if (calib.step < SOEP_STEPS.length) { await saveCalib(); calibPrompt(); return; }
-  const { tabId, host, result } = calib;
+  if (calib.step < fieldSet(calib.set).steps.length) { await saveCalib(); calibPrompt(); return; }
+  const { tabId, host, result, set } = calib;
   calib = null;
   await saveCalib();
   broadcastCalibrate(tabId, false);
-  const { svSoepFields } = await chrome.storage.local.get('svSoepFields');
-  const all = svSoepFields || {};
-  all[host] = result;
-  await chrome.storage.local.set({ svSoepFields: all });
   const n = Object.keys(result).length;
-  pill(tabId, 'info', n ? `${n} velden gekoppeld. "Alles invoegen" vult ze voortaan per veld.` : 'Geen velden gekoppeld.');
+  // Skipping everything keeps what was pointed at before.
+  if (n) await saveFieldMap(set, host, result, set === 'econsult');
+  pill(tabId, 'info', n ? fieldSet(set).klaar(n) : 'Geen velden gekoppeld.');
 }
 
-async function startCalibration(tabId) {
+async function startCalibration(tabId, set) {
   const host = await hostOfTab(tabId);
   if (!host) return { ok: false, error: 'Open eerst Bricks in dit tabblad.' };
-  calib = { tabId, host, step: 0, result: {} };
+  calib = { tabId, host, step: 0, result: {}, set: FIELD_SETS[set] ? set : 'soep' };
   await saveCalib();
   broadcastCalibrate(tabId, true);
   calibPrompt();
@@ -691,7 +707,7 @@ const fillWaiters = new Map();
 
 async function fillSoep(tabId, values, icpc) {
   const host = await hostOfTab(tabId);
-  const mapping = await getFieldMap(host);
+  const mapping = await getFieldMap(host, 'soep');
   const wanted = Object.keys(values).filter((k) => values[k]);
   if (!mapping) {
     // No mapped fields: S goes into the clicked field, O/E/P into the next ones.
@@ -718,15 +734,29 @@ async function fillSoep(tabId, values, icpc) {
   return { mapped: true, filled: [...filled], missing: wanted.filter((k) => !filled.has(k)) };
 }
 
+// Fill a mapped set other than S/O/E/P (the e-consult): only into pointed fields.
+async function fillMapped(tabId, set, values) {
+  const mapping = await getFieldMap(await hostOfTab(tabId), set);
+  const wanted = Object.keys(values).filter((k) => values[k]);
+  if (!mapping) return { mapped: false, filled: [], missing: wanted };
+  const requestId = Math.random().toString(36).slice(2);
+  const filled = new Set();
+  fillWaiters.set(requestId, filled);
+  await chrome.tabs.sendMessage(tabId, { action: 'SV_FILL_SOEP', requestId, mapping, values }).catch(() => {});
+  await new Promise((r) => setTimeout(r, 400));
+  fillWaiters.delete(requestId);
+  return { mapped: true, keys: Object.keys(mapping), filled: [...filled], missing: wanted.filter((k) => !filled.has(k)) };
+}
+
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   switch (msg.action) {
     case 'SV_CALIBRATE_START':
-      startCalibration(msg.tabId).then(sendResponse);
+      startCalibration(msg.tabId, msg.set).then(sendResponse);
       return true;
     case 'SV_CALIBRATE_PICK':
       loadCalib().then((c) => {
         if (c && sender.tab && sender.tab.id === c.tabId) {
-          c.result[SOEP_STEPS[c.step].key] = msg.desc;
+          c.result[fieldSet(c.set).steps[c.step].key] = msg.desc;
           calibAdvance();
         }
       });
@@ -750,8 +780,11 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       fillSoep(tabId, msg.values, msg.icpc).then(sendResponse);
       return true;
     }
+    case 'SV_FILL_MAPPED_REQUEST':
+      fillMapped(msg.tabId, msg.set, msg.values || {}).then(sendResponse);
+      return true;
     case 'SV_FIELD_MAP_STATUS':
-      hostOfTab(msg.tabId).then(getFieldMap).then((m) => sendResponse({ mapped: !!m, keys: m ? Object.keys(m) : [] }));
+      hostOfTab(msg.tabId).then((h) => getFieldMap(h, msg.set)).then((m) => sendResponse({ mapped: !!m, keys: m ? Object.keys(m) : [] }));
       return true;
   }
   return false;
