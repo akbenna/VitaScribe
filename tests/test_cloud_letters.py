@@ -111,3 +111,28 @@ def test_extract_reads_image_and_filters(api):
 def test_letters_require_api_key(api):
     resp = api.post("/api/v1/letters/generate", json={"kind": "verwijzing", "dossier": DOSSIER, "reden": "x"})
     assert resp.status_code in (401, 403)
+
+
+@pytest.mark.parametrize("aanvrager,moet", [
+    ("ind", ["BMA", "exacte sterkte, dosering en frequentie", "medische noodsituatie"]),
+    ("duo", ["DUO", "studievertraging", "Geen oordeel over de invloed op de studie"]),
+    ("bedrijfsarts", ["bedrijfsarts", "belastbaarheid"]),
+    ("letselschade", ["letselschade", "ongevalsgevolgen"]),
+    ("ciz", ["Wet langdurige zorg"]),
+    ("cbr", ["rijgeschiktheid"]),
+])
+def test_aanvragers_krijgen_eigen_instructie(api, aanvrager, moet):
+    seen = []
+    with patch.object(letters.llm_service, "stream_llm", fake_stream(["x"], seen)):
+        resp = api.post("/api/v1/letters/generate", headers=H, json={
+            "kind": "informatiebrief", "aanvrager": aanvrager, "toestemming": True, "dossier": DOSSIER})
+    assert resp.status_code == 200
+    assert all(m in seen[0]["system"] for m in moet), seen[0]["system"][-500:]
+    # De KNMG-basis (feiten, geen oordeel) blijft er altijd bij.
+    assert "GEEN oordeel" in seen[0]["system"]
+
+
+def test_onbekende_aanvrager_geweigerd(api):
+    resp = api.post("/api/v1/letters/generate", headers=H, json={
+        "kind": "informatiebrief", "aanvrager": "belastingdienst", "toestemming": True, "dossier": DOSSIER})
+    assert resp.status_code == 422
