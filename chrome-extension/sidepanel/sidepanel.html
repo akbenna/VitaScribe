@@ -289,7 +289,9 @@
         <button class="lt-tegel active" data-kind="verwijzing" type="button" role="radio">
           <b>Verwijzing</b><span>specialist, GGZ, paramedicus</span></button>
         <button class="lt-tegel" data-kind="informatiebrief" type="button" role="radio">
-          <b>Informatiebrief</b><span>advocaat, SMA, UWV, gemeente</span></button>
+          <b>Informatiebrief</b><span>antwoord op een vraag: UWV, IND, advocaat…</span></button>
+        <button class="lt-tegel" data-kind="verklaring" type="button" role="radio">
+          <b>Verklaring</b><span>op verzoek van de patiënt: urgentie, Wmo</span></button>
       </div>
     </section>
 
@@ -405,6 +407,25 @@
         </div>
         <label class="lt-check lt-consent"><input type="checkbox" id="lt-consent"> Gerichte vraag én schriftelijke toestemming van de patiënt</label>
         <p class="lt-hint">Alleen feiten, geen oordeel over beperkingen, arbeidsgeschiktheid of causaliteit (KNMG).</p>
+      </div>
+
+      <div id="lt-verkl" class="hidden">
+        <label class="lt-veld"><span class="lt-label">Waarvoor</span>
+          <select id="lt-doel" class="lt-input">
+            <option value="woningurgentie">Urgentie of medische indicatie voor een woning</option>
+            <option value="wmo_scootmobiel">Wmo: scootmobiel of ander vervoersmiddel</option>
+            <option value="wmo_woning">Wmo: woningaanpassing (traplift, douche…)</option>
+            <option value="wmo_hulp">Wmo: huishoudelijke hulp of begeleiding</option>
+            <option value="parkeerkaart">Gehandicaptenparkeerkaart</option>
+            <option value="vervoer">Aangepast vervoer (regiotaxi, Valys)</option>
+            <option value="overig">Iets anders</option>
+          </select>
+        </label>
+        <label class="lt-label" for="lt-verkl-vraag">Wat vraagt de patiënt aan, en waarom</label>
+        <textarea id="lt-verkl-vraag" rows="3" placeholder="Bijv. woont op 3-hoog zonder lift; kan door COPD de trap nauwelijks op."></textarea>
+        <label class="lt-check lt-consent"><input type="checkbox" id="lt-verkl-ok"> De patiënt vraagt om deze brief en stuurt hem zelf mee</label>
+        <p class="lt-hint">Volgens de KNMG geef je als behandelend arts geen aanbeveling of oordeel over je eigen patiënt. De brief
+          helpt de patiënt met volledige, feitelijke informatie die voor de aanvraag telt; de beoordeling is aan de adviseur van de instantie.</p>
       </div>
 
       <details class="lt-meer">

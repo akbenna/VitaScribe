@@ -263,6 +263,7 @@ function check(name, cond, extra) {
   check('specialismen in een uitklaplijst, gegroepeerd', (await panel.$$('#lt-spec option')).length >= 35 && (await panel.$$('#lt-spec optgroup')).length === 4);
   check('eerst de keuze: verwijzing staat voorop, met de knop erbij', (await panel.getAttribute('.lt-tegel.active', 'data-kind')) === 'verwijzing'
     && (await panel.textContent('#lt-generate')) === 'Schrijf verwijsbrief' && await panel.isVisible('#lt-reden') && await panel.isHidden('#lt-vraag'));
+  check('drie soorten: verwijzing, informatiebrief, verklaring', (await panel.$$eval('.lt-tegel', (t) => t.map((x) => x.dataset.kind))).join() === 'verwijzing,informatiebrief,verklaring');
   check('dossier in één regel: nog niet opgehaald', (await panel.textContent('#lt-dossier-kort')).includes('Nog niet opgehaald'));
   await panel.click('#lt-scrape');
   await sleep(1200);
@@ -305,6 +306,16 @@ function check(name, cond, extra) {
   await panel.click('#lt-generate');
   await sleep(1500);
   const verw = sent.filter((s) => s.url.endsWith('/letters/generate')).pop();
+  await panel.click('.lt-tegel[data-kind="verklaring"]');
+  check('verklaring: doel en knop', await panel.isVisible('#lt-doel') && (await panel.textContent('#lt-generate')) === 'Schrijf verklaring');
+  await panel.selectOption('#lt-doel', 'woningurgentie');
+  await panel.fill('#lt-verkl-vraag', 'Woont op 3-hoog zonder lift.');
+  await panel.check('#lt-verkl-ok');
+  await panel.click('#lt-generate');
+  await sleep(1200);
+  const verkl = sent.filter((s) => s.url.endsWith('/letters/generate')).pop();
+  check('verklaring verstuurd met doel en toestemming', verkl && verkl.body.kind === 'verklaring' && verkl.body.doel === 'woningurgentie'
+    && verkl.body.toestemming === true && verkl.body.vraag.includes('3-hoog'), verkl && verkl.body);
   check('verwijzing in één klik: dossier vanzelf opgehaald', verw && verw.body.kind === 'verwijzing' && verw.body.specialisme === 'uroloog'
     && /Journaal|JOURNAAL/i.test(verw.body.dossier) && !/Pieter|123456789/.test(verw.body.dossier), verw && verw.body.kind);
 

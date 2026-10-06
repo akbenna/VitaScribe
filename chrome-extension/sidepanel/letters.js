@@ -60,7 +60,9 @@
     document.querySelectorAll('#lt-kind button').forEach(function (b) { b.setAttribute('aria-checked', b.dataset.kind === kind ? 'true' : 'false'); });
     $('lt-info').classList.toggle('hidden', kind !== 'informatiebrief');
     $('lt-verw').classList.toggle('hidden', kind !== 'verwijzing');
-    $('lt-generate').textContent = kind === 'verwijzing' ? 'Schrijf verwijsbrief' : 'Schrijf informatiebrief';
+    $('lt-verkl').classList.toggle('hidden', kind !== 'verklaring');
+    $('lt-generate').textContent = { verwijzing: 'Schrijf verwijsbrief', informatiebrief: 'Schrijf informatiebrief',
+      verklaring: 'Schrijf verklaring' }[kind];
   });
   $('lt-aanvrager').addEventListener('change', function () { lt.aanvrager = this.value; });
   segment('lt-urg', 'v', function (v) { lt.urgentie = v; });
@@ -508,6 +510,11 @@
       body.aanvrager = lt.aanvrager;
       body.vraag = SVPrivacy.filter($('lt-vraag').value, filterOpts()).trim() || null;
       body.toestemming = true;
+    } else if (lt.kind === 'verklaring') {
+      if (!$('lt-verkl-ok').checked) { status('Vink aan dat de patiënt om deze brief vraagt.', true); return; }
+      body.doel = $('lt-doel').value;
+      body.vraag = SVPrivacy.filter($('lt-verkl-vraag').value, filterOpts()).trim() || null;
+      body.toestemming = true;
     } else {
       var spec = lt.spec || $('lt-spec-free').value.trim();
       var reden = SVPrivacy.filter($('lt-reden').value, filterOpts()).trim();
@@ -553,8 +560,9 @@
   $('lt-new').addEventListener('click', function () {
     $('lt-output').classList.add('hidden');
     $('lt-out').textContent = '';
-    ['lt-vraag', 'lt-reden', 'lt-extra', 'lt-onderwerp', 'lt-periode'].forEach(function (id) { $(id).value = ''; });
+    ['lt-vraag', 'lt-reden', 'lt-extra', 'lt-onderwerp', 'lt-periode', 'lt-verkl-vraag'].forEach(function (id) { $(id).value = ''; });
     $('lt-consent').checked = false;
+    $('lt-verkl-ok').checked = false;
     status('');
   });
 })();
