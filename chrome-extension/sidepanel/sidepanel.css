@@ -443,3 +443,4 @@ body.consult-running .dv-balk { border-color: var(--rec); background: #fff5f5; }
 .tel-foto img { width: 96px; height: 72px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border); }
 .tel-foto-acties { display: flex; flex-wrap: wrap; gap: 4px; }
 .tk-telefoon { margin-top: 6px; }
+.modus button:disabled { opacity: .35; cursor: not-allowed; text-decoration: line-through; }

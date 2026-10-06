@@ -262,3 +262,4 @@ body {
 .modus-uitleg { margin: 0 0 8px; font-size: 12px; line-height: 1.4; color: #1e3a8a; background: #eff6ff;
                 border: 1px solid #bfdbfe; border-radius: 8px; padding: 6px 9px; }
 .modus-uitleg.fout { color: #b91c1c; background: #fef2f2; border-color: #fecaca; }
+.modus button:disabled { opacity: .35; cursor: not-allowed; text-decoration: line-through; }

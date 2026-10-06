@@ -20,7 +20,7 @@ import hmac
 import os
 from typing import Dict, Optional
 
-from fastapi import Header, HTTPException, Security
+from fastapi import Header, HTTPException, Request, Security
 from fastapi.security import APIKeyHeader
 
 from .config import get_config
@@ -65,23 +65,36 @@ def is_valid_api_key(api_key: str) -> bool:
     return user_for_key(api_key) is not None
 
 
+# Answered in any mode: here the extension learns which modes are allowed.
+MODUS_VRIJ = ("/api/v1/providers",)
+
+
 async def huidige_identiteit(
+    request: Request,
     api_key: str = Security(api_key_header),
     praktijk: Optional[str] = Header(default=None, alias="X-Bricks-Praktijk"),
 ):
     """Who is calling, with the licence of their practice. Raises 401/403 with a
-    message the doctor can act on."""
-    from . import licentie
+    message the doctor can act on, also when the chosen mode is not allowed for
+    this practice (TOEGESTANE_MODI, "alleen EU-modus")."""
+    from . import audit, data_policy, licentie
 
     try:
-        return await licentie.identificeer(api_key, praktijk)
+        ident = await licentie.identificeer(api_key, praktijk)
     except licentie.LicentieFout as fout:
         raise HTTPException(status_code=fout.status, detail=fout.detail)
+    if request is not None and request.url.path not in MODUS_VRIJ:
+        weigering = data_policy.modus_weigering(ident)
+        if weigering:
+            audit.log_event(ident.label, "modus.geweigerd", mode=data_policy.modus())
+            raise HTTPException(status_code=403, detail=weigering)
+    return ident
 
 
 async def verify_api_key(
+    request: Request,
     api_key: str = Security(api_key_header),
     praktijk: Optional[str] = Header(default=None, alias="X-Bricks-Praktijk"),
 ) -> str:
     """Validate the key and return the user name (for the usage log)."""
-    return (await huidige_identiteit(api_key, praktijk)).label
+    return (await huidige_identiteit(request, api_key, praktijk)).label

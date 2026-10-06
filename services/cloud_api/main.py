@@ -471,12 +471,13 @@ async def process_dictation(
 # ── Provider info endpoint ──
 
 @app.get("/api/v1/providers")
-async def list_providers(_api_key: str = Depends(verify_api_key)):
+async def list_providers(ident=Depends(huidige_identiteit)):
     """List available STT and LLM providers."""
     cfg = get_config()
     return {
         "modus": data_policy.modus(),
-        "modi": data_policy.toegestane_modi(),
+        # The modes this user may choose (server and practice); the extension greys out the rest.
+        "modi": data_policy.toegestane_modi(ident),
         # Advice only: why the eu mode would fail right now (None = ready).
         "eu_probleem": data_policy.eu_gereed(),
         # The oldest extension that has everything the eu mode needs (speech check, markings).

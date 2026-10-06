@@ -7,7 +7,9 @@
  * consult via Voxtral na afloop. Live dicteren en vraagsuggesties kunnen dan
  * niet.
  *
- * De arts kiest; de keuze staat per computer in chrome.storage.local en gaat
+ * De arts kiest, binnen wat de praktijk toestaat (TOEGESTANE_MODI of "Alleen
+ * EU-modus" in Beheer; zie sidepanel/modus-ui.js). De keuze staat per computer
+ * in chrome.storage.local en gaat
  * met elke aanvraag mee (kopregel X-VitaScribe-Modus, of "modus" bij het
  * aanmelden op een WebSocket). De server volgt die keuze altijd en verandert
  * hem nooit; hij mag alleen adviseren. Kan de EU-modus niet werken, dan mislukt

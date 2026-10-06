@@ -270,6 +270,7 @@
     v.onbeperkt = el('input', { type: 'checkbox', aan: !p.geldig_tot && p.licentietype === 'intern' });
     v.verplicht = el('input', { type: 'checkbox', aan: p.eigen_sleutels_verplicht });
     v.eu = el('input', { type: 'checkbox', aan: p.brieven_in_eu });
+    v.alleenEu = el('input', { type: 'checkbox', aan: p.alleen_eu });
     v.notities = el('textarea', { rows: 3, waarde: p.notities || '' });
 
     async function opslaan(extra) {
@@ -280,7 +281,7 @@
         fte: v.fte.value.trim() === '' ? null : Number(v.fte.value.trim().replace(',', '.')),
         werkplekken: v.werkplekken.value === '' ? null : Math.round(Number(v.werkplekken.value)),
         licentietype: v.licentietype.value, status: v.status.value, serienummer: v.serienummer.value.trim(),
-        eigen_sleutels_verplicht: v.verplicht.checked, brieven_in_eu: v.eu.checked, notities: v.notities.value,
+        eigen_sleutels_verplicht: v.verplicht.checked, brieven_in_eu: v.eu.checked, alleen_eu: v.alleenEu.checked, notities: v.notities.value,
       };
       if (v.onbeperkt.checked) {
         if (body.licentietype !== 'intern' && !confirm('Een onbeperkte licentie is niet in te trekken door te laten verlopen. Alleen bedoeld voor de eigen praktijk. Toch opslaan?')) return;
@@ -336,6 +337,7 @@
         el('div', null, el('label', { tekst: ' ' }), el('label', { klasse: 'vink' }, v.onbeperkt, 'Onbeperkt (alleen eigen praktijk)')),
         el('div', { klasse: 'breed' }, el('label', { klasse: 'vink' }, v.verplicht, 'Eigen AI-sleutels verplicht: geen brieven of spraak op de sleutels van de server')),
         el('div', { klasse: 'breed' }, el('label', { klasse: 'vink' }, v.eu, 'Brieven in de EU: brieven naar Mistral (EU), ook als er een eigen sleutel in de VS is')),
+        el('div', { klasse: 'breed' }, el('label', { klasse: 'vink' }, v.alleenEu, 'Alleen EU-modus: de Claude-modus wordt voor deze praktijk geweigerd (echte patiënten)')),
         veld('Notities', v.notities, true)),
       el('div', { klasse: 'knoppen' }, acties),
       el('h3', { tekst: 'Eigen AI-sleutels van de praktijk' }),

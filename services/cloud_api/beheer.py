@@ -247,7 +247,7 @@ async def beheerscript():
 
 PRAKTIJKVELDEN = ("naam", "plaats", "praktijknummers", "agb", "contact_naam", "contact_email", "telefoon",
                   "fte", "werkplekken", "licentietype", "status", "geldig_tot", "serienummer",
-                  "eigen_sleutels_verplicht", "brieven_in_eu", "notities")
+                  "eigen_sleutels_verplicht", "brieven_in_eu", "alleen_eu", "notities")
 
 
 def _json(rij) -> dict:
@@ -281,6 +281,7 @@ class PraktijkInvoer(BaseModel):
     serienummer: Optional[str] = Field(None, max_length=40)
     eigen_sleutels_verplicht: Optional[bool] = None
     brieven_in_eu: Optional[bool] = None
+    alleen_eu: Optional[bool] = None
     notities: Optional[str] = Field(None, max_length=4000)
 
 

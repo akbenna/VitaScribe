@@ -76,9 +76,35 @@ def _env(name: str, default: str) -> str:
     return (os.getenv(name) or default).strip().lower()
 
 
-def toegestane_modi() -> List[str]:
-    """Both modes, always: the doctor decides, not the server."""
-    return list(MODI)
+def server_modi() -> List[str]:
+    """The modes this server allows (TOEGESTANE_MODI, e.g. "eu"); both by default.
+    The practice holder decides which modes may be used with real patients;
+    within that, the doctor chooses."""
+    ruw = [m.strip() for m in _env("TOEGESTANE_MODI", ",".join(MODI)).split(",") if m.strip()]
+    modi = [m for m in MODI if m in ruw]
+    if not modi:
+        logger.warning("policy.toegestane_modi_ongeldig", waarde=",".join(ruw)[:40])
+        return ["eu"]   # a typo never opens the US route: the safe side
+    return modi
+
+
+def toegestane_modi(ident=None) -> List[str]:
+    """Modes allowed for this user: the server's, narrowed by the practice
+    ("alleen EU-modus" in Beheer)."""
+    modi = server_modi()
+    if ident is not None and getattr(ident, "alleen_eu", False):
+        modi = [m for m in modi if m == "eu"] or ["eu"]
+    return modi
+
+
+def modus_weigering(ident=None) -> Optional[str]:
+    """Why the current mode is not allowed for this user, or None."""
+    toegestaan = toegestane_modi(ident)
+    if modus() in toegestaan:
+        return None
+    if toegestaan == ["eu"]:
+        return "Je praktijk werkt alleen in de EU-modus. Zet de schakelaar bovenin het paneel op EU."
+    return "Je praktijk werkt alleen in de Claude-modus. Zet de schakelaar bovenin het paneel op Claude."
 
 
 def kies_modus(requested: Optional[str] = None) -> str:
