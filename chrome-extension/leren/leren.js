@@ -133,6 +133,7 @@
       var g = SVLeren.groepen(d.regels);
       vul($('lijst-soep'), g.soep, 'Nog niets geleerd. Pas een verslag aan en voeg het in; dan doet VitaScribe hier voorstellen.');
       vul($('lijst-woord'), g.woord, 'Nog geen woorden.');
+      vul($('lijst-econsult'), g.econsult, 'Nog niets geleerd. Pas een concept-antwoord aan en zet het in Bricks; dan doet VitaScribe hier voorstellen.');
       var tolk = $('lijst-tolk');
       tolk.textContent = '';
       var talen = Object.keys(g.tolk);

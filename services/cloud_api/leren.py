@@ -12,6 +12,8 @@ meegeeft, per arts:
          Deepgram, en in de SOEP-opdracht.
   tolk   afspraken per taal: hoe je iets zegt zodat deze patiënten het
          begrijpen. Gaan mee in elke vertaling.
+  econsult  schrijfstijl van antwoorden op e-consulten: aanhef, toon,
+         afsluiting, lengte. Gaan mee in elk concept-antwoord.
 
 De bron is wat de arts verandert: het verschil tussen het concept en wat er in
 Bricks komt, en in de tolk de beurten die eenvoudiger moesten. Dat verschil
@@ -30,6 +32,7 @@ van de server (weg bij een herstart).
 Endpoints (API-sleutel verplicht; alles van de arts zelf):
   POST /api/v1/leren/soep       {concept, definitief, markeringen}
   POST /api/v1/leren/tolk       {taal, eenvoudiger: [{voor, na}], weggehaald, beurten}
+  POST /api/v1/leren/econsult   {concept, definitief}
   GET  /api/v1/leren/overzicht  -> regels en meting
   POST /api/v1/leren/regel      {soort, taal?, regel? | van, naar}   (zelf toevoegen)
   POST /api/v1/leren/regel/{id} {status: actief | afgewezen | weg}
@@ -55,9 +58,9 @@ from .auth import verify_api_key
 logger = structlog.get_logger()
 router = APIRouter(prefix="/api/v1/leren", tags=["leren"])
 
-SOORTEN = ("soep", "woord", "tolk")
+SOORTEN = ("soep", "woord", "tolk", "econsult")
 STATUSSEN = ("voorstel", "actief", "afgewezen")
-MAX_ACTIEF = {"soep": 25, "woord": 60, "tolk": 30}
+MAX_ACTIEF = {"soep": 25, "woord": 60, "tolk": 30, "econsult": 20}
 WOORD_VANZELF = 3            # zo vaak dezelfde verbetering: dan gaat het woord vanzelf mee
 MIN_GEWIJZIGD = 2.0          # minder dan 2% veranderd: niets te leren, alleen meten
 MAX_REGEL = 200
@@ -255,6 +258,16 @@ async def tolk_prompt(taal: str) -> str:
             + "\n".join(f"- {r['regel']}" for r in regels) + "\n")
 
 
+async def econsult_prompt() -> str:
+    """Line for the e-consult prompt: how this doctor writes to patients."""
+    regels = await actief("econsult")
+    if not regels:
+        return ""
+    return ("SCHRIJFSTIJL VAN DEZE ARTS IN E-CONSULTANTWOORDEN (alleen aanhef, toon, woordkeus, lengte en "
+            "afsluiting; voeg nooit medisch advies toe dat de arts niet gaf):\n"
+            + "\n".join(f"- {r['regel']}" for r in regels) + "\n\n")
+
+
 # ── Learning from what the doctor changed ──
 
 def gewijzigd_pct(concept: Dict[str, str], definitief: Dict[str, str]) -> float:
@@ -285,6 +298,19 @@ Leid algemene afspraken af voor volgende gesprekken in deze taal, bijvoorbeeld w
 Strikt: geen gegevens van deze patiënt. Liever geen afspraak dan een twijfelachtige. Maximaal 3.
 
 Antwoord alleen met JSON: {{"regels": ["..."]}}"""
+
+
+ECONSULT_LEER_SYSTEM = """Je helpt een huisarts zijn software voor e-consulten te verbeteren. Je krijgt een concept-antwoord aan een patiënt dat de software schreef, en de versie die de arts na aanpassen verstuurde.
+
+Leid hieruit af hoe deze arts in het vervolg wil dat zijn antwoorden aan patiënten klinken: aanhef en afsluiting, u of je, lengte, toon (zakelijk of warm), opbouw, woorden die hij vermijdt of juist gebruikt, of hij een termijn of vangnet ("bel als ...") noemt.
+
+Strikt:
+- Alleen vorm, toon en opbouw. Geen medische inhoud, geen advies, geen dosering: die verschillen per patiënt.
+- Geen enkel gegeven van deze patiënt: geen naam, klacht, diagnose, medicijn, datum of waarde.
+- Een inhoudelijke verbetering van één feit is geen regel; sla die over.
+- Liever geen regel dan een twijfelachtige. Maximaal 3. Kort, in het Nederlands, als opdracht ("Begin met …", "Spreek de patiënt aan met …").
+
+Antwoord alleen met JSON: {"regels": ["..."]}"""
 
 
 def _parse(tekst: str) -> dict:
@@ -397,6 +423,31 @@ async def leer_tolk(body: TolkLeren, user: str = Depends(verify_api_key)):
     return {"voorstellen": voorstellen}
 
 
+class EconsultLeren(BaseModel):
+    concept: str = Field(..., max_length=MAX_VELD)
+    definitief: str = Field(..., max_length=MAX_VELD)
+
+
+@router.post("/econsult")
+async def leer_econsult(body: EconsultLeren, user: str = Depends(verify_api_key)):
+    wie = eigenaar() or f"naam:{user}"
+    pct = gewijzigd_pct({"s": body.concept}, {"s": body.definitief})
+    await opslag().meet(wie, "econsult", gewijzigd=pct)
+    voorstellen: List[dict] = []
+    if pct >= MIN_GEWIJZIGD:
+        user_prompt = f"CONCEPT VAN DE SOFTWARE:\n{body.concept}\n\nVERSTUURD DOOR DE ARTS:\n{body.definitief}"
+        try:
+            data = _parse(await llm_service.complete(ECONSULT_LEER_SYSTEM, user_prompt,
+                                                     provider=data_policy.phi_llm_provider(),
+                                                     json_mode=True, max_tokens=500))
+            voorstellen = await _voorstellen(wie, "econsult", "", list(data.get("regels") or []), [])
+        except Exception as exc:   # learning is a bonus; never an error for the doctor
+            logger.warning("leren.econsult_fout", error=type(exc).__name__)
+    logger.info("leren.econsult", gewijzigd=pct, voorstellen=len(voorstellen))
+    audit.log_event(user, "leren.econsult", gewijzigd=pct, voorstellen=len(voorstellen))
+    return {"gewijzigd_pct": pct, "voorstellen": voorstellen}
+
+
 @router.get("/overzicht")
 async def overzicht(user: str = Depends(verify_api_key)):
     wie = eigenaar() or f"naam:{user}"
@@ -412,7 +463,7 @@ async def overzicht(user: str = Depends(verify_api_key)):
 
 
 class NieuweRegel(BaseModel):
-    soort: str = Field(..., pattern="^(soep|woord|tolk)$")
+    soort: str = Field(..., pattern="^(soep|woord|tolk|econsult)$")
     taal: str = Field(default="", max_length=10)
     regel: str = Field(default="", max_length=MAX_REGEL)
     van: str = Field(default="", max_length=60)

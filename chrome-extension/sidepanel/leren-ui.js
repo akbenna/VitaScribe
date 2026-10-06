@@ -13,7 +13,9 @@ window.SVLerenUI = (function () {
   'use strict';
 
   var $ = function (id) { return document.getElementById(id); };
-  var SOORT = { soep: 'stijl', woord: 'woord', tolk: 'tolk' };
+  var SOORT = { soep: 'stijl', woord: 'woord', tolk: 'tolk', econsult: 'e-consult' };
+  // The card lives under the SOEP; for an e-consult it moves under the answer.
+  var thuis = { ouder: null, na: null };
 
   async function aanvraag(pad, body) {
     var config = await getConfig();
@@ -34,8 +36,17 @@ window.SVLerenUI = (function () {
     return b;
   }
 
-  function toon(voorstellen) {
+  function plaats(plek) {
+    var kaart = $('leer-kaart');
+    if (!thuis.ouder) { thuis.ouder = kaart.parentNode; thuis.na = kaart.nextSibling; }
+    var doel = plek && $(plek);
+    if (doel) doel.after(kaart);
+    else if (kaart.parentNode !== thuis.ouder) thuis.ouder.insertBefore(kaart, thuis.na);
+  }
+
+  function toon(voorstellen, plek) {
     if (!voorstellen || !voorstellen.length) return;
+    plaats(plek);
     var lijst = $('leer-lijst');
     voorstellen.forEach(function (v) {
       var li = document.createElement('li');
@@ -73,6 +84,12 @@ window.SVLerenUI = (function () {
     }).then(function (d) { toon(d.voorstellen); }).catch(function () { /* learning is a bonus */ });
   }
 
+  /** The doctor put an e-consult answer in Bricks (or copied it): learn its style. */
+  function naEconsult(concept, definitief) {
+    aanvraag('/api/v1/leren/econsult', { concept: concept, definitief: definitief })
+      .then(function (d) { toon(d.voorstellen, 'ec-uit'); }).catch(function () { /* learning is a bonus */ });
+  }
+
   function naTolk(taal, beurten, eenvoudiger, weggehaald) {
     aanvraag('/api/v1/leren/tolk', { taal: taal, beurten: beurten, eenvoudiger: eenvoudiger.slice(-20), weggehaald: weggehaald })
       .then(function (d) { toon(d.voorstellen); }).catch(function () {});
@@ -92,5 +109,5 @@ window.SVLerenUI = (function () {
   $('leer-alles').addEventListener('click', openOverzicht);
   $('open-leren').addEventListener('click', openOverzicht);
 
-  return { naInvoegen: naInvoegen, naTolk: naTolk, toon: toon, sluit: sluit };
+  return { naInvoegen: naInvoegen, naTolk: naTolk, naEconsult: naEconsult, toon: toon, sluit: sluit };
 })();

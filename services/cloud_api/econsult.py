@@ -32,7 +32,7 @@ import structlog
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
-from . import audit, data_policy, llm_service
+from . import audit, data_policy, leren, llm_service
 from .auth import verify_api_key
 from .dossiervraag import MAX_DOSSIER_CHARS, _norm, _parse, citaat_klopt
 from .letters import privacy_safety_net
@@ -247,6 +247,8 @@ async def concept(body: EconsultRequest, user: str = Depends(verify_api_key)):
     if body.nhg and not nhg:
         logger.info("econsult.nhg_geweigerd", modus=data_policy.modus())
     system, user_prompt, dossier = bouw_prompts(body, nhg)
+    # How this doctor writes to patients (learned, approved by the doctor).
+    system = await leren.econsult_prompt() + system
     provider = data_policy.phi_llm_provider()
     try:
         raw = await llm_service.complete(

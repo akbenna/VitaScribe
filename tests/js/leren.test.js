@@ -28,7 +28,9 @@ test('regels in groepen, tolk per taal', () => {
   const g = L.groepen([
     { soort: 'soep', regel: 'a' }, { soort: 'woord', regel: 'b' }, { soort: 'tolk', taal: 'ar-MA', regel: 'c' },
     { soort: 'tolk', taal: 'tr', regel: 'd' }, { soort: 'tolk', taal: 'ar-MA', regel: 'e' },
+    { soort: 'econsult', regel: 'f' },
   ]);
+  assert.deepStrictEqual(g.econsult.map((r) => r.regel), ['f']);
   assert.strictEqual(g.soep.length, 1);
   assert.strictEqual(g.woord.length, 1);
   assert.deepStrictEqual(Object.keys(g.tolk).sort(), ['ar-MA', 'tr']);

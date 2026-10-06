@@ -140,3 +140,46 @@ def test_gewijzigd_pct():
     assert leren.gewijzigd_pct(CONCEPT, CONCEPT) == 0.0
     assert 0 < leren.gewijzigd_pct(CONCEPT, DEFINITIEF) < 60
     assert leren.schoon("Noteer 12-03-1961 altijd") == ""
+
+
+def test_econsult_stijl_leren_goedkeuren_en_meegeven(api, monkeypatch):
+    from services.cloud_api import econsult
+    concept = "Beste [naam patiënt],\n\nU kunt paracetamol gebruiken.\n\nMet vriendelijke groet,\n[Naam huisarts]"
+    verstuurd = "Goedemorgen,\n\nU kunt paracetamol gebruiken. Bel ons als het niet beter gaat.\n\nHartelijke groet,\nDokter A"
+    antwoord = {"regels": ["Begin met 'Goedemorgen,' in plaats van 'Beste'.", "Sluit af met 'Hartelijke groet,'.",
+                           "Noem bij patiënt J. de Vries 12-03-2024 iets"]}
+    gezien = []
+    monkeypatch.setattr(llm_service, "complete", nep_llm(antwoord, gezien))
+    r = api.post("/api/v1/leren/econsult", headers=A, json={"concept": concept, "definitief": verstuurd})
+    assert r.status_code == 200, r.text
+    d = r.json()
+    assert d["gewijzigd_pct"] > 2
+    # a rule with a date never becomes a proposal
+    assert [v["soort"] for v in d["voorstellen"]] == ["econsult", "econsult"]
+    assert "Alleen vorm, toon en opbouw" in gezien[0]["system"]
+    # not yet approved: not in the prompt
+    assert asyncio.run(leren.econsult_prompt()) == ""
+    for v in d["voorstellen"]:
+        assert api.post(f"/api/v1/leren/regel/{v['id']}", headers=A, json={"status": "actief"}).status_code == 200
+    # the e-consult prompt of dr A carries the style, dr B's does not
+    seen = []
+    monkeypatch.setattr(econsult.llm_service, "complete", nep_llm({
+        "bericht": "", "vraag_kort": "", "feiten": [], "nhg": {"richtlijn": "", "punten": [], "alarm": [],
+        "schriftelijk_geschikt": True}, "antwoord": "x", "journaal": "", "let_op": ""}, seen))
+    dossier = "PATIËNT: J.J.\n== JOURNAAL ==\n12-03-2024 K78 Atriumfibrilleren."
+    assert api.post("/api/v1/econsult/concept", headers=A, json={"dossier": dossier}).status_code == 200
+    assert api.post("/api/v1/econsult/concept", headers=B, json={"dossier": dossier}).status_code == 200
+    assert "Goedemorgen" in seen[0]["system"] and "SCHRIJFSTIJL VAN DEZE ARTS" in seen[0]["system"]
+    assert "SCHRIJFSTIJL" not in seen[1]["system"]
+    # in the overview, and can be added by hand
+    soorten = [x["soort"] for x in api.get("/api/v1/leren/overzicht", headers=A).json()["regels"]]
+    assert soorten.count("econsult") == 2
+    assert api.post("/api/v1/leren/regel", headers=B, json={"soort": "econsult", "regel": "Spreek de patiënt aan met je."}).status_code == 200
+
+
+def test_econsult_weinig_veranderd_alleen_meten(api, monkeypatch):
+    gezien = []
+    monkeypatch.setattr(llm_service, "complete", nep_llm({"regels": ["x"]}, gezien))
+    t = "Beste [naam patiënt],\n\nU kunt paracetamol gebruiken.\n\nMet vriendelijke groet,\n[Naam huisarts]"
+    d = api.post("/api/v1/leren/econsult", headers=A, json={"concept": t, "definitief": t}).json()
+    assert d == {"gewijzigd_pct": 0.0, "voorstellen": []} and gezien == []

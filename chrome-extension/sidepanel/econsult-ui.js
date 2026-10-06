@@ -28,6 +28,14 @@
 
   var $ = function (id) { return document.getElementById(id); };
   var huidig = null;
+  var geleerd = false;       // learned from this concept already (once per concept)
+
+  // The answer as the doctor sends it: learn from what was changed, once.
+  function leer() {
+    if (geleerd || !huidig || !huidig.antwoord || !window.SVLerenUI) return;
+    geleerd = true;
+    window.SVLerenUI.naEconsult(huidig.antwoord, $('ec-antwoord').innerText.trim());
+  }
   var bezig = false;
 
   function status(msg, isError) {
@@ -103,6 +111,7 @@
         throw new Error('Server gaf fout ' + resp.status + (detail ? ': ' + detail : ''));
       }
       huidig = await resp.json();
+      geleerd = false;
       toon(huidig, nhg);
       status(huidig.bericht ? '' : 'Geen e-consult gevonden in beeld: plak het bericht, of open het in Bricks.', !huidig.bericht);
     } catch (e) {
@@ -215,6 +224,7 @@
       btn.textContent = 'Erin gezet';
       setTimeout(function () { btn.textContent = label; }, 1500);
       status(key === 'antwoord' ? 'Antwoord in Bricks gezet. Lees het daar na en verstuur het zelf.' : 'Journaal in Bricks gezet.');
+      if (key === 'antwoord') leer();
       return;
     }
     // Field not on this page: copy, and say where it should be.
@@ -238,7 +248,10 @@
       setTimeout(function () { btn.textContent = label; }, 1500);
     }).catch(function () { status('Kopiëren lukte niet.', true); });
   }
-  $('ec-kop-antwoord').addEventListener('click', function () { kopieer(this, $('ec-antwoord').innerText.trim()); });
+  $('ec-kop-antwoord').addEventListener('click', function () {
+    kopieer(this, $('ec-antwoord').innerText.trim());
+    leer();
+  });
   $('ec-kop-journaal').addEventListener('click', function () { kopieer(this, $('ec-journaal').innerText.trim()); });
   $('ec-kop-alles').addEventListener('click', function () {
     if (!huidig) return;
@@ -248,6 +261,7 @@
 
   function wis() {
     huidig = null;
+    geleerd = false;
     ['ec-bericht', 'ec-beleid'].forEach(function (id) { $(id).value = ''; });
     $('ec-nhg').checked = false;
     $('ec-bericht-box').open = false;
