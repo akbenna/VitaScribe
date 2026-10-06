@@ -180,6 +180,7 @@ function check(name, cond, extra) {
   await panel.click('#btn-soep');
   await sleep(900);
   check('SOEP getoond', (await panel.$$eval('.soep-text', (e) => e.map((x) => x.textContent))).includes('Pneumonie'));
+  check('ook na een dictaat: knop consult afsluiten · nieuw consult', await panel.isVisible('#btn-consult-afsluiten'));
   const kaart = await panel.textContent('#soep-check');
   check('kaart heet "Onvolledig in de verslaglegging"', kaart.includes('Onvolledig in de verslaglegging') && kaart.includes('Duur'), kaart);
   check('markering geel in de tekst', (await panel.$$eval('.soep-text[data-key="o"] mark.sv-mark', (m) => m.map((x) => x.textContent))).join() === '150/90');
@@ -259,6 +260,7 @@ function check(name, cond, extra) {
 
   console.log('Brieven');
   await panel.click('.view-tab[data-view="letters"]');
+  check('specialismen in een uitklaplijst, gegroepeerd', (await panel.$$('#lt-spec option')).length >= 35 && (await panel.$$('#lt-spec optgroup')).length === 4);
   await panel.click('#lt-scrape');
   await sleep(1200);
   const secs = await panel.$$eval('.lt-sec span:nth-child(2)', (e) => e.map((x) => x.textContent));

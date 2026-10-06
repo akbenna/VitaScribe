@@ -63,7 +63,8 @@
   });
   segment('lt-aanvrager', 'v', function (v) { lt.aanvrager = v; });
   segment('lt-urg', 'v', function (v) { lt.urgentie = v; });
-  segment('lt-spec', 'v', function (v) {
+  $('lt-spec').addEventListener('change', function () {
+    var v = this.value;
     lt.spec = v;
     $('lt-spec-free').classList.toggle('hidden', v !== '');
     if (v === '') $('lt-spec-free').focus();

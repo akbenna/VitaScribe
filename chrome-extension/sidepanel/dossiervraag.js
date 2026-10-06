@@ -207,6 +207,11 @@
   // Focus shows the quick questions; ✕ hides the answers again (they stay
   // in memory until another patient or the panel closes).
   $('dv-input').addEventListener('focus', function () { open(true); });
+  // Grows with a longer question, up to a few lines.
+  $('dv-input').addEventListener('input', function () {
+    this.style.height = 'auto';
+    this.style.height = Math.min(this.scrollHeight + 2, 120) + 'px';
+  });
   $('dv-dicht').addEventListener('click', function () { open(false); });
   $('dv-input').addEventListener('keydown', function (e) {
     if (e.key === 'Escape') { open(false); $('dv-input').blur(); }

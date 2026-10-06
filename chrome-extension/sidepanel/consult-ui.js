@@ -84,14 +84,7 @@ window.SVConsultUI = (function () {
       gekoppeld = false;
       getoondOp = null;
     }
-    // Close button: whenever there is a report or an error to close.
-    var afsluiten = $('btn-consult-afsluiten');
-    var tonen = st === 'results' || st === 'error';
-    afsluiten.classList.toggle('hidden', !tonen || (st === 'results' && eersteKeer && !!huidig.dismissed));
-    afsluiten.classList.toggle('klaar', st === 'results' && !!huidig.dismissed);
-    afsluiten.textContent = st === 'results' && huidig.dismissed
-      ? '✓ Ingevoegd · consult afsluiten en nieuw consult'
-      : '✓ Consult afsluiten · nieuw consult';
+    toonAfsluiten(eersteKeer);
     var opname = st === 'recording';
     var verwerken = st === 'processing';
     $('consult-idle').classList.toggle('hidden', opname || verwerken);
@@ -149,6 +142,22 @@ window.SVConsultUI = (function () {
     $('consult-err').classList.toggle('hidden', !fout);
     $('btn-consult-resend').classList.toggle('hidden', !(fout && huidig.retry));
     $('btn-consult-settings').classList.toggle('hidden', !(fout && huidig.code === 'key'));
+  }
+
+  // Close button: whenever there is a report or an error to close, from a
+  // recorded consult or from dictation (text, or a SOEP made from it).
+  var verborgenNaLaden = false;
+  function toonAfsluiten(eersteKeer) {
+    var st = huidig.state || 'idle';
+    var afsluiten = $('btn-consult-afsluiten');
+    if (eersteKeer !== undefined) verborgenNaLaden = st === 'results' && !!eersteKeer && !!huidig.dismissed;
+    var consult = (st === 'results' && !verborgenNaLaden) || st === 'error';
+    var dictaat = st !== 'recording' && st !== 'processing' && !!(window.svDictaatActief && window.svDictaatActief());
+    afsluiten.classList.toggle('hidden', !(consult || dictaat));
+    afsluiten.classList.toggle('klaar', st === 'results' && !!huidig.dismissed);
+    afsluiten.textContent = st === 'results' && huidig.dismissed
+      ? '✓ Ingevoegd · consult afsluiten en nieuw consult'
+      : '✓ Consult afsluiten · nieuw consult';
   }
 
   async function start() {
@@ -231,6 +240,8 @@ window.SVConsultUI = (function () {
 
   return {
     bezig: bezig,
+    /** Dictation text or a SOEP appeared or went: show or hide the close button. */
+    verversAfsluiten: function () { toonAfsluiten(); },
     afsluiten: afsluiten,
     /** Het SOEP-blok toont nu iets anders dan het consultverslag. */
     losgekoppeld: function () { gekoppeld = false; },
