@@ -35,16 +35,24 @@ het HIS Bricks in Microsoft Edge of Google Chrome.
 ## Wat buiten het beoogd gebruik valt
 
 Klinisch meedenken: vraagsuggesties tijdens het consult, de toets aan de
-NHG-Standaard en voorgestelde Thuisarts-onderwerpen. Die functies helpen bij
+NHG-Standaard, voorgestelde Thuisarts-onderwerpen en "NHG meedenken" bij een
+e-consult (advies volgens de standaard in het concept-antwoord). Die functies helpen bij
 een beslissing over één patiënt en maken de software daarmee waarschijnlijk tot
 een medisch hulpmiddel van klasse IIa (MDR bijlage VIII, regel 11).
 
 Zo is dat afgeschermd:
 
 - op de server staat `CLINICAL_DECISION_SUPPORT` uit;
-- in de EU-modus is klinisch meedenken altijd uit, ongeacht die instelling;
+- in de EU-modus is klinisch meedenken altijd uit, ongeacht die instelling,
+  met één uitzondering die de praktijk zelf moet aanzetten:
+  `ECONSULT_NHG_IN_EU=true` voor NHG meedenken bij een e-consult;
 - in de extensie staat elke functie apart uit tot de arts hem aanzet, en dat
-  kan alleen als de server het toestaat.
+  kan alleen als de server het toestaat. NHG meedenken bij een e-consult is
+  een vinkje per e-consult dat na elk concept weer uitgaat.
+
+Het e-consult zelf, zonder dat vinkje, valt binnen het beoogd gebruik: het
+zoekt feiten in het dossier op en zet het beleid van de arts in begrijpelijke
+taal. Het voegt geen advies toe dat de arts niet gaf.
 
 ## Fase 1: eigen gebruik
 
@@ -61,7 +69,9 @@ lid 5). Daarvoor moet de praktijk onder meer:
   is;
 - een openbare verklaring opstellen en de technische documentatie bijhouden.
 
-Dat is een eigen project. Advies: in fase 1 niet doen.
+Dat is een eigen project. Advies: in fase 1 niet doen. Zet de praktijk
+`ECONSULT_NHG_IN_EU` of `CLINICAL_DECISION_SUPPORT` toch aan, dan is dat deze
+keuze, en hoort de onderbouwing hierboven erbij `[besluit praktijk, datum]`.
 
 ## Fase 2: verspreiden
 

@@ -46,6 +46,7 @@ function check(name, cond, extra) {
   await ctx.route('https://test.bfrcloud.com/**', (r) => {
     const u = r.request().url();
     if (u.endsWith('/gevoelig')) return r.fulfill({ contentType: 'text/html', body: DOSSIER.replace('P70<br>28-02-2025<br>Dementie', 'P76<br>28-02-2025<br>Depressie, verwezen naar GGZ') });
+    if (u.endsWith('/econsult')) return r.fulfill({ contentType: 'text/html', body: DOSSIER.replace('<section class="panel"><h3>Journaal</h3>\n', '<section class="panel"><h3>E-consult 05-10-2026</h3><div>Dokter, mag ik ibuprofen voor mijn knie? Ik gebruik apixaban.</div></section>\n<section class="panel"><h3>Journaal</h3>\n') });
     return r.fulfill({ contentType: 'text/html', body: u.endsWith('/post') ? POST : u.endsWith('/dossier') ? DOSSIER : BRICKS });
   });
   await ctx.route('http://localhost:8002/api/v1/**', async (r) => {
@@ -131,6 +132,16 @@ function check(name, cond, extra) {
       bronnen: [{ datum: '14-05-2024', onderdeel: 'JOURNAAL', citaat: 'lage rugpijn sinds 3 mnd', geverifieerd: true },
         { datum: '', onderdeel: 'LAB', citaat: 'kweek negatief', geverifieerd: false }],
       let_op: body.eerder.length ? '' : 'Er is geen correspondentie over kweken ingelezen.' }) });
+    if (url.endsWith('/econsult/status')) return r.fulfill({ contentType: 'application/json', body: JSON.stringify({ nhg_beschikbaar: modusKop !== 'eu' }) });
+    if (url.endsWith('/econsult/concept')) return r.fulfill({ contentType: 'application/json', body: JSON.stringify({
+      bericht: 'Dokter, mag ik ibuprofen voor mijn knie? Ik gebruik apixaban.', bericht_geverifieerd: true,
+      vraag_kort: 'Mag ibuprofen naast apixaban?',
+      feiten: [{ tekst: 'Gebruikt apixaban', datum: '12-03-2024', onderdeel: 'MEDICATIE', citaat: 'apixaban 5 mg', geverifieerd: true },
+        { tekst: 'Maagbloeding', datum: '2020', onderdeel: 'JOURNAAL', citaat: 'ulcus 2020', geverifieerd: false }],
+      nhg: body.nhg ? { richtlijn: 'NHG-Standaard Pijn', punten: ['Liever paracetamol'], alarm: ['zwarte ontlasting'], schriftelijk_geschikt: true } : null,
+      nhg_gebruikt: !!body.nhg, nhg_beschikbaar: true,
+      antwoord: 'Beste [naam patiënt],\n\n' + (body.beleid || '[beleid aanvullen]') + '\n\nMet vriendelijke groet,\n[Naam huisarts]',
+      journaal: 'S: vraag ibuprofen naast apixaban. E: ' + (body.beleid ? 'geen NSAID' : '[beleid aanvullen]'), let_op: '' }) });
     if (url.endsWith('/patient-instructions')) return r.fulfill({ contentType: 'application/json', body: JSON.stringify({ nl: 'Uw medicijn\nAmoxicilline 500 mg, 3 keer per dag.', vertaling: 'دواؤك', taal: 'Arabisch' }) });
     return r.fulfill({ status: 404, body: '' });
   });
@@ -327,8 +338,8 @@ function check(name, cond, extra) {
   let w = await weergave();
   check('icoon opent standaard het zijpaneel', w.popup === '' && w.paneel === true, w);
   check('terugval: klik op het icoon opent het paneel ook zelf', await sw.evaluate(() => chrome.action.onClicked.hasListeners()));
-  check('tabbladen Consult, Tolk, Brieven, Post; dossiervraag is geen tabblad',
-    (await panel.$$eval('.view-tab', (t) => t.map((x) => x.textContent))).join() === 'Consult,Tolk,Brieven,Post' && !(await panel.$('#view-dossier')));
+  check('tabbladen Consult, Tolk, Brieven, Post, E-consult; dossiervraag is geen tabblad',
+    (await panel.$$eval('.view-tab', (t) => t.map((x) => x.textContent))).join() === 'Consult,Tolk,Brieven,Post,E-consult' && !(await panel.$('#view-dossier')));
   check('dossiervraag als balk onderaan, antwoorden nog dicht', await panel.isVisible('#dv-input') && await panel.isHidden('#dv-paneel'));
   await panel.click('.view-tab[data-view="letters"]');
   check('balk ook in het tabblad Brieven', await panel.isVisible('#dv-input'));
@@ -398,6 +409,46 @@ function check(name, cond, extra) {
   await sleep(800);
   check('"Niet voor deze patiënt" houdt het advies weg', await panel.isHidden('#gevoelig-advies'));
   check('de modus blijft wat de arts koos (Claude)', (await panel.evaluate(() => chrome.storage.local.get('svModus'))).svModus === 'claude');
+
+  console.log('E-consult');
+  await page.goto('https://test.bfrcloud.com/econsult');
+  await sleep(500);
+  await panel.bringToFront();
+  await panel.focus('#dv-input');
+  await panel.click('#dv-lees');
+  await sleep(900);
+  check('balk ziet een e-consult in beeld en biedt een concept aan', await panel.isVisible('#dv-econsult'));
+  await panel.fill('#dv-input', 'beantwoord e-consult: paracetamol 1 g, geen ibuprofen');
+  await panel.press('#dv-input', 'Enter');
+  await sleep(1500);
+  const ec1 = sent.filter((s) => s.url.endsWith('/econsult/concept'))[0];
+  check('opdracht in de balk opent het tabblad E-consult', await panel.isVisible('#view-econsult') && (await panel.getAttribute('.view-tab[data-view="econsult"]', 'aria-selected')) === 'true');
+  check('beleid uit de balk gaat mee, NHG niet', ec1 && ec1.body.beleid === 'paracetamol 1 g, geen ibuprofen' && ec1.body.nhg === false, ec1 && ec1.body);
+  check('dossier met het e-consult, zonder naam of BSN', ec1 && ec1.body.dossier.includes('mag ik ibuprofen') && !/Amer|Moulay|123456789/.test(ec1.body.dossier));
+  check('geen vraag naar /dossier/vraag', !sent.some((s) => s.url.endsWith('/dossier/vraag') && /e-consult/.test(s.body.vraag)));
+  check('vraag, feiten en antwoord getoond', (await panel.textContent('#ec-vraag')).includes('apixaban')
+    && (await panel.$$eval('#ec-feiten .dv-mark', (e) => e.map((x) => x.textContent))).join('') === '✓?'
+    && (await panel.textContent('#ec-antwoord')).includes('paracetamol 1 g'));
+  check('zonder NHG geen NHG-blok', await panel.isHidden('#ec-nhg-blok'));
+  check('open plekken genoemd', (await panel.textContent('#ec-open')).includes('[naam patiënt]'));
+  check('NHG-vinkje staat uit en is te kiezen', !(await panel.isChecked('#ec-nhg')) && !(await panel.isDisabled('#ec-nhg')));
+  await panel.check('#ec-nhg');
+  await panel.click('#ec-go');
+  await sleep(1500);
+  const ec2 = sent.filter((s) => s.url.endsWith('/econsult/concept'))[1];
+  check('aangevinkt: NHG gaat mee', ec2 && ec2.body.nhg === true);
+  check('NHG-blok met richtlijn en alarmsymptomen', await panel.isVisible('#ec-nhg-blok') && (await panel.textContent('#ec-alarm')).includes('zwarte ontlasting'));
+  check('na het concept staat het vinkje weer uit (keuze per e-consult)', !(await panel.isChecked('#ec-nhg')));
+  await panel.click('#modus [data-modus="eu"]');
+  await sleep(800);
+  check('EU-modus zonder praktijkkeuze: vinkje niet te kiezen, met uitleg', await panel.isDisabled('#ec-nhg') && await panel.isVisible('#ec-nhg-uit'));
+  await panel.click('#modus [data-modus="claude"]');
+  await sleep(800);
+  check('terug in Claude: vinkje weer te kiezen', !(await panel.isDisabled('#ec-nhg')));
+  await panel.click('#ec-wis');
+  check('Wissen haalt alles weg', await panel.isHidden('#ec-uit') && (await panel.inputValue('#ec-beleid')) === '');
+  await panel.click('.view-tab[data-view="dictate"]');
+
   check('link naar Beheer in het zijpaneel', await panel.isVisible('#open-beheer'));
   await panel.evaluate(() => { window.__geopend = []; chrome.tabs.create = async (o) => { window.__geopend.push(o.url); }; });
   await panel.click('#open-beheer');

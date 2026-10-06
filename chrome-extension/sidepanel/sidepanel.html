@@ -36,6 +36,7 @@
     <button class="view-tab" data-view="tolk" role="tab" aria-selected="false" title="Tolk: arts en patiënt spreken om beurten; VitaScribe vertaalt en leest voor">Tolk</button>
     <button class="view-tab" data-view="letters" role="tab" aria-selected="false">Brieven</button>
     <button class="view-tab" data-view="post" role="tab" aria-selected="false" title="Labuitslagen en brieven uit de Bricks-post beoordelen">Post</button>
+    <button class="view-tab" data-view="econsult" role="tab" aria-selected="false" title="E-consult beantwoorden: feiten uit het dossier, jouw beleid, concept-antwoord">E-consult</button>
   </nav>
 
   <div id="view-dictate" class="view">
@@ -535,6 +536,70 @@
       Voorstel: jij beslist.</p>
   </div>
 
+  <div id="view-econsult" class="view hidden">
+    <section class="lt-card">
+      <div class="dv-kop">
+        <div>
+          <h2>E-consult</h2>
+          <p class="lt-hint">Open het e-consult in Bricks. VitaScribe leest het bericht en het dossier dat in beeld staat.</p>
+        </div>
+      </div>
+      <details id="ec-bericht-box" class="ec-bericht-box">
+        <summary>Bericht zelf plakken <span class="muted">(anders zoekt VitaScribe het in beeld)</span></summary>
+        <textarea id="ec-bericht" rows="3" maxlength="6000" spellcheck="true"
+          placeholder="Plak hier de vraag van de patiënt als die niet in Bricks in beeld staat."></textarea>
+      </details>
+      <label class="lt-label" for="ec-beleid">Jouw beleid <span class="muted">(kort, in je eigen woorden)</span></label>
+      <textarea id="ec-beleid" rows="2" maxlength="2000" spellcheck="true"
+        placeholder="Bijv. paracetamol 1 g max. 3x per dag, geen ibuprofen i.v.m. apixaban; bij zwarte ontlasting direct bellen."></textarea>
+      <label class="lt-check ec-nhg">
+        <input type="checkbox" id="ec-nhg">
+        <span><strong>NHG meedenken</strong> voor dit e-consult: wat de standaard adviseert, met alarmsymptomen.
+          <small>Bewuste keuze, staat steeds uit. Klinische suggestie; jij beslist.</small></span>
+      </label>
+      <p id="ec-nhg-uit" class="lt-hint hidden"></p>
+      <button id="ec-go" class="btn primary lt-generate" type="button">Maak concept-antwoord</button>
+    </section>
+    <p id="ec-status" class="status" role="status"></p>
+    <section id="ec-uit" class="lt-card ec-uit hidden" aria-live="polite">
+      <div class="ec-blok">
+        <span class="po-label">Vraag van de patiënt</span>
+        <p id="ec-vraag" class="ec-vraag"></p>
+        <details id="ec-bericht-details" class="lt-preview"><summary>Bericht</summary><p id="ec-bericht-uit" class="ec-bericht-uit"></p></details>
+      </div>
+      <p id="ec-letop" class="dv-letop hidden"></p>
+      <div id="ec-feiten-blok" class="ec-blok hidden">
+        <span class="po-label">Uit het dossier</span>
+        <ul id="ec-feiten" class="dv-bronnen ec-feiten"></ul>
+      </div>
+      <div id="ec-nhg-blok" class="ec-blok ec-nhg-blok hidden">
+        <span class="po-label">NHG <span id="ec-richtlijn"></span> · voorstel</span>
+        <ul id="ec-punten" class="ec-punten"></ul>
+        <p id="ec-alarm" class="ec-alarm hidden"></p>
+        <p id="ec-niet-schriftelijk" class="dv-letop hidden">Deze vraag is volgens de standaard niet goed schriftelijk af te handelen: overweeg bellen of een afspraak.</p>
+      </div>
+      <div class="ec-blok">
+        <span class="po-label">Antwoord aan de patiënt (B1)</span>
+        <div id="ec-antwoord" class="po-tekst ec-antwoord" contenteditable="true" spellcheck="true"></div>
+        <p id="ec-open" class="ec-open hidden"></p>
+        <div class="lt-row">
+          <button id="ec-kop-antwoord" class="btn primary small" type="button">Kopieer antwoord</button>
+        </div>
+      </div>
+      <div class="ec-blok">
+        <span class="po-label">Journaal</span>
+        <div id="ec-journaal" class="po-tekst" contenteditable="true" spellcheck="true"></div>
+        <div class="lt-row">
+          <button id="ec-kop-journaal" class="btn small" type="button">Kopieer journaal</button>
+          <button id="ec-kop-alles" class="btn small" type="button">Kopieer alles</button>
+          <button id="ec-wis" class="btn small" type="button">Wissen</button>
+        </div>
+      </div>
+    </section>
+    <p class="note">Naam, BSN, geboortedatum en adres gaan niet mee. Zonder NHG meedenken geeft het concept geen advies
+      dat jij niet gaf: daar staat [beleid aanvullen]. Lees het antwoord helemaal voor je het verstuurt.</p>
+  </div>
+
   <section id="dv-balk" class="dv-balk" aria-label="Vraag het dossier">
     <div id="dv-paneel" class="dv-paneel hidden">
       <div class="dv-kop">
@@ -546,6 +611,7 @@
         <summary>Toon precies wat er verstuurd wordt</summary>
         <pre id="dv-preview"></pre>
       </details>
+      <button id="dv-econsult" class="btn small dv-econsult hidden" type="button">E-consult in beeld → concept-antwoord</button>
       <div id="dv-snel" class="chips dv-snel" aria-label="Snelle vragen"></div>
       <p id="dv-status" class="status" role="status"></p>
       <div id="dv-antwoorden" class="dv-antwoorden" aria-live="polite"></div>
@@ -587,12 +653,14 @@
   <script src="../lib/thuisarts.js"></script>
   <script src="../lib/beslistools.js"></script>
   <script src="../lib/dossiervraag.js"></script>
+  <script src="../lib/econsult.js"></script>
   <script src="../lib/post.js"></script>
   <script src="sidepanel.js"></script>
   <script src="letters.js"></script>
   <script src="views.js"></script>
   <script src="dossiervraag.js"></script>
   <script src="post-ui.js"></script>
+  <script src="econsult-ui.js"></script>
   <script src="../lib/meetwaarden.js"></script>
   <script src="meetwaarden-ui.js"></script>
   <script src="thuisarts-ui.js"></script>

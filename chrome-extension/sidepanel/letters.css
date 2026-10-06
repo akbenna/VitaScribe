@@ -112,3 +112,27 @@
 .lt-afbakening .lt-label { color: #9a3412; }
 .lt-sublabel { font-size: 11px; color: var(--muted); }
 .lt-periode { flex: 0 1 130px; }
+
+/* E-consult */
+.ec-bericht-box summary { cursor: pointer; font-size: 12px; font-weight: 600; }
+.ec-bericht-box textarea, #ec-beleid { width: 100%; box-sizing: border-box; font: inherit; font-size: 13px; padding: 6px 8px; border: 1px solid var(--border); border-radius: 7px; resize: vertical; }
+.ec-bericht-box textarea { margin-top: 6px; }
+.ec-nhg { align-items: flex-start; gap: 8px; padding: 8px 10px; border: 1px dashed #9db0c6; border-radius: 8px; background: #f5f8fb; }
+.ec-nhg input { margin-top: 3px; }
+.ec-nhg small { display: block; color: var(--muted); font-size: 11px; margin-top: 2px; }
+.ec-nhg:has(input:checked) { border-style: solid; border-color: #7c5cc4; background: #f3effb; }
+.ec-uit { display: flex; flex-direction: column; gap: 10px; }
+.ec-blok { display: flex; flex-direction: column; gap: 4px; }
+.ec-vraag { margin: 0; font-weight: 600; font-size: 14px; }
+.ec-bericht-uit { margin: 4px 0 0; white-space: pre-wrap; font-size: 12px; }
+#ec-bericht-details.onzeker summary { color: #b45309; }
+.ec-feiten { margin: 0; }
+.ec-meta { color: var(--muted); font-size: 11px; }
+.ec-nhg-blok { border-left: 3px solid #7c5cc4; padding-left: 8px; }
+.ec-punten { margin: 0; padding-left: 16px; font-size: 13px; }
+.ec-alarm { margin: 0; font-size: 12px; color: #b91c1c; font-weight: 600; }
+.ec-antwoord { min-height: 120px; white-space: pre-wrap; }
+.ec-open { margin: 0; font-size: 12px; color: #b45309; }
+.dv-econsult { align-self: flex-start; margin: 2px 0 6px; border-color: #7c5cc4; color: #5b3fa8; }
+.view-tab { white-space: nowrap; }
+#ec-beleid { min-height: 56px; height: 64px; }
