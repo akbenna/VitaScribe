@@ -348,18 +348,54 @@
 
       <div id="lt-verw" class="hidden">
         <label class="lt-label">Specialisme</label>
-        <div class="chips" id="lt-spec">
-          <button class="chip active" data-v="cardioloog">Cardiologie</button>
-          <button class="chip" data-v="neuroloog">Neurologie</button>
-          <button class="chip" data-v="orthopedisch chirurg">Orthopedie</button>
-          <button class="chip" data-v="internist">Interne</button>
-          <button class="chip" data-v="dermatoloog">Dermatologie</button>
-          <button class="chip" data-v="longarts">Longziekten</button>
-          <button class="chip" data-v="chirurg">Chirurgie</button>
-          <button class="chip" data-v="psychiater">Psychiatrie</button>
-          <button class="chip" data-v="GGZ">GGZ</button>
-          <button class="chip" data-v="">Anders…</button>
-        </div>
+        <select id="lt-spec" class="lt-input">
+          <optgroup label="Beschouwend">
+            <option value="cardioloog" selected>Cardiologie</option>
+            <option value="internist">Interne geneeskunde</option>
+            <option value="maag-darm-leverarts">Maag-darm-lever</option>
+            <option value="longarts">Longziekten</option>
+            <option value="neuroloog">Neurologie</option>
+            <option value="dermatoloog">Dermatologie</option>
+            <option value="reumatoloog">Reumatologie</option>
+            <option value="kinderarts">Kindergeneeskunde</option>
+            <option value="klinisch geriater">Geriatrie</option>
+            <option value="internist-endocrinoloog">Endocrinologie</option>
+            <option value="internist-nefroloog">Nefrologie</option>
+            <option value="internist-hematoloog">Hematologie</option>
+            <option value="internist-oncoloog">Oncologie</option>
+            <option value="internist-infectioloog">Infectieziekten</option>
+            <option value="allergoloog">Allergologie</option>
+            <option value="klinisch geneticus">Klinische genetica</option>
+          </optgroup>
+          <optgroup label="Snijdend">
+            <option value="chirurg">Chirurgie</option>
+            <option value="vaatchirurg">Vaatchirurgie</option>
+            <option value="orthopedisch chirurg">Orthopedie</option>
+            <option value="uroloog">Urologie</option>
+            <option value="gynaecoloog">Gynaecologie en verloskunde</option>
+            <option value="KNO-arts">KNO</option>
+            <option value="oogarts">Oogheelkunde</option>
+            <option value="plastisch chirurg">Plastische chirurgie</option>
+            <option value="neurochirurg">Neurochirurgie</option>
+            <option value="kaakchirurg">Kaakchirurgie</option>
+            <option value="anesthesioloog">Anesthesiologie / pijnpoli</option>
+          </optgroup>
+          <optgroup label="GGZ">
+            <option value="psychiater">Psychiatrie</option>
+            <option value="kinder- en jeugdpsychiater">Kinder- en jeugdpsychiatrie</option>
+            <option value="GGZ">GGZ (basis/specialistisch)</option>
+            <option value="verslavingsarts">Verslavingszorg</option>
+          </optgroup>
+          <optgroup label="Overig">
+            <option value="revalidatiearts">Revalidatiegeneeskunde</option>
+            <option value="sportarts">Sportgeneeskunde</option>
+            <option value="radioloog">Radiologie</option>
+            <option value="specialist ouderengeneeskunde">Specialist ouderengeneeskunde</option>
+            <option value="fysiotherapeut">Fysiotherapie</option>
+            <option value="diëtist">Diëtetiek</option>
+          </optgroup>
+          <option value="">Anders…</option>
+        </select>
         <input type="text" id="lt-spec-free" class="lt-input hidden" placeholder="Bijv. uroloog, reumatoloog, KNO-arts">
         <label class="lt-label" for="lt-reden">Reden en vraagstelling</label>
         <textarea id="lt-reden" rows="3" placeholder="Bijv. graag beoordeling persisterende knieklachten re ondanks NSAID; MRI-indicatie?"></textarea>
@@ -456,7 +492,7 @@
     </div>
     <form id="dv-form" class="dv-form">
       <textarea id="dv-input" rows="1" maxlength="1000" spellcheck="true"
-                placeholder="Vraag het dossier… bijv. wanneer was de laatste HbA1c?"></textarea>
+                placeholder="Vraag het dossier…" title="Bijvoorbeeld: wanneer was de laatste HbA1c? Ooit een echo buik?"></textarea>
       <button id="dv-go" class="btn primary" type="submit">Vraag</button>
     </form>
   </section>

@@ -213,7 +213,7 @@ function handleServerEvent(event) {
     if (event.is_final) {
       var finalText = SVTextRules.applyRules(event.text, rules);
       els.interim.textContent = '';
-      els.text.value = joinText(els.text.value, finalText);
+      els.text.value = joinText(els.text.value, finalText); verversAfsluiten();
       els.text.scrollTop = els.text.scrollHeight;
       if (els.live.checked) queueLiveInsert(finalText);
     } else {
@@ -378,7 +378,7 @@ function teardown() {
   // Leftover interim text is kept so nothing that was said disappears.
   var leftover = SVTextRules.applyRules(els.interim.textContent, rules);
   if (leftover) {
-    els.text.value = joinText(els.text.value, leftover);
+    els.text.value = joinText(els.text.value, leftover); verversAfsluiten();
     els.interim.textContent = '';
     if (els.live.checked) queueLiveInsert(leftover);
   }
@@ -448,6 +448,14 @@ var SOEP_KEYS = [['s', 'S'], ['o', 'O'], ['e', 'E'], ['p', 'P']];
 var soepDelen = null;    // [{titel, s, o, e, p, icpc_code, icpc_titel}] or null
 var deelIdx = 0;
 var soepAlgemeen = {};   // aandachtspunten and markeringen, shared by all parts
+
+// Is there dictation work to close (text, or a SOEP on screen)? For the close button in consult-ui.js.
+window.svDictaatActief = function () {
+  return !!(els.text.value.trim() || !els.soep.classList.contains('hidden'));
+};
+function verversAfsluiten() {
+  if (window.SVConsultUI) window.SVConsultUI.verversAfsluiten();
+}
 
 var soepConcept = [];      // the report as VitaScribe wrote it, per part: to learn from the doctor's edits
 
@@ -605,6 +613,7 @@ function renderSoepDeel(part) {
   });
   document.getElementById('soep-mark').classList.toggle('hidden', mark.length === 0);
   els.soep.classList.remove('hidden');
+  verversAfsluiten();
   if (window.SVMeedenkenUI) window.SVMeedenkenUI.toon(soep);
 }
 
@@ -811,6 +820,7 @@ els.soepBtn.addEventListener('click', function () { processText('soep'); });
 // patient instruction. Used when a consult is closed or a new one starts.
 function wisSoepBlok() {
   soepConcept = [];
+  setTimeout(verversAfsluiten, 0);
   els.soep.classList.add('hidden');
   els.soepRows.textContent = '';
   soepDelen = null;
@@ -837,9 +847,11 @@ async function nieuwConsult() {
   wisDicteerVragen();
   document.getElementById('mw').classList.add('hidden');
   if (window.SVTolkUI) window.SVTolkUI.wis();   // the interpreter conversation belongs to this consult
+  verversAfsluiten();
   setStatus('Klaar voor het volgende consult.');
 }
 els.clear.addEventListener('click', nieuwConsult);
+els.text.addEventListener('input', verversAfsluiten);
 document.getElementById('btn-consult-afsluiten').addEventListener('click', nieuwConsult);
 // After inserting or copying: what the doctor changed is where VitaScribe learns (leren-ui.js).
 function leerVanDeel(deel) {
@@ -903,7 +915,7 @@ chrome.runtime.onMessage.addListener(function (msg) {
     els.interim.textContent = msg.text || '';
   } else if (msg.type === 'final') {
     els.interim.textContent = '';
-    els.text.value = joinText(els.text.value, msg.text || '');
+    els.text.value = joinText(els.text.value, msg.text || ''); verversAfsluiten();
   } else if (msg.type === 'stopped') {
     els.interim.textContent = '';
     if (msg.text) setStatus('Gedicteerd in het veld; de tekst staat ook hierboven.');

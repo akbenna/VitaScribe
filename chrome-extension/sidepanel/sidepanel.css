@@ -1,9 +1,10 @@
 :root {
-  --bg: #f8fafc;
+  --bg: #e9eef4;          /* a grey-blue page, so the white blocks stand apart */
   --panel: #ffffff;
+  --shadow: 0 1px 2px rgba(15, 23, 42, .07), 0 0 0 1px rgba(15, 23, 42, .02);
   --text: #0f172a;
   --muted: #64748b;
-  --border: #e2e8f0;
+  --border: #d9e1ea;
   --brand: #059669;
   --brand-dark: #047857;
   --rec: #dc2626;
@@ -387,3 +388,39 @@ body.consult-running .dv-balk { border-top-color: var(--rec); }
 .leer-lijst li span { flex: 1; }
 .leer-lijst li .leer-soort { flex: none; font-size: 10px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); padding-top: 2px; }
 .leer-lijst li.klaar { color: var(--muted); }
+
+/* ── Contrast: every block is a white card on the grey page ── */
+.consult, .target, .soep, .mw, .lt-card, .learn-form, .leer-kaart, .tk-beurt, .tk-handsfree, .tk-knop {
+  box-shadow: var(--shadow);
+}
+.editor textarea { background: var(--panel); box-shadow: var(--shadow); }
+.views { background: #dde4ec; }
+.lt-card h2 { padding-bottom: 6px; border-bottom: 1px solid #edf1f5; }
+
+/* Dossier question: its own tinted card, a little above the footer */
+.dv-balk { bottom: 8px; margin-bottom: 4px; padding: 8px 10px; background: #eef2ff; border: 1px solid #c7d2fe;
+  border-radius: 12px; box-shadow: 0 2px 8px rgba(79, 70, 229, .12); }
+.dv-balk .dv-form textarea { background: #fff; border-color: #c7d2fe; }
+.dv-balk + .footer { margin-top: 2px; padding-top: 4px; }
+body.consult-running .dv-balk { border-color: var(--rec); background: #fff5f5; }
+
+/* SOEP: rows separated, and every block under it a distinct, labelled card */
+.soep-row { padding: 4px 0; border-bottom: 1px solid #eef2f6; }
+.soep-row:last-child { border-bottom: 0; }
+.soep-letter { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 6px;
+  background: #ecfdf5; color: var(--brand-dark); font-size: 12px; padding: 0; margin-top: 1px; }
+.soep-head { padding-bottom: 6px; border-bottom: 1px solid #eef2f6; }
+.md, .ta, .bt, .soep-mark, .soep-check, .pi {
+  margin: 0; padding: 8px 10px; border-radius: 8px; border: 1px solid transparent; border-left-width: 3px;
+}
+.md { border-top: 1px solid transparent; background: #f5f7ff; border-color: #e0e7ff; border-left-color: var(--ai); font-size: 12.5px; gap: 6px; }
+.md-titel { color: var(--ai); font-weight: 700; }
+.md-lijst li { padding: 2px 0; }
+.md-beleid { padding-top: 4px; border-top: 1px dashed #dbe2ff; }
+.md-sug { padding: 2px 0; }
+.ta, .bt { background: #f0fdf4; border-color: #d1fae5; border-left-color: var(--brand); }
+.soep-mark { border-left-color: #d4b106; }
+.soep-check { border-left-color: #d97706; }
+.pi { background: #faf5ff; border-color: #ede9fe; border-left-color: #7c3aed; }
+.soep-actions { padding-top: 4px; border-top: 1px solid #eef2f6; }
+.dv-balk .dv-form textarea { min-height: 40px; line-height: 1.4; padding: 9px 10px; }
