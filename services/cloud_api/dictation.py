@@ -242,6 +242,9 @@ async def _authenticate(ws: WebSocket):
         return None, fout.detail if fout.status == 403 and "Ongeldige" not in fout.detail else ongeldig
     # A browser cannot set headers on a WebSocket either: the mode comes here too.
     data_policy.zet_modus(message.get("modus"))
+    weigering = data_policy.modus_weigering(ident)
+    if weigering:
+        return None, weigering
     return message, ident
 
 

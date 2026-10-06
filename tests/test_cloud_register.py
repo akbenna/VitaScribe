@@ -519,3 +519,17 @@ def test_practice_can_keep_letters_in_the_eu(api):
     ident = api.portal.call(licentie.identificeer, sleutel, "2876")
     assert ident.brieven_in_eu
     assert api.portal.call(praktijk_sleutels.kies_brieven, ident) == ("mistral", None)
+
+
+def test_praktijk_alleen_eu_weigert_de_claude_modus(api):
+    p = _praktijk(api)
+    _activeer(api, p["id"], alleen_eu=True)
+    sleutel = _gebruiker(api, p["id"])["sleutel"]
+    kop = {"X-API-Key": sleutel, "X-Bricks-Praktijk": "2876"}
+    r = api.get("/api/v1/licentie", headers={**kop, "X-VitaScribe-Modus": "claude"})
+    assert r.status_code == 403 and "alleen in de EU-modus" in r.json()["detail"]
+    assert api.get("/api/v1/licentie", headers={**kop, "X-VitaScribe-Modus": "eu"}).status_code == 200
+    assert api.get("/api/v1/providers", headers={**kop, "X-VitaScribe-Modus": "claude"}).json()["modi"] == ["eu"]
+    # Switched off again in Beheer: both modes.
+    _activeer(api, p["id"], alleen_eu=False)
+    assert api.get("/api/v1/licentie", headers={**kop, "X-VitaScribe-Modus": "claude"}).status_code == 200

@@ -54,6 +54,8 @@ CREATE INDEX IF NOT EXISTS vs_gebruikers_praktijk ON vs_gebruikers (praktijk_id)
 -- Aan: brieven gaan naar het taalmodel in de EU (Mistral) in plaats van naar
 -- de brievenaanbieder van de server of een eigen sleutel in de VS.
 ALTER TABLE vs_praktijken ADD COLUMN IF NOT EXISTS brieven_in_eu BOOLEAN NOT NULL DEFAULT FALSE;
+-- Deze praktijk gebruikt alleen de EU-modus (stuk 14, stap 3): de Claude-modus wordt geweigerd.
+ALTER TABLE vs_praktijken ADD COLUMN IF NOT EXISTS alleen_eu BOOLEAN NOT NULL DEFAULT FALSE;
 
 -- Eigen sleutels van een praktijk bij een AI-dienst, versleuteld (zie kluis.py).
 -- 'brieven': Anthropic of OpenAI, alleen voor gepseudonimiseerde brieven.

@@ -76,6 +76,7 @@ Bespreek dat met je accountant of jurist.
 - [ ] Stuk 02 in het verwerkingsregister van de praktijk
 - [ ] Stuk 03 (DPIA) ingevuld, besproken en ondertekend
 - [ ] Persoonlijke sleutels per gebruiker (`API_USERS`); de gedeelde sleutel ingetrokken
+- [ ] Slot op de modus: `TOEGESTANE_MODI=eu`, of "Alleen EU-modus" bij de praktijk in Beheer
 - [ ] Testgereedschap in productie uit, of alleen gebruikt met gespeelde consulten
 - [ ] Stuk 08 verwerkt in de privacyverklaring en in de wachtkamer
 - [ ] Stuk 09 gelezen en afgetekend door elke gebruiker

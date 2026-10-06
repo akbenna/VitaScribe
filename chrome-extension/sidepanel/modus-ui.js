@@ -1,9 +1,12 @@
 /*
  * VitaScribe – de modusknop (Claude | EU) in het zijpaneel en de popup.
  *
- * Eén klik wisselt; de arts beslist. Bij de wissel naar EU vraagt de knop de
- * server of de EU-modus daar klaar is. Zo niet, dan blijft de keuze staan en
- * verschijnt een waarschuwing (advies, nooit een wissel). Een wissel in het
+ * Eén klik wisselt; de arts beslist, binnen wat de praktijk toestaat. Bij het
+ * openen vraagt de knop de server welke modi mogen (TOEGESTANE_MODI, of "alleen
+ * EU-modus" in Beheer). Een modus die niet mag, staat grijs; staat de keuze op
+ * zo'n modus, dan gaat hij naar een modus die wel mag, met uitleg. Bij de
+ * wissel naar EU vraagt de knop ook of de EU-modus daar klaar is. Zo niet, dan
+ * blijft de keuze staan en verschijnt een waarschuwing. Een wissel in het
  * ene venster verschijnt meteen in het andere.
  */
 var SVModusKnop = (function () {
@@ -17,7 +20,8 @@ var SVModusKnop = (function () {
     var r = await fetch(url + '/api/v1/providers', { headers: headers, signal: AbortSignal.timeout(5000) });
     if (!r.ok) throw new Error('server ' + r.status);
     var d = await r.json();
-    return { modus: SVModus.geldig(d.modus), probleem: d.eu_probleem || teOud(d.min_versie) };
+    var modi = Array.isArray(d.modi) && d.modi.length ? d.modi.map(SVModus.geldig) : ['claude', 'eu'];
+    return { modus: SVModus.geldig(d.modus), modi: modi, probleem: d.eu_probleem || teOud(d.min_versie) };
   }
 
   // "2.15.2" < "2.15.3": the EU mode relies on features of newer versions.
@@ -41,6 +45,41 @@ var SVModusKnop = (function () {
   function koppel(knoppen, uitleg) {
     if (!knoppen) return;
     var huidig = 'claude';
+    var toegestaan = ['claude', 'eu'];
+    var NAAM = { claude: 'Claude-modus', eu: 'EU-modus' };
+
+    function zetToegestaan(modi) {
+      toegestaan = modi;
+      knoppen.querySelectorAll('[data-modus]').forEach(function (b) {
+        var mag = modi.indexOf(b.getAttribute('data-modus')) !== -1;
+        b.disabled = !mag;
+        b.classList.toggle('verboden', !mag);
+        if (!mag) b.title = 'Je praktijk werkt alleen in de ' + NAAM[modi[0]] + '.';
+      });
+    }
+
+    // Ask the server once which modes this practice allows; move away from one that is not.
+    async function controleer() {
+      try {
+        var s = await serverModus(huidig);
+        zetToegestaan(s.modi);
+        if (s.modi.indexOf(huidig) === -1) {
+          var nieuw = s.modi[0];
+          await SVModus.zet(nieuw);
+          toon(nieuw);
+          if (uitleg) {
+            uitleg.textContent = 'Je praktijk werkt alleen in de ' + NAAM[nieuw] + '; de schakelaar staat daarom op ' +
+              (nieuw === 'eu' ? 'EU' : 'Claude') + '.' + (nieuw === 'eu' ? ' ' + SVModus.UITLEG.eu.lang : '');
+            uitleg.hidden = false;
+            uitleg.classList.remove('fout');
+          }
+        } else if (huidig === 'eu' && s.probleem) {
+          toon('eu', s.probleem);
+        }
+      } catch (e) {
+        // Geen verbinding: de keuze blijft staan; de server weigert zelf wat niet mag.
+      }
+    }
 
     function toon(modus, melding) {
       huidig = modus;
@@ -48,7 +87,7 @@ var SVModusKnop = (function () {
         var aan = b.getAttribute('data-modus') === modus;
         b.classList.toggle('aan', aan);
         b.setAttribute('aria-checked', aan ? 'true' : 'false');
-        b.title = SVModus.UITLEG[b.getAttribute('data-modus')].lang;
+        if (!b.disabled) b.title = SVModus.UITLEG[b.getAttribute('data-modus')].lang;
       });
       document.body.classList.toggle('modus-eu', modus === 'eu');
       if (uitleg) {
@@ -59,7 +98,7 @@ var SVModusKnop = (function () {
     }
 
     async function kies(modus) {
-      if (modus === huidig) return;
+      if (modus === huidig || toegestaan.indexOf(modus) === -1) return;
       await SVModus.zet(modus);
       toon(modus);
       if (modus !== 'eu') return;
@@ -77,9 +116,8 @@ var SVModusKnop = (function () {
     });
     SVModus.lees().then(function (m) {
       toon(m);
-      // Already in EU mode when the panel opens: check once whether the server and this version are ready.
-      if (m === 'eu') serverModus('eu').then(function (s) { if (s.probleem && huidig === 'eu') toon('eu', s.probleem); })
-        .catch(function () { /* geen verbinding */ });
+      // On opening: which modes may be used, and is the EU mode ready on the server?
+      controleer();
     });
     SVModus.bijWijziging(function (m) { if (m !== huidig) toon(m); });
   }

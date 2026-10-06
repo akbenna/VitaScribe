@@ -42,6 +42,7 @@ function check(name, cond, extra) {
   const sent = [];
   const telEvents = [];   // what the (fake) phone sends to the panel
   let euToegestaan = true;
+  let alleenEu = false;   // practice lock: only the EU mode
   const POST = fs.readFileSync(path.join(HERE, 'bricks-post.html'), 'utf8');
   const DOSSIER = fs.readFileSync(path.join(HERE, 'bricks-dossier.html'), 'utf8');
   await ctx.route('https://test.bfrcloud.com/**', (r) => {
@@ -100,7 +101,7 @@ function check(name, cond, extra) {
     if (url.endsWith('/providers')) {
       const gevraagd = r.request().headers()['x-vitascribe-modus'];
       return r.fulfill({ contentType: 'application/json', body: JSON.stringify({
-        modus: gevraagd === 'eu' ? 'eu' : 'claude', modi: ['claude', 'eu'],
+        modus: gevraagd === 'eu' ? 'eu' : 'claude', modi: alleenEu ? ['eu'] : ['claude', 'eu'],
         eu_probleem: euToegestaan ? null : 'Op de server is geen Mistral-sleutel ingesteld.' }) });
     }
     if (url.endsWith('/letters/extract')) return r.fulfill({ contentType: 'application/json', body: JSON.stringify({ text: 'Journaal\nHoofdpijn\nMedicatie\nParacetamol' }) });
@@ -769,6 +770,21 @@ function check(name, cond, extra) {
   await pop.click('#modus [data-modus="claude"]');
   await sleep(300);
   euToegestaan = true;
+
+  // Practice lock (stuk 14, stap 3): only the EU mode.
+  alleenEu = true;
+  const pop2 = await ctx.newPage();
+  await pop2.goto(`chrome-extension://${id}/popup/popup.html`);
+  await sleep(1000);
+  check('praktijk alleen EU: schakelaar gaat zelf naar EU', (await pop2.$eval('#modus .aan', (b) => b.getAttribute('data-modus')).catch(() => '')) === 'eu');
+  check('Claude-knop staat grijs, met uitleg', await pop2.isDisabled('#modus [data-modus="claude"]')
+    && (await pop2.textContent('#modus-uitleg')).includes('alleen in de EU-modus'));
+  await pop2.click('#modus [data-modus="claude"]', { force: true }).catch(() => {});
+  await sleep(300);
+  check('een klik op Claude doet niets', (await pop2.evaluate(() => chrome.storage.local.get('svModus'))).svModus === 'eu');
+  alleenEu = false;
+  await pop2.evaluate(() => chrome.storage.local.set({ svModus: 'claude' }));
+  await pop2.close();
 
   const popDicht = pop.waitForEvent('close', { timeout: 3000 }).then(() => true, () => false);
   await pop.click('#btn-expand');

@@ -132,7 +132,7 @@ in hoofdstuk 4.
 | R4 | De server bewaart geen audio en geen tekst. Er is een verwerkersovereenkomst met Railway, en Railway is actief in het DPF. Railway heeft SOC 2 Type II. De server draait in Nederland. Restrisico: Railway valt onder Amerikaans recht. Wil de praktijk dat wegnemen, dan is een Europese host mogelijk. Technisch is dat een kleine verhuizing. |
 | R5 | Een verwerkersovereenkomst met Mistral: EU, geen training, ZDR. Zolang die er niet is, worden alleen gespeelde consulten gebruikt. |
 | R6 | Een sleutel per gebruiker (`API_USERS`). De gedeelde sleutel wordt ingetrokken. Beheer met een tweede factor (`ADMIN_TOTP`) voor elke beheerder; beheer zonder tweede factor uitzetten. Het auditlog is onveranderbaar en zonder inhoud. |
-| R7 | Testgereedschap staat in productie uit, of wordt aantoonbaar alleen met gespeelde consulten gebruikt. |
+| R7 | Testgereedschap staat in productie uit, of wordt aantoonbaar alleen met gespeelde consulten gebruikt. Daarnaast een slot op de modus: met `TOEGESTANE_MODI=eu` of "Alleen EU-modus" in Beheer weigert de server de Claude-modus, ook voor live dicteren; de extensie zet die knop grijs. |
 | R8 | Er gaat alleen iets naar een EU-verwerker, er wordt niets bewaard, en de patiënt heeft toestemming gegeven. Bij brieven en dossiervragen wordt de tekst in de browser gefilterd. Dit restrisico wordt aanvaard. |
 | R9 | Het verslag staat alleen in `chrome.storage.session`, dus in het werkgeheugen. De knop "Consult afsluiten" wist het verslag en de opname. Elke gebruiker heeft een eigen Windows-account `[controleren]`. |
 | R10 | Werkinstructie (stuk 09): elk verslag lezen, en de gele markeringen eerst. Periodiek steekproeven in de eigen verslagen. |

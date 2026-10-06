@@ -377,7 +377,12 @@ met één klik; de keuze gaat met elke aanvraag mee (kopregel
   e-consult toe. De arts vinkt het dan nog per e-consult aan; het staat nooit
   vanzelf aan. Andere klinische ondersteuning blijft uit.
 
-De arts kiest; de server volgt die keuze altijd en verandert hem nooit. Kan
+De arts kiest, binnen wat de praktijk toestaat. `TOEGESTANE_MODI=eu` (op de
+server) of "Alleen EU-modus" (per praktijk in Beheer) laat alleen de EU-modus
+toe: de server weigert dan elke aanvraag in de Claude-modus met uitleg, ook
+live dicteren, en de extensie zet die knop grijs. Zonder die instelling
+mogen beide. Een onbekende waarde betekent alleen EU. Binnen de toegestane
+modi volgt de server de keuze van de arts altijd en verandert hem nooit. Kan
 de EU-modus niet werken (geen `MISTRAL_API_KEY`), dan mislukt de aanvraag met
 een melding; de server valt nooit stil terug op Claude. De knop waarschuwt
 daar vooraf voor (`eu_probleem` in `/api/v1/providers`). Nodig voor EU:

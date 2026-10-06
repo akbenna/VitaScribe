@@ -88,11 +88,28 @@ goedgekeurde modus gaan. In fase 2 is dat een eis van elke klantpraktijk.
 - De schakelaar in het paneel staat dan grijs, met de uitleg: "Je praktijk
   gebruikt alleen de EU-modus".
 
-**Wat je doet.** De pull request bekijken en samenvoegen. Daarna op de server
-`TOEGESTANE_MODI=eu` zetten, zolang de Claude-modus niet is goedgekeurd.
+**Gebouwd (versie 2.21.0).**
+
+- Server: `TOEGESTANE_MODI` (`eu`, `claude` of beide; een tikfout betekent
+  alleen EU).
+- Per praktijk: het vinkje "Alleen EU-modus" in Beheer.
+- De server weigert elke aanvraag en elke dicteerverbinding in een modus die
+  niet mag, met de uitleg wat de arts moet doen. Alleen
+  `/api/v1/providers` antwoordt altijd, zodat de extensie weet wat mag.
+- In de extensie staat de verboden modus grijs. Staat de schakelaar op zo'n
+  modus, dan gaat hij zelf naar de toegestane, met uitleg.
+
+**Wat je nog doet.**
+
+1. Zet op de server de variabele `TOEGESTANE_MODI=eu` (Railway: Variables).
+   Doe dat zolang de Claude-modus niet is goedgekeurd voor echte patiënten,
+   dus tot stap 5 af is.
+2. Of zet in Beheer bij Huisartsenpraktijk Roosendael het vinkje "Alleen
+   EU-modus" aan. Dat geldt dan alleen voor die praktijk.
+3. Open het zijpaneel. De Claude-knop staat nu grijs.
 
 **Klaar als.** Een poging in de Claude-modus geeft een nette melding, en de
-DPIA noemt het slot als maatregel.
+DPIA noemt het slot als maatregel (gedaan, R3 en R7).
 
 ## Stap 4. Server naar een Europese host
 

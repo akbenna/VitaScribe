@@ -71,6 +71,7 @@ class Identiteit:
     praktijknummers: List[str] = field(default_factory=list)
     eigen_sleutels_verplicht: bool = False
     brieven_in_eu: bool = False
+    alleen_eu: bool = False          # Beheer: deze praktijk alleen in de EU-modus
 
     @property
     def is_praktijkbeheerder(self) -> bool:
@@ -157,7 +158,7 @@ async def _haal(h: str):
         """
         SELECT g.id AS gebruiker_id, g.naam AS gebruiker_naam, g.rol, g.actief AS gebruiker_actief,
                p.id AS praktijk_id, p.naam AS praktijk_naam, p.status, p.licentietype, p.geldig_tot,
-               p.praktijknummers, p.eigen_sleutels_verplicht, p.brieven_in_eu
+               p.praktijknummers, p.eigen_sleutels_verplicht, p.brieven_in_eu, p.alleen_eu
           FROM vs_gebruikers g JOIN vs_praktijken p ON p.id = g.praktijk_id
          WHERE g.sleutel_hash = $1
         """,
@@ -247,4 +248,5 @@ async def _identificeer(sleutel: Optional[str], praktijk_kop: Optional[str] = No
         praktijknummers=list(rij["praktijknummers"] or []),
         eigen_sleutels_verplicht=bool(rij["eigen_sleutels_verplicht"]),
         brieven_in_eu=bool(rij["brieven_in_eu"]),
+        alleen_eu=bool(rij.get("alleen_eu", False)),
     )
