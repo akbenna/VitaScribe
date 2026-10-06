@@ -71,7 +71,7 @@ def test_informatiebrief_streams_and_follows_knmg(api):
     assert "123456789" not in call["user"] and "1. Welke diagnose?" in call["user"]
 
 
-def test_verwijzing_uses_fast_model_and_needs_reason(api):
+def test_verwijzing_uses_quality_model_and_needs_reason(api):
     resp = api.post("/api/v1/letters/generate", headers=H,
                     json={"kind": "verwijzing", "dossier": DOSSIER, "specialisme": "orthopeed"})
     assert resp.status_code == 400
@@ -82,8 +82,10 @@ def test_verwijzing_uses_fast_model_and_needs_reason(api):
             "urgentie": "regulier", "reden": "Graag beoordeling persisterende rugpijn",
         })
     assert resp.status_code == 200
-    assert seen[0]["quality"] is False
+    # The doctor wants to send it nearly as is: the strong model, the whole dossier read.
+    assert seen[0]["quality"] is True and seen[0]["max_tokens"] == 2000
     assert "orthopedisch chirurg" in seen[0]["user"]
+    assert "Lees het HELE dossier" in seen[0]["system"] and "geen sterretjes" in seen[0]["system"]
 
 
 def test_provider_error_before_stream_gives_502(api):
