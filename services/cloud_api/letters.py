@@ -86,48 +86,123 @@ medische gegevens:
   en als laatste regel [Naam huisarts]. Geen markdown-opmaak.
 """
 
+# Per requester: who reads the letter, what they need, in which register.
+# Always on top of the KNMG basis above (facts only, no judgement).
+_COLLEGIAAL = "De lezer is arts: medische terminologie mag, afsluiten met \"Met collegiale groet\". "
+_LEEK = "De lezer is geen arts: leg elke medische term kort in gewone taal uit, afsluiten met \"Met vriendelijke groet\". "
+
 _AANVRAGER = {
-    "advocaat": "De aanvrager is een advocaat. Houd de brief strikt feitelijk; \
-geen uitspraken over schuld, oorzaak of letsel-gevolgen.",
-    "sma": "De aanvrager is een sociaal-medisch adviseur. Je mag medische \
-terminologie gebruiken en afsluiten met \"Met collegiale groet\".",
-    "gemeente": "De aanvrager is de gemeente (Wmo/Jeugdwet/participatie). \
-Leg medische termen in gewone taal uit.",
-    "verzekeraar": "De aanvrager is (de medisch adviseur van) een verzekeraar. \
-Alleen gegevens die direct op de vraag betrekking hebben.",
-    "uwv": "De aanvrager is (de verzekeringsarts van) UWV. Je mag medische \
-terminologie gebruiken en afsluiten met \"Met collegiale groet\".",
-    "letselschade": "De aanvrager is de medisch adviseur in een letselschadezaak \
-(verzekeraar of belangenbehartiger). Strikt feitelijk en alleen voor de \
-gevraagde periode en klachten; geen uitspraken over oorzaak, ongevalsgevolgen, \
-prognose of eindtoestand.",
-    "bedrijfsarts": "De aanvrager is de bedrijfsarts (arbodienst). Je mag \
-medische terminologie gebruiken en afsluiten met \"Met collegiale groet\". Geen \
-oordeel over arbeidsgeschiktheid of belastbaarheid: dat is aan de bedrijfsarts.",
-    "ciz": "De aanvrager is het CIZ (indicatie Wet langdurige zorg). Noem \
-diagnoses, beperkingen zoals ze in het dossier beschreven staan (beoordeel ze niet \
-zelf), hulpmiddelen en betrokken zorgverleners. Leg medische termen in gewone \
-taal uit.",
-    "ind": "De aanvrager is de IND, meestal via het Bureau Medische Advisering \
-(BMA), dat de vragen opstelt. Beantwoord elke vraag volledig en precies, want \
-de beoordeling hangt af van details: alle diagnoses met datum van vaststelling, \
-de huidige behandeling en wie die geeft (huisarts, specialisten, GGZ), alle \
-huidige medicatie met exacte sterkte, dosering en frequentie, het beloop en de \
-geplande behandeling of controles, zoals ze in het dossier staan. Je mag \
-medische terminologie gebruiken en afsluiten met \"Met collegiale groet\". Geef \
-geen oordeel over een medische noodsituatie, over de gevolgen van stoppen met \
-de behandeling, over reisgeschiktheid of over de beschikbaarheid van zorg in \
-het land van herkomst: dat beoordeelt het BMA.",
-    "duo": "De aanvrager is DUO (Dienst Uitvoering Onderwijs), bijvoorbeeld bij \
-een verzoek om studievertraging door ziekte of een beperking. Alleen feiten: \
-welke aandoening, zo beperkt als de vraag toelaat, sinds wanneer, en in welke \
-periode klachten of behandeling in het dossier staan. Geen oordeel over de \
-invloed op de studie. Leg medische termen in gewone taal uit.",
-    "cbr": "De aanvrager is het CBR (rijgeschiktheid). Alleen feitelijke \
-gegevens over de aandoening waarnaar gevraagd wordt; geen oordeel over \
+    "advocaat": _LEEK + "De aanvrager is een advocaat (bijvoorbeeld letselschade, \
+arbeidsrecht, familie- of strafrecht). Verstrek alleen wat de schriftelijke \
+machtiging van de patiënt en de vraag dekken. Chronologisch per vraag: datum, \
+klacht zoals de patiënt die meldde, bevindingen, diagnose, behandeling, \
+verwijzing. Geen uitspraken over oorzaak, schuld, geloofwaardigheid of gevolgen, \
+en geen kopie of samenvatting van het hele dossier.",
+    "letselschade": _COLLEGIAAL + "De aanvrager is de medisch adviseur in een \
+letselschadezaak (verzekeraar of belangenbehartiger). Geef een chronologisch \
+overzicht van de gevraagde periode: klachten zoals gemeld, bevindingen, \
+diagnoses, behandeling en verwijzingen met datum. Vraagt de adviseur naar \
+klachten van vóór het ongeval, noem die feitelijk binnen de gevraagde periode. \
+Geen uitspraken over oorzaak, ongevalsgevolgen, prognose of eindtoestand.",
+    "uwv": _COLLEGIAAL + "De aanvrager is de verzekeringsarts of arbeidsdeskundige \
+van UWV. Noem per vraag: diagnose(s) met datum, klachten zoals de patiënt ze \
+meldt, behandeling en behandelaars (ook specialist, GGZ, fysiotherapie), \
+huidige medicatie en het beloop. Geen oordeel over arbeidsongeschiktheid, \
+belastbaarheid of functionele mogelijkheden: dat stelt de verzekeringsarts vast.",
+    "bedrijfsarts": _COLLEGIAAL + "De aanvrager is de bedrijfsarts (arbodienst). \
+Richt je op de actuele situatie: diagnose, behandeltraject en behandelaars, \
+medicatie, en de verwachte duur van de behandeling als die in het dossier \
+staat. Geen oordeel over belastbaarheid, werkhervatting of verzuim.",
+    "sma": _COLLEGIAAL + "De aanvrager is een sociaal-medisch adviseur (vaak voor \
+gemeente of verzekeraar). Feitelijk per vraag: diagnoses, behandeling, \
+medicatie en beloop. Geen eigen oordeel over beperkingen of indicaties.",
+    "verzekeraar": _COLLEGIAAL + "De aanvrager is de medisch adviseur van een \
+verzekeraar (bijvoorbeeld arbeidsongeschiktheids- of levensverzekering). \
+Alleen gegevens die rechtstreeks op de gestelde vraag en de gemachtigde \
+periode betrekking hebben; niets daarbuiten. Geen oordeel over risico, \
+acceptatie of eerdere aanwezigheid van een aandoening.",
+    "gemeente": _LEEK + "De aanvrager is de gemeente of het Wmo-, Jeugd- of \
+Participatieloket; de lezer is meestal een consulent zonder medische \
+achtergrond. Noem de aandoeningen die voor de vraag van belang zijn, sinds \
+wanneer, de behandeling en welke beperkingen in het dossier beschreven staan, \
+in gewone taal. Geen oordeel over de vraag of een voorziening nodig is: dat \
+beoordeelt de gemeente of haar adviseur.",
+    "ciz": _LEEK + "De aanvrager is het CIZ (indicatie Wet langdurige zorg). \
+Noem diagnoses, beperkingen zoals ze in het dossier beschreven staan (beoordeel \
+ze niet zelf), hulpmiddelen, betrokken zorgverleners en de zorg die nu \
+geleverd wordt.",
+    "ind": _COLLEGIAAL + "De aanvrager is de IND, meestal via het Bureau Medische \
+Advisering (BMA), dat de vragen opstelt. Beantwoord elke vraag volledig en \
+precies, want de beoordeling hangt af van details: alle diagnoses met datum van \
+vaststelling, de huidige behandeling en wie die geeft (huisarts, specialisten, \
+GGZ), alle huidige medicatie met exacte sterkte, dosering en frequentie, het \
+beloop en de geplande behandeling of controles, zoals ze in het dossier staan. \
+Geef geen oordeel over een medische noodsituatie, over de gevolgen van stoppen \
+met de behandeling, over reisgeschiktheid of over de beschikbaarheid van zorg \
+in het land van herkomst: dat beoordeelt het BMA.",
+    "duo": _LEEK + "De aanvrager is DUO (Dienst Uitvoering Onderwijs), \
+bijvoorbeeld bij een verzoek om studievertraging door ziekte of een beperking. \
+Alleen feiten: welke aandoening, zo beperkt als de vraag toelaat, sinds \
+wanneer, en in welke periode klachten of behandeling in het dossier staan. Geen \
+oordeel over de invloed op de studie.",
+    "cbr": _COLLEGIAAL + "De aanvrager is het CBR of een door het CBR aangewezen \
+arts (rijgeschiktheid). Alleen feitelijke gegevens over de aandoening waarnaar \
+gevraagd wordt: diagnose, behandeling, medicatie, en of er recent \
+ontregeling of aanvallen in het dossier staan. Geen oordeel over \
 rijgeschiktheid.",
-    "overig": "De aanvrager is een externe instantie.",
+    "overig": _LEEK + "De aanvrager is een externe instantie. Beantwoord alleen de \
+gestelde vragen, feitelijk.",
 }
+
+# ── Supporting letter at the patient's own request (housing urgency, Wmo) ──
+# KNMG: a treating doctor does not write a judgement or recommendation for his
+# own patient ("rolvermenging"). What is allowed: factual information, at the
+# patient's request, that the patient hands in himself. The letter supports by
+# being complete and to the point, not by advising.
+_DOEL = {
+    "woningurgentie": "een aanvraag voor urgentie of een medische indicatie voor een woning. Relevant: \
+aandoeningen die met de huidige woning te maken hebben (trappen, loopafstand, \
+ademhaling, psychische klachten, valrisico) zoals ze in het dossier staan.",
+    "wmo_scootmobiel": "een Wmo-aanvraag voor een scootmobiel of ander vervoersmiddel. Relevant: \
+aandoeningen die het lopen of het reizen beperken, de loopafstand of \
+loopbeperking zoals die in het dossier beschreven staat, hulpmiddelen die al \
+gebruikt worden, en de behandeling.",
+    "wmo_woning": "een Wmo-aanvraag voor een woningaanpassing (bijvoorbeeld traplift, douche). \
+Relevant: aandoeningen die traplopen, staan, bukken of de persoonlijke \
+verzorging beperken, zoals in het dossier beschreven, en gebruikte hulpmiddelen.",
+    "wmo_hulp": "een Wmo-aanvraag voor huishoudelijke hulp of begeleiding. Relevant: \
+aandoeningen en beperkingen in het dagelijks functioneren zoals in het dossier \
+beschreven, en de zorg die nu geleverd wordt.",
+    "parkeerkaart": "een aanvraag voor een gehandicaptenparkeerkaart. Relevant: aandoeningen \
+die het lopen beperken en de loopafstand zoals die in het dossier staat. De \
+gemeente laat dit meestal keuren door een onafhankelijk arts.",
+    "vervoer": "een aanvraag voor aangepast vervoer (regiotaxi, Valys). Relevant: \
+aandoeningen die zelfstandig reizen met het openbaar vervoer beperken, zoals \
+in het dossier beschreven.",
+    "overig": "een aanvraag bij een instantie, zoals de patiënt die hieronder toelicht.",
+}
+
+VERKLARING_SYSTEM = """\
+Je bent een Nederlandse huisarts en schrijft, op verzoek van je eigen \
+patiënt, een feitelijke brief die de patiënt zelf meestuurt bij een \
+aanvraag. Je volgt de KNMG-richtlijn: als behandelend arts geef je geen \
+oordeel, advies of aanbeveling over je eigen patiënt (bijvoorbeeld niet "ik \
+adviseer urgentie" of "een scootmobiel is noodzakelijk"). Wel geef je \
+volledige, feitelijke informatie die voor de aanvraag van belang is; daarmee \
+help je de patiënt het meest.
+- Aanhef "Aan wie het aangaat," en een eerste zin dat de brief is \
+  opgesteld op verzoek van de patiënt, voor het doel hieronder.
+- Daarna, in gewone taal en met datum of periode: de aandoeningen die voor \
+  dit doel van belang zijn, sinds wanneer, de behandeling en behandelaars, \
+  medicatie, gebruikte hulpmiddelen, en de beperkingen zoals ze in het \
+  dossier beschreven staan ("patiënt meldt…", "bij onderzoek…").
+- Alleen wat in het dossier staat; verzin niets. Laat weg wat voor dit doel \
+  niet relevant is (proportionaliteit).
+- Sluit af met: "De beoordeling van de aanvraag laat ik aan de (medisch) \
+  adviseur van de instantie." en "Met vriendelijke groet," en als laatste \
+  regel [Naam huisarts].
+- Noem de patiënt uitsluitend met de opgegeven initialen. Geen markdown.
+"""
 
 VERWIJZING_SYSTEM = """\
 Je bent een Nederlandse huisarts en schrijft een verwijsbrief aan een \
@@ -178,7 +253,7 @@ class ExtractRequest(BaseModel):
 
 
 class GenerateRequest(BaseModel):
-    kind: Literal["informatiebrief", "verwijzing"]
+    kind: Literal["informatiebrief", "verwijzing", "verklaring"]
     initialen: str = Field("P.X.", max_length=12)
     dossier: str = Field(..., min_length=10, max_length=MAX_DOSSIER_CHARS)
     # informatiebrief
@@ -186,6 +261,9 @@ class GenerateRequest(BaseModel):
                                 "gemeente", "ciz", "ind", "duo", "cbr", "overig"]] = None
     vraag: Optional[str] = Field(None, max_length=MAX_TEXT_CHARS)
     toestemming: bool = False
+    # verklaring op verzoek van de patiënt
+    doel: Optional[Literal["woningurgentie", "wmo_scootmobiel", "wmo_woning", "wmo_hulp",
+                           "parkeerkaart", "vervoer", "overig"]] = None
     # verwijzing
     specialisme: Optional[str] = Field(None, max_length=80)
     urgentie: Optional[Literal["regulier", "semi-spoed", "spoed"]] = None
@@ -221,6 +299,19 @@ def build_letter_prompts(req: GenerateRequest) -> "tuple[str, str, bool, int]":
         if extra:
             parts.append(f"AANWIJZING VAN DE HUISARTS: {extra}")
         return system, "\n\n".join(parts), True, 2500
+
+    if req.kind == "verklaring":
+        if not req.toestemming:
+            raise HTTPException(status_code=400, detail="Bevestig dat de patiënt om deze brief vraagt.")
+        toelichting = privacy_safety_net(req.vraag or "").strip()
+        parts = [f"DOEL: {_DOEL[req.doel or 'overig']}"]
+        if toelichting:
+            parts.append(f"WAT DE PATIËNT AANVRAAGT EN WAAROM (in zijn of haar woorden):\n{sep}\n{toelichting}\n{sep}")
+        parts.append(f"DOSSIER (gefilterd, patiënt {initialen}):\n{sep}\n{dossier}\n{sep}")
+        if extra:
+            parts.append(f"AANWIJZING VAN DE HUISARTS: {extra}")
+        parts.append("Schrijf de brief.")
+        return VERKLARING_SYSTEM, "\n\n".join(parts), True, 1800
 
     reden = privacy_safety_net(req.reden or "").strip()
     if not reden:

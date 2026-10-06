@@ -136,3 +136,25 @@ def test_onbekende_aanvrager_geweigerd(api):
     resp = api.post("/api/v1/letters/generate", headers=H, json={
         "kind": "informatiebrief", "aanvrager": "belastingdienst", "toestemming": True, "dossier": DOSSIER})
     assert resp.status_code == 422
+
+
+def test_verklaring_op_verzoek_van_de_patient(api):
+    seen = []
+    with patch.object(letters.llm_service, "stream_llm", fake_stream(["Aan wie het aangaat,"], seen)):
+        geweigerd = api.post("/api/v1/letters/generate", headers=H, json={
+            "kind": "verklaring", "doel": "wmo_scootmobiel", "dossier": DOSSIER})
+        assert geweigerd.status_code == 400
+        resp = api.post("/api/v1/letters/generate", headers=H, json={
+            "kind": "verklaring", "doel": "wmo_scootmobiel", "toestemming": True, "dossier": DOSSIER,
+            "vraag": "Kan door rugpijn niet meer naar de winkel lopen. BSN 123456789"})
+    assert resp.status_code == 200
+    call = seen[0]
+    assert "KNMG" in call["system"] and "geen \\\noordeel, advies of aanbeveling" not in call["system"]
+    assert "geen" in call["system"] and "aanbeveling" in call["system"]
+    assert "scootmobiel" in call["user"] and "loopafstand" in call["user"]
+    assert "winkel lopen" in call["user"] and "123456789" not in call["user"]
+
+
+def test_alle_aanvragers_hebben_lezer_en_groet():
+    for naam, tekst in letters._AANVRAGER.items():
+        assert "Met collegiale groet" in tekst or "Met vriendelijke groet" in tekst, naam
