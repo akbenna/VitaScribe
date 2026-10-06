@@ -139,7 +139,7 @@ window.SVTolkUI = (function () {
     var kaart = el('div', 'tk-beurt ' + b.spreker + (b.bezig ? ' bezig' : ''));
     kaart.dataset.id = b.id;
     var wie = b.spreker === 'auto' ? 'Herkennen…' : b.spreker === 'arts' ? 'Arts' : 'Patiënt · ' + (t.naam || '');
-    kaart.appendChild(el('span', 'tk-wie', wie + (b.auto ? ' · herkend aan de taal' : '')));
+    kaart.appendChild(el('span', 'tk-wie', wie + (b.telefoon ? ' · via telefoon' : b.auto ? ' · herkend aan de taal' : '')));
     if (b.bezig) {
       kaart.appendChild(el('p', 'tk-orig', b.bezig));
       return kaart;
@@ -228,6 +228,11 @@ window.SVTolkUI = (function () {
   async function leesVoor(b) {
     if (!b || !b.vertaling) return;
     var wat = SVTolk.voorlezen(b, tk.taal);
+    // With a phone in the conversation, the phone speaks (its own voices, at the patient).
+    if (window.SVTelefoon && SVTelefoon.voorTolk() && SVTelefoon.actief()) {
+      SVTelefoon.stuur('spreek', { tekst: wat.tekst, taal: wat.taal });
+      return;
+    }
     stopVoorlezen();
     // Hands-free: let someone who is still speaking finish, then stop
     // listening while the voice plays, or the interpreter would translate itself.
@@ -527,6 +532,7 @@ window.SVTolkUI = (function () {
   }
 
   function wis() {
+    if (window.SVTelefoon && SVTelefoon.voorTolk()) SVTelefoon.ontkoppel(true);
     stopHandsfree();
     stopBeurt();
     stopVoorlezen();
@@ -604,6 +610,44 @@ window.SVTolkUI = (function () {
     if (t && t.verstaat) startHandsfree();
     else status('Tik op "Ik spreek" (spatie). ' + (t ? t.waarom : ''));
   });
+  // ── Interpreter via a phone or iPad (telefoon-ui.js) ──
+  // The phone listens and reads aloud; every turn it hears comes here too, so
+  // "Maak verslag", "Eenvoudiger" and ✕ work as usual.
+  var TEL_STATUS = { luistert: 'Telefoon luistert.', hoort: 'Telefoon hoort iemand…', verwerkt: 'Telefoon: vertalen…',
+    spreekt: 'Telefoon leest voor…', pauze: 'Telefoon staat op pauze.', gestopt: 'Telefoon luistert niet meer (Start op de telefoon).' };
+  $('tk-telefoon').addEventListener('click', async function () {
+    var t = taalInfo($('tk-taal').value);
+    if (!t) { $('tk-taal-uitleg').textContent = 'Kies eerst een taal.'; return; }
+    tk = { taal: t.code, gestart: true, beurten: [], telefoon: true };
+    bewaar();
+    teken();
+    status('Scan de QR-code met de telefoon. Starten = de patiënt geeft toestemming voor opname en AI-vertaling.');
+    try {
+      await SVTelefoon.koppel({ taal: t.code, toestemming: true });
+    } catch (e) {
+      status(e.message, true);
+    }
+  });
+  if (window.SVTelefoon) {
+    SVTelefoon.on('verbonden', function () {
+      if (tk.telefoon) status('Telefoon gekoppeld. Tik daar op Start; daarna luistert hij handsfree.');
+    });
+    SVTelefoon.on('status', function (d) {
+      if (tk.telefoon && TEL_STATUS[d.status]) status(TEL_STATUS[d.status]);
+    });
+    SVTelefoon.on('beurt', function (d) {
+      if (!tk.gestart) return;
+      tk.beurten.push({ id: 'b' + (++volgnummer) + '-' + Date.now(), spreker: d.spreker, auto: true, telefoon: true,
+        origineel: d.origineel, vertaling: d.vertaling, terugvertaling: d.terugvertaling || '',
+        onzeker: !!d.onzeker, twijfel: d.twijfel || '' });
+      bewaar();
+      teken();
+    });
+    SVTelefoon.on('weg', function (d) {
+      if (tk.telefoon && d.reden) status(d.reden + ' Klik nog eens op "Tolk via telefoon", of tolk hier.', true);
+    });
+  }
+
   // Blur after a click, so a later space or Enter does not press the button a second time.
   $('tk-arts').addEventListener('click', function () { this.blur(); startBeurt('arts'); });
   $('tk-patient').addEventListener('click', function () { this.blur(); startBeurt('patient'); });

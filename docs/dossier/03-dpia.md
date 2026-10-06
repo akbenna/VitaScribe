@@ -64,6 +64,7 @@ Zie stuk 02 (register) en stuk 05 (subverwerkers).
 | Tolk: beurt (geluid en tekst) | Browser → server → Voxtral (verstaan) → Mistral Large (vertalen) → Voxtral TTS of stem op de computer (voorlezen) | Server: nee. Browser: werkgeheugen tot "Wissen" of "Consult afsluiten" |
 | E-consult: dossier in beeld, bericht, beleid van de arts | Browser → server → Mistral Large → server → browser | Server: nee. Browser: werkgeheugen tot "Wissen" of "Consult afsluiten" |
 | Leren: concept en aangepaste versie (SOEP, e-consultantwoord, brief) | Browser → server → taalmodel van de modus (regels afleiden) | Teksten: nee. Alleen algemene regels die de arts goedkeurt, per arts, in het register |
+| Telefoon of iPad (tolk, foto) | Telefoon → server → dezelfde verwerkers als het zijpaneel (modus van de arts) → paneel | Server: nee, alleen in het werkgeheugen tot het paneel het ophaalt. Telefoon: nee; de foto komt niet in de fotorol |
 | Leren: meting | Server, database bij Railway | Getallen per dag, zonder inhoud |
 | Auditlog | Server, database bij Railway | 5 jaar, zonder inhoud |
 | Definitief verslag | Bricks, door de arts | WGBO: 20 jaar |
@@ -119,6 +120,7 @@ in hoofdstuk 4.
 | R11 | Een vertaling van de tolk is onjuist, en arts of patiënt begrijpt iets anders dan bedoeld | midden | hoog | midden |
 | R12 | Een geleerde regel bevat toch een patiëntgegeven, of stuurt verslagen de verkeerde kant op | laag | midden | laag |
 | R13 | Een concept-antwoord op een e-consult bevat een fout of een advies dat de arts niet gaf, en gaat ongelezen naar de patiënt | laag | hoog | laag tot midden |
+| R14 | Een gekoppelde telefoon komt in verkeerde handen, of de QR-code wordt door een ander gescand | laag | midden | laag |
 
 ## 4 Maatregelen
 
@@ -137,6 +139,7 @@ in hoofdstuk 4.
 | R11 | Terugvertaling onder elke zin van de arts; ⚠ bij twijfel over het verstaan; knop "Eenvoudiger"; vertalen naar gewone woorden zonder iets toe te voegen. Bij slecht nieuws, ingrijpende keuzes of twijfel een professionele tolk (stuk 09). Het verslag vermeldt dat het consult via een AI-tolk ging. |
 | R12 | Het taalmodel krijgt de opdracht geen patiëntgegevens in een regel te zetten; de server filtert datums en identificatoren; een stijl- of tolkregel gaat pas mee na goedkeuring door de arts; alles is te zien en te verwijderen onder "Wat VitaScribe leerde". De testset draait altijd zonder persoonlijke regels; de weekmeting laat zien of het verslag beter of slechter wordt. |
 | R13 | Zonder NHG meedenken geeft het concept geen advies dat de arts niet gaf, maar zet het "[beleid aanvullen]"; het paneel toont wat nog ingevuld moet worden. Feiten uit het dossier krijgen een letterlijk citaat dat de server controleert. NHG meedenken is een vinkje per e-consult, nooit standaard aan, en in de EU-modus alleen als de praktijk het toestaat. VitaScribe verstuurt niets: de arts kopieert en verstuurt zelf (stuk 09). |
+| R14 | De koppeling is een willekeurig geheim van 192 bits dat alleen in de QR-code staat en daarna als header meegaat (niet in een adres of log). Hij vervalt na twee uur zonder gebruik en na twaalf uur altijd; per arts hooguit drie. De telefoon handelt in de modus en met de toestemming van de arts die koppelde; een andere modus vraagt een nieuwe koppeling. Het paneel toont dat er een telefoon gekoppeld is en ontkoppelt met één klik, en bij "Consult afsluiten". Op de telefoon blijft niets staan; foto's gaan niet naar de fotorol. Afspraken over het toestel in stuk 09. |
 
 ## 5 Conclusie en besluit
 

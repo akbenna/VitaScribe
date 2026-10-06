@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#0f766e">
+  <meta name="robots" content="noindex">
+  <title>VitaScribe op je telefoon</title>
+  <style>
+    :root {
+      --bg: #f3f6f9; --panel: #ffffff; --tekst: #0f172a; --zacht: #5b6778; --rand: #d5dde7;
+      --merk: #0f766e; --merk-licht: #e6f4f2; --arts: #1d4ed8; --patient: #7c3aed; --fout: #b91c1c;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg: #0b1220; --panel: #131c2e; --tekst: #e8eef6; --zacht: #9aa8bb; --rand: #26344c;
+        --merk: #2dd4bf; --merk-licht: #10302d; --arts: #93b4ff; --patient: #c4a6ff; --fout: #f87171; }
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; }
+    body {
+      background: var(--bg); color: var(--tekst);
+      font: 17px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      padding: env(safe-area-inset-top) 16px env(safe-area-inset-bottom);
+      display: flex; flex-direction: column; -webkit-user-select: none; user-select: none;
+    }
+    header { display: flex; align-items: center; justify-content: space-between; padding: 12px 0 8px; }
+    .merk { font-weight: 700; letter-spacing: .2px; }
+    .pil { font-size: 13px; padding: 4px 10px; border-radius: 999px; background: var(--merk-licht); color: var(--merk); }
+    .pil.fout { background: transparent; color: var(--fout); border: 1px solid var(--fout); }
+    main { flex: 1; display: flex; flex-direction: column; gap: 14px; min-height: 0; }
+    .scherm { display: flex; flex-direction: column; gap: 14px; flex: 1; min-height: 0; }
+    .hidden { display: none !important; }
+    .kaart { background: var(--panel); border: 1px solid var(--rand); border-radius: 16px; padding: 16px; }
+    .kop { font-size: 15px; color: var(--zacht); text-align: center; }
+    .kop b { color: var(--tekst); }
+    .groot {
+      flex: 1; min-height: 140px; display: flex; flex-direction: column; justify-content: center; gap: 10px;
+      background: var(--panel); border: 1px solid var(--rand); border-radius: 20px; padding: 18px; overflow: auto;
+    }
+    .patient-tekst { font-size: 30px; line-height: 1.35; font-weight: 600; }
+    .nl-tekst { font-size: 17px; color: var(--zacht); }
+    .wie { font-size: 12px; text-transform: uppercase; letter-spacing: .6px; font-weight: 700; }
+    .wie.arts { color: var(--arts); } .wie.patient { color: var(--patient); }
+    .leeg { color: var(--zacht); text-align: center; font-size: 17px; }
+    .start {
+      align-self: center; width: 180px; height: 180px; border-radius: 50%; border: 0;
+      background: var(--merk); color: #fff; font-size: 26px; font-weight: 700;
+      box-shadow: 0 10px 30px rgba(15, 118, 110, .35);
+    }
+    .luister { display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 16px; color: var(--zacht); }
+    .stip { width: 14px; height: 14px; border-radius: 50%; background: var(--zacht); }
+    .luister.aan .stip { background: var(--merk); animation: puls 1.4s infinite; }
+    .luister.hoort .stip { background: var(--patient); animation: puls .7s infinite; }
+    .luister.spreekt .stip { background: var(--arts); }
+    @keyframes puls { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.5); opacity: .6; } }
+    .knoppen { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+    .knop {
+      border: 1px solid var(--rand); background: var(--panel); color: var(--tekst); border-radius: 14px;
+      padding: 12px 4px; font: inherit; font-size: 14px; font-weight: 600;
+    }
+    .knop.hoofd { background: var(--merk); border-color: var(--merk); color: #fff; }
+    .knop:disabled { opacity: .45; }
+    .melding { text-align: center; font-size: 15px; color: var(--zacht); min-height: 1.4em; margin: 0; }
+    .melding.fout { color: var(--fout); }
+    .optie { display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 14px; color: var(--zacht); }
+    .noot { font-size: 12px; color: var(--zacht); text-align: center; margin: 4px 0 10px; }
+    .foto-groot { align-self: center; width: 100%; max-width: 360px; padding: 26px; font-size: 22px; border-radius: 20px; }
+    .klaar-foto { text-align: center; color: var(--merk); font-weight: 600; min-height: 1.4em; }
+  </style>
+</head>
+<body>
+  <header>
+    <span class="merk">VitaScribe</span>
+    <span id="pil" class="pil">koppelen…</span>
+  </header>
+  <main>
+    <section id="koppelen" class="scherm">
+      <div class="kaart">
+        <p id="koppel-tekst">Bezig met koppelen aan het zijpaneel…</p>
+        <p class="noot">Open deze pagina door de QR-code in het VitaScribe-zijpaneel te scannen.</p>
+      </div>
+    </section>
+
+    <section id="tolk" class="scherm hidden">
+      <p class="kop"><b>Nederlands</b> ⇄ <b id="taal-eigen"></b> <span id="taal-naam"></span></p>
+      <button id="start" class="start" type="button">Start</button>
+      <div id="luister" class="luister hidden"><span class="stip"></span><span id="luister-tekst">Luistert</span></div>
+      <div class="groot" id="groot">
+        <p id="leeg" class="leeg">Leg de telefoon tussen jullie in. Na Start luistert hij; praat gewoon om beurten.</p>
+        <span id="wie" class="wie hidden"></span>
+        <div id="patient-tekst" class="patient-tekst" dir="auto"></div>
+        <div id="nl-tekst" class="nl-tekst"></div>
+      </div>
+      <p id="melding" class="melding" role="status" aria-live="polite"></p>
+      <div class="knoppen">
+        <button id="pauze" class="knop" type="button" disabled>Pauze</button>
+        <button id="herhaal" class="knop" type="button" disabled>Herhaal</button>
+        <button id="foto" class="knop" type="button">Foto</button>
+        <button id="stop" class="knop" type="button" disabled>Stop</button>
+      </div>
+      <label class="optie"><input type="checkbox" id="nl-voorlezen" checked> Ook het Nederlands voorlezen</label>
+      <p class="noot">Voorlezen met de stem van dit toestel. Er wordt niets op de telefoon bewaard.</p>
+    </section>
+
+    <section id="alleen-foto" class="scherm hidden">
+      <div class="kaart"><p>Gekoppeld aan het zijpaneel. Een foto gaat direct naar VitaScribe op de computer, en niet naar
+        je fotorol.</p></div>
+      <button id="foto2" class="knop hoofd foto-groot" type="button">Maak een foto</button>
+      <p id="klaar-foto" class="klaar-foto" role="status"></p>
+      <p class="noot">Bijvoorbeeld een huidafwijking, een wond, de medicijnlijst of een brief die de patiënt meeneemt.</p>
+    </section>
+  </main>
+  <input id="foto-invoer" type="file" accept="image/*" capture="environment" class="hidden">
+  <script src="/m/tolk.js"></script>
+  <script src="/m/telefoon.js"></script>
+</body>
+</html>

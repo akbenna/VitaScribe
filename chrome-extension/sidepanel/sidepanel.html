@@ -18,6 +18,13 @@
         <button type="button" role="radio" data-modus="claude">Claude</button>
         <button type="button" role="radio" data-modus="eu">EU</button>
       </div>
+      <button id="tel-chip" class="tel-chip hidden" type="button" title="Telefoon gekoppeld. Klik om te ontkoppelen.">telefoon</button>
+      <button id="btn-telefoon" class="icon-btn" type="button" title="Telefoon of iPad koppelen: foto's, en de tolk via de telefoon"
+              aria-label="Telefoon koppelen">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <rect x="6" y="2" width="12" height="20" rx="2.5"/><path d="M11 18h2"/>
+        </svg>
+      </button>
       <span id="conn" class="conn" title="Verbinding">klaar</span>
       <button id="btn-minimaliseer" class="icon-btn" type="button"
               title="Minimaliseren: het paneel gaat dicht en het hele scherm is vrij. Klik op het VitaScribe-icoon om het terug te halen. Een consultopname loopt door."
@@ -30,6 +37,24 @@
   </header>
   <p id="modus-uitleg" class="modus-uitleg" hidden></p>
   <div id="gevoelig-advies" class="gevoelig-advies" role="status" hidden></div>
+
+  <section id="tel-fotos" class="tel-fotos hidden" aria-live="polite">
+    <div class="tel-fotos-kop"><strong id="tel-fotos-titel">Foto van de telefoon</strong>
+      <button id="tel-fotos-wis" class="icon-btn" type="button" title="Alle foto's weghalen" aria-label="Foto's weghalen">✕</button></div>
+    <div id="tel-fotos-lijst" class="tel-fotos-lijst"></div>
+  </section>
+
+  <div id="tel-dialoog" class="tel-dialoog hidden" role="dialog" aria-labelledby="tel-doel">
+    <div class="tel-dialoog-kaart">
+      <h2 id="tel-doel">Telefoon koppelen</h2>
+      <div id="tel-qr" class="tel-qr"></div>
+      <p id="tel-uitleg" class="lt-hint"></p>
+      <p id="tel-status" class="status" role="status"></p>
+      <p class="note">De koppeling geldt voor deze sessie en vervalt na twee uur zonder gebruik. Op de telefoon wordt
+        niets bewaard.</p>
+      <button id="tel-annuleer" class="btn" type="button">Sluiten</button>
+    </div>
+  </div>
 
   <nav class="views" role="tablist">
     <button class="view-tab active" data-view="dictate" role="tab" aria-selected="true" title="Consult opnemen, dicteren en SOEP">Consult</button>
@@ -241,6 +266,8 @@
         <p id="tk-eigen-status" class="status" role="status"></p>
       </details>
       <button id="tk-begin" class="btn primary lt-go" type="button">Start tolkgesprek</button>
+      <button id="tk-telefoon" class="btn lt-go tk-telefoon" type="button"
+              title="De telefoon luistert (betere microfoon) en leest voor met zijn eigen stemmen; de beurten komen hier">Tolk via telefoon of iPad</button>
       <p class="lt-hint">Na het starten luistert VitaScribe handsfree: praat gewoon om beurten. Aan de taal hoort het wie er
         spreekt. Liever met knoppen? Zet handsfree uit.</p>
       <p class="lt-hint">Starten = de patiënt geeft toestemming voor opname en AI-vertaling. Bij slecht nieuws, ingrijpende
@@ -682,6 +709,7 @@
   <script src="meedenken-ui.js"></script>
   <script src="consult-ui.js"></script>
   <script src="../lib/tolk.js"></script>
+  <script src="telefoon-ui.js"></script>
   <script src="tolk-ui.js"></script>
   <script src="leren-ui.js"></script>
   <script src="modus-ui.js"></script>

@@ -31,6 +31,7 @@ worden.
 | 11 | [Algemene voorwaarden (concept)](11-algemene-voorwaarden.md) | nee | ja |
 | 12 | [Dienstverlening en support](12-dienstverlening.md) | nee | ja |
 | 13 | [Release- en wijzigingsbeheer](13-releasebeheer.md) | aanbevolen | ja |
+| 14 | [Werkplan: volledig binnen de Europese regels](14-werkplan-eu.md) | ja | ja |
 
 ## Wie is wie
 

@@ -367,16 +367,26 @@
       r.readAsDataURL(file);
     });
   }
+  function zetAfbeelding(img) {
+    lt.shot = img;
+    $('lt-shot-img').src = img.url;
+    $('lt-shot-img').classList.remove('hidden');
+    $('lt-shot-read').classList.remove('hidden');
+    $('lt-dossier-meer').open = true;
+    var seg = document.querySelector('#lt-src [data-src="shot"]');
+    if (seg) seg.click();
+  }
+  // A photo from the phone (telefoon-ui.js) lands here as a screenshot.
+  window.SVLetters = { zetAfbeelding: function (img) {
+    zetAfbeelding(img);
+    status('Foto van de telefoon staat klaar. Klik "Lees schermafdruk" om hem uit te lezen.');
+  } };
   $('lt-shot-drop').addEventListener('click', function () { this.focus(); });
   $('lt-shot-drop').addEventListener('paste', async function (e) {
     var f = readImageFromClipboardEvent(e);
     if (!f) { status('Geen afbeelding op het klembord.', true); return; }
     e.preventDefault();
-    var img = await fileToImage(f);
-    lt.shot = img;
-    $('lt-shot-img').src = img.url;
-    $('lt-shot-img').classList.remove('hidden');
-    $('lt-shot-read').classList.remove('hidden');
+    zetAfbeelding(await fileToImage(f));
     status('Schermafdruk geplakt. Klik "Lees schermafdruk".');
   });
 

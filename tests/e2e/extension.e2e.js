@@ -40,6 +40,7 @@ function check(name, cond, extra) {
     args: [`--disable-extensions-except=${EXT}`, `--load-extension=${EXT}`, '--headless=new'],
   });
   const sent = [];
+  const telEvents = [];   // what the (fake) phone sends to the panel
   let euToegestaan = true;
   const POST = fs.readFileSync(path.join(HERE, 'bricks-post.html'), 'utf8');
   const DOSSIER = fs.readFileSync(path.join(HERE, 'bricks-dossier.html'), 'utf8');
@@ -71,6 +72,13 @@ function check(name, cond, extra) {
         : { spreker: 'arts', origineel: 'Heeft u koorts?', vertaling: 'Ateşiniz var mı?', terugvertaling: 'Heeft u koorts?',
             onzeker: false, twijfel: '', leeg: false }) });
     }
+    if (url.includes('/telefoon/paneel/ontvang')) {
+      if (!telEvents.length) await new Promise((res) => setTimeout(res, 250));
+      return r.fulfill({ contentType: 'application/json', body: JSON.stringify({ berichten: telEvents.splice(0) }) });
+    }
+    if (url.endsWith('/telefoon/paneel')) return r.fulfill({ contentType: 'application/json', body: JSON.stringify({ ok: true, telefoon: true }) });
+    if (url.endsWith('/telefoon/koppel')) return r.fulfill({ contentType: 'application/json', body: JSON.stringify(
+      r.request().method() === 'DELETE' ? { ok: true } : { geheim: 'G'.repeat(32), pad: '/m#' + 'G'.repeat(32), verloopt_na_sec: 7200 }) });
     if (url.endsWith('/leren/brief')) return r.fulfill({ contentType: 'application/json', body: JSON.stringify({ gewijzigd_pct: 18,
       voorstellen: [{ id: 92, soort: 'brief', taal: body.soort, regel: "Begin met 'Beste collega,'.", van: '', naar: '', status: 'voorstel', aantal: 1 }] }) });
     if (url.endsWith('/leren/econsult')) return r.fulfill({ contentType: 'application/json', body: JSON.stringify({ gewijzigd_pct: 22,
@@ -670,6 +678,47 @@ function check(name, cond, extra) {
   await panel.click('.view-tab[data-view="tolk"]');
   check('consult afsluiten wist ook het tolkgesprek', await panel.isVisible('#tk-start') && (await panel.$$('.tk-beurt')).length === 0
     && !(await sw.evaluate(async () => (await chrome.storage.session.get('svTolk')).svTolk)));
+  await panel.click('.view-tab[data-view="dictate"]');
+
+  console.log('Telefoon of iPad');
+  await panel.click('.view-tab[data-view="tolk"]');
+  await sleep(600);   // the languages are loaded again when the tab opens
+  await panel.selectOption('#tk-taal', 'ar-MA');
+  await panel.click('#tk-telefoon');
+  await sleep(600);
+  const kp = sent.filter((x) => x.url.endsWith('/telefoon/koppel')).pop();
+  check('tolk via telefoon: koppeling met taal en toestemming', kp && kp.body.taal === 'ar-MA' && kp.body.toestemming === true, kp && kp.body);
+  check('QR-code in het paneel', await panel.isVisible('#tel-dialoog') && !!(await panel.$('#tel-qr svg')));
+  check('geen lokale microfoon: de telefoon luistert', !sent.slice(-3).some((x) => x.url.endsWith('/tolk/beurt')));
+  telEvents.push({ type: 'verbonden', data: { eerste: true } }, { type: 'status', data: { status: 'luistert' } });
+  await sleep(900);
+  check('telefoon verbonden: QR dicht, kenmerk in de kopbalk', await panel.isHidden('#tel-dialoog') && await panel.isVisible('#tel-chip'));
+  check('status van de telefoon in het paneel', (await panel.textContent('#tk-status')).includes('Telefoon luistert'));
+  telEvents.push({ type: 'beurt', data: { spreker: 'arts', origineel: 'Heeft u koorts?', vertaling: 'واش عندك السخانة؟',
+    terugvertaling: 'Heeft u koorts?', onzeker: false, twijfel: '', leeg: false } });
+  await sleep(900);
+  check('beurt van de telefoon staat in het gesprek', (await panel.textContent('#tk-beurten')).includes('via telefoon')
+    && (await panel.textContent('#tk-beurten')).includes('Heeft u koorts?'));
+  await panel.click('.tk-beurt .tk-acties button');
+  await sleep(500);
+  const tsp = sent.filter((x) => x.url.endsWith('/telefoon/paneel')).pop();
+  check('"Opnieuw" laat de telefoon voorlezen, niet de pc', tsp && tsp.body.type === 'spreek' && tsp.body.data.taal === 'ar-MA'
+    && tsp.body.data.tekst === 'واش عندك السخانة؟' && !sent.slice(-3).some((x) => x.url.endsWith('/tolk/spreek')), tsp && tsp.body);
+  telEvents.push({ type: 'foto', data: { media_type: 'image/png',
+    data: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==' } });
+  await sleep(900);
+  check('foto van de telefoon in het paneel', await panel.isVisible('#tel-fotos') && (await panel.$$('.tel-foto')).length === 1);
+  await panel.click('.tel-foto .tel-foto-acties button:nth-child(2)');
+  await sleep(300);
+  check('"Naar brief": foto als schermafdruk in Brieven', await panel.isVisible('#view-letters') && await panel.isVisible('#lt-shot-img')
+    && await panel.isVisible('#lt-shot-read'));
+  await panel.click('.view-tab[data-view="tolk"]');
+  await panel.evaluate(() => SVTolkUI.wis());
+  await sleep(400);
+  check('tolkgesprek wissen ontkoppelt de telefoon', sent.some((x) => x.url.endsWith('/telefoon/koppel') && !x.body) && await panel.isHidden('#tel-chip'));
+  await panel.click('#btn-consult-afsluiten').catch(() => {});
+  await panel.evaluate(() => SVTelefoon.wisFotos());
+  check('foto weg na afsluiten', await panel.isHidden('#tel-fotos'));
   await panel.click('.view-tab[data-view="dictate"]');
 
   console.log('Minimaliseren');
