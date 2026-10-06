@@ -339,6 +339,8 @@ async function listenPill(page, clickStop) {
     const q = chrome.tabs.query.bind(chrome.tabs);
     chrome.tabs.query = async (o) => (o && o.active ? q({ url: b + '/consult' }) : q(o));
   }, base);
+  // A fresh panel loads the stored report; on a slow runner that takes a moment.
+  await side.waitForSelector('.soep-text[data-key="s"]', { timeout: 5000 }).catch(() => {});
   check('zijpaneel toont hetzelfde verslag met decisief',
     (await side.$eval('.soep-text[data-key="s"]', (e) => e.textContent)) === REPORT.soep.s &&
     (await side.textContent('#soep-decisief')).includes('R74'));
