@@ -208,6 +208,14 @@ window.SVTelefoon = (function () {
   }
 
   // ── Wiring ──
+  // Without the elements (an older sidepanel.html after a partial update) the
+  // phone is simply not offered; nothing else breaks.
+  if (!$('btn-telefoon') || !$('tel-dialoog') || !$('tel-fotos')) {
+    var uit = function () { return false; };
+    return { koppel: function () { return Promise.reject(new Error('Werk de extensie volledig bij om de telefoon te koppelen.')); },
+      ontkoppel: function () {}, stuur: function () { return Promise.resolve(false); }, on: function () {},
+      actief: uit, voorTolk: uit, wisFotos: function () {} };
+  }
   $('btn-telefoon').addEventListener('click', function () {
     if (k) { toonQr(); return; }
     koppel({}).catch(function (e) { setStatus(e.message, true); });
