@@ -46,7 +46,7 @@ function check(name, cond, extra) {
   await ctx.route('https://test.bfrcloud.com/**', (r) => {
     const u = r.request().url();
     if (u.endsWith('/gevoelig')) return r.fulfill({ contentType: 'text/html', body: DOSSIER.replace('P70<br>28-02-2025<br>Dementie', 'P76<br>28-02-2025<br>Depressie, verwezen naar GGZ') });
-    if (u.endsWith('/econsult')) return r.fulfill({ contentType: 'text/html', body: DOSSIER.replace('<section class="panel"><h3>Journaal</h3>\n', '<section class="panel"><h3>E-consult 05-10-2026</h3><div>Dokter, mag ik ibuprofen voor mijn knie? Ik gebruik apixaban.</div></section>\n<section class="panel"><h3>Journaal</h3>\n') });
+    if (u.endsWith('/econsult')) return r.fulfill({ contentType: 'text/html', body: DOSSIER.replace('<section class="panel"><h3>Journaal</h3>\n', '<section class="panel"><h3>E-consult 05-10-2026</h3><div>Dokter, mag ik ibuprofen voor mijn knie? Ik gebruik apixaban.</div></section>\n<section class="panel"><h3>Journaal</h3>\n').replace('</body>', '<textarea id="ec-antw" aria-label="Antwoord aan patiënt"></textarea><textarea id="ec-journ" aria-label="Journaalregel"></textarea></body>') });
     return r.fulfill({ contentType: 'text/html', body: u.endsWith('/post') ? POST : u.endsWith('/dossier') ? DOSSIER : BRICKS });
   });
   await ctx.route('http://localhost:8002/api/v1/**', async (r) => {
@@ -439,6 +439,25 @@ function check(name, cond, extra) {
   check('aangevinkt: NHG gaat mee', ec2 && ec2.body.nhg === true);
   check('NHG-blok met richtlijn en alarmsymptomen', await panel.isVisible('#ec-nhg-blok') && (await panel.textContent('#ec-alarm')).includes('zwarte ontlasting'));
   check('na het concept staat het vinkje weer uit (keuze per e-consult)', !(await panel.isChecked('#ec-nhg')));
+  check('eerste antwoord: uitleg om het antwoordveld aan te wijzen, nog geen "Zet in Bricks"', await panel.isVisible('#ec-veld') && await panel.isHidden('#ec-zet-antwoord'));
+  await panel.click('#ec-aanwijzen');
+  await sleep(500);
+  await page.click('#ec-antw');
+  await sleep(400);
+  await page.click('#ec-journ');
+  await sleep(800);
+  const ecVelden = (await panel.evaluate(() => chrome.storage.local.get('svEconsultFields'))).svEconsultFields || {};
+  const ecHost = ecVelden['test.bfrcloud.com'] || {};
+  check('antwoord- en journaalveld onthouden per Bricks-domein', !!ecHost.antwoord && !!ecHost.journaal, Object.keys(ecHost));
+  check('S/O/E/P-koppeling blijft los daarvan', !((await panel.evaluate(() => chrome.storage.local.get('svSoepFields'))).svSoepFields || {})['test.bfrcloud.com']);
+  await panel.bringToFront();
+  await sleep(300);
+  check('daarna: "Zet in Bricks" bij antwoord en journaal, uitleg weg', await panel.isVisible('#ec-zet-antwoord') && await panel.isVisible('#ec-zet-journaal') && await panel.isHidden('#ec-veld'));
+  await panel.click('#ec-zet-antwoord');
+  await panel.click('#ec-zet-journaal');
+  await sleep(1200);
+  check('antwoord en journaal staan in de aangewezen velden', (await page.inputValue('#ec-antw')).includes('Beste [naam patiënt]') && (await page.inputValue('#ec-journ')).startsWith('S: vraag'),
+    [await page.inputValue('#ec-antw'), await page.inputValue('#ec-journ')]);
   await panel.click('#modus [data-modus="eu"]');
   await sleep(800);
   check('EU-modus zonder praktijkkeuze: vinkje niet te kiezen, met uitleg', await panel.isDisabled('#ec-nhg') && await panel.isVisible('#ec-nhg-uit'));

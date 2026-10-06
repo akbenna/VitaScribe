@@ -136,3 +136,8 @@
 .dv-econsult { align-self: flex-start; margin: 2px 0 6px; border-color: #7c5cc4; color: #5b3fa8; }
 .view-tab { white-space: nowrap; }
 #ec-beleid { min-height: 56px; height: 64px; }
+.ec-veld { border: 1px solid #f0d9a8; background: #fff7e6; border-radius: 8px; padding: 8px 10px; display: flex; flex-direction: column; gap: 6px; }
+.ec-veld-kop { margin: 0; font-size: 13px; }
+.ec-veld-stappen { margin: 0; padding-left: 18px; font-size: 12px; }
+.ec-veld button { align-self: flex-start; }
+#ec-veld-info { margin: 0; }
