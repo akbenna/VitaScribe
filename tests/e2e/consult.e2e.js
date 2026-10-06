@@ -314,6 +314,8 @@ async function listenPill(page, clickStop) {
   await panel.close();
 
   console.log('F. Nadicteren en Stop via het bolletje');
+  p = await pill(tab);
+  check('knop "Paneel" in het bolletje tijdens de opname (terug na minimaliseren)', p.buttons.paneel && !p.buttons.paneel.hidden);
   await clickPill(tab, 'nadictaat');
   await sleep(500);
   p = await pill(tab);

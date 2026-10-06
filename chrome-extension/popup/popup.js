@@ -238,6 +238,7 @@ $('btn-dictate').addEventListener('click', function () { openPanel('dictate'); }
 $('btn-letters').addEventListener('click', function () { openPanel('letters'); });
 $('btn-dossier').addEventListener('click', function () { openPanel('dossier'); });
 $('btn-post').addEventListener('click', function () { openPanel('post'); });
+$('btn-tolk').addEventListener('click', function () { openPanel('tolk'); });
 $('btn-expand').addEventListener('click', function () { openPanel(null); });
 
 // Dictate straight into the clicked field, without the side panel.

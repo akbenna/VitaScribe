@@ -48,8 +48,8 @@ hetroosendael.nl stuurt door).
 
 **Categorie:** Productiviteit.
 
-**Korte beschrijving:** komt uit het manifest: *Dicteren, SOEP en brieven
-(informatie- en verwijsbrief) voor Bricks Huisarts*.
+**Korte beschrijving:** komt uit het manifest: *Dicteren, SOEP, tolk, brieven en
+dossiervragen voor Bricks Huisarts*.
 
 **Beschrijving** (kopiëren):
 
@@ -58,29 +58,35 @@ hetroosendael.nl stuurt door).
 > Je dicteert in het veld waar je klikt, in Bricks of in elk ander tekstveld. Met één
 > klik maak je van het dictaat een SOEP-regel.
 >
-> Een consult kan VitaScribe live volgen, nadat je hebt bevestigd dat de patiënt is
-> geïnformeerd en toestemming geeft. Het houdt de stemmen van arts en patiënt uit
-> elkaar en maakt na afloop een SOEP-verslag. Onderzoek dat je zwijgend deed, dicteer
-> je na met de knop Nadicteren. Het verslag is een concept dat je zelf controleert.
+> Een consult kan VitaScribe opnemen, nadat je hebt bevestigd dat de patiënt is
+> geïnformeerd en toestemming geeft. Na afloop maakt het een SOEP-verslag. Wat niet in
+> het gesprek terug te vinden is, wordt geel gemarkeerd; er wordt niets weggehaald of
+> bijverzonnen. Het verslag is een concept dat je zelf controleert.
 >
-> Informatie- en verwijsbrieven schrijf je in het zijpaneel: je kiest per onderdeel
-> wat meegaat, en naam, BSN, adres en geboortedatum worden verwijderd voordat er iets
-> verstuurd wordt.
+> Spreekt de patiënt geen Nederlands, dan vertaalt de tolk elke beurt en leest hij
+> hem hardop voor, zodat de patiënt niet hoeft te lezen. Na het gesprek maakt
+> VitaScribe er een Nederlands verslag van.
 >
-> VitaScribe werkt met een VitaScribe-server die je praktijk beheert. Spraak gaat naar
-> een EU-eindpunt, dictaten en consultverslagen naar een taalmodel in de EU. Brieven
-> gaan pas na pseudonimisering naar een taalmodel in de VS, of naar de eigen
-> AI-aanbieder van de praktijk. De extensie bewaart geen dossiers of brieven, toont
+> Onderaan het zijpaneel stel je een vraag aan het dossier dat open staat, met een
+> letterlijke bron bij elk antwoord. Informatie- en verwijsbrieven en de beoordeling
+> van uitslagen uit de post doe je in het zijpaneel; naam, BSN, adres en
+> geboortedatum worden verwijderd voordat er iets verstuurd wordt.
+>
+> VitaScribe leert per arts van wat je aanpast: je huisstijl, woorden die verkeerd
+> verstaan werden, wat patiënten van de tolk begrijpen. Alleen algemene regels die
+> je zelf goedkeurt; nooit iets over een patiënt.
+>
+> In de EU-modus gaat alles naar Mistral AI in de EU. De VitaScribe-server bewaart
+> geen opnames en geen teksten. De extensie bewaart geen dossiers of brieven, toont
 > geen advertenties en gebruikt geen volgdiensten.
 >
 > VitaScribe stelt geen diagnose en geeft geen behandeladvies. Alles wat het maakt, is
 > een concept dat de arts controleert en ondertekent.
 >
-> Voor gebruik heeft je praktijk een licentie nodig. In de testfase is die gratis:
-> meld de praktijk aan via https://smartvoice-production.up.railway.app/aanmelden.
-> Elke gebruiker krijgt daarna een eigen sleutel.
+> Voor gebruik heeft je praktijk een licentie en een eigen sleutel per gebruiker
+> nodig. Neem daarvoor contact op met ProVitaCare.
 
-**Zoektermen:** huisarts, Bricks, dicteren, SOEP, spraakherkenning, verwijsbrief,
+**Zoektermen:** huisarts, Bricks, dicteren, SOEP, tolk, verwijsbrief,
 consultverslag (maximaal zeven termen).
 
 **Afbeeldingen** (in `docs/edge-winkel/`):

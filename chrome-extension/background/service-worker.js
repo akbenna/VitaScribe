@@ -497,6 +497,10 @@ async function consultShow(sender) {
 }
 
 async function consultCommand(cmd, sender, msg) {
+  // Stop on the page pill (panel minimised): open the side panel right away, so
+  // the report can be read and corrected there. First thing, while the click
+  // still counts as a user gesture; an already open panel stays as it is.
+  if (cmd === 'stop' && sender && sender.tab) chrome.sidePanel.open({ tabId: sender.tab.id }).catch(() => {});
   if (cmd === 'start') return consultStart(msg.taal);
   if (cmd === 'insert') return consultInsert(msg.tabId !== undefined ? msg.tabId : sender.tab && sender.tab.id);
   if (cmd === 'show') return consultShow(sender);
@@ -574,10 +578,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
 // Alt+Shift+C: start or stop the consult from any page. Starting with the
 // shortcut confirms the patient's consent, as the start button does.
-chrome.commands.onCommand.addListener(async (command) => {
+chrome.commands.onCommand.addListener(async (command, tab) => {
   if (command !== 'toggle-consult') return;
   const c = await consultGet();
-  if (c.state === 'recording') { consultCommand('stop', {}, {}); return; }
+  if (c.state === 'recording') { consultCommand('stop', tab ? { tab } : {}, {}); return; }
   if (c.state === 'processing') return;
   const res = await consultStart();
   if (!res.ok) {

@@ -670,6 +670,7 @@
       '</style>' +
       '<div class="c" title="VitaScribe-consultopname; sleep om te verplaatsen">' +
       '<span class="d"></span><span class="t"></span><span class="m"></span>' +
+      '<button type="button" data-cmd="paneel" title="Het VitaScribe-zijpaneel weer openen">Paneel</button>' +
       '<button type="button" data-cmd="nadictaat" title="De patiënt is weg: dicteer nog onderzoek en beleid">Nadicteren</button>' +
       '<button type="button" data-cmd="stop" class="stop" title="Opname stoppen en verslag maken (Alt+Shift+C)">Stop</button>' +
       '<button type="button" data-cmd="insert" class="go" title="Klik eerst in de S-regel van het consult">Invoegen</button>' +
@@ -756,11 +757,11 @@
       cPill.text.textContent = cState.stil ? (/spraak gehoord/.test(cState.label || '') ? 'geen gesprek gehoord: microfoon?' : 'geen geluid: microfoon?')
         : (nad ? 'nadicteren' : (cState.gehoord ? '✓ gehoord · ' + cState.gehoord + ' woorden' : ''));
       if (cState.stil) cPill.root.className = 'c warn';
-      show(nad ? ['stop'] : ['nadictaat', 'stop']);
+      show(nad ? ['paneel', 'stop'] : ['paneel', 'nadictaat', 'stop']);
     } else if (st === 'processing') {
       cPill.root.className = 'c busy';
       cPill.text.textContent = 'Verslag maken…';
-      show([]);
+      show(['paneel']);
     } else if (st === 'results') {
       cPill.root.className = 'c ok' + (cNote ? ' note' : '');
       var delen = cState.parts || 1;
@@ -784,8 +785,9 @@
       cState = { state: 'processing' };
       renderConsultPill();
     }
-    consultCmd(cmd).then(function (res) {
-      if (cmd === 'insert' || cmd === 'show') {
+    // "Paneel": the side panel back after minimising (the same as "Bekijk").
+    consultCmd(cmd === 'paneel' ? 'show' : cmd).then(function (res) {
+      if (cmd === 'insert' || cmd === 'show' || cmd === 'paneel') {
         // Show why nothing happened, or where the next part goes; a finished
         // insert needs no words (the pill disappears).
         cNote = res && res.message && !(cmd === 'insert' && res.ok && res.done) ? res.message : '';
