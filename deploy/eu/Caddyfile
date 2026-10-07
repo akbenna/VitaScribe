@@ -1,0 +1,16 @@
+# TLS en doorsturen naar VitaScribe (ook de WebSockets voor dicteren en consult).
+{$VITASCRIBE_DOMEIN} {
+	encode gzip
+	reverse_proxy vitascribe:8002
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		-Server
+	}
+	log {
+		# Alleen de toegang; nooit de inhoud. Paden bevatten geen patiëntgegevens.
+		output file /data/access.log {
+			roll_size 10MiB
+			roll_keep 5
+		}
+	}
+}

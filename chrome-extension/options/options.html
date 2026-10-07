@@ -120,6 +120,18 @@
       <input type="password" id="apiKey" placeholder="sv-xxxxxxxxxxxx">
       <p class="hint">Verplicht voor cloud. Lokaal mag leeg (dev-mode). De sleutel blijft op dit apparaat en gaat niet mee met Chrome-synchronisatie.</p>
     </div>
+    <details class="field" id="eu-server">
+      <summary><strong>Server voor de EU-modus</strong> (optioneel, naast de server hierboven)</summary>
+      <p class="hint">Vul je hier een tweede server in, bijvoorbeeld bij een Europese host, dan gaat alles in de EU-modus
+        daarheen. De Claude-modus blijft op de server hierboven. Laat je dit leeg, dan gebruiken beide modi de server
+        hierboven, zoals nu.</p>
+      <label for="apiUrlEu">Adres</label>
+      <input type="url" id="apiUrlEu" placeholder="https://vitascribe-eu.provita-care.nl">
+      <label for="apiKeyEu">Sleutel voor die server</label>
+      <input type="password" id="apiKeyEu" placeholder="leeg = dezelfde sleutel als hierboven">
+      <div class="lt-row"><button class="btn" type="button" id="test-eu">Test EU-server</button></div>
+      <p class="hint" id="eu-server-uitslag"></p>
+    </details>
   </div>
 
   <div class="card" id="licentie-kaart">
