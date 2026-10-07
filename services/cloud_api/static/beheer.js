@@ -448,6 +448,31 @@
     teken();
   }
 
+  function testgereedschapblok() {
+    var aan = !!staat.instellingen.testgereedschap;
+    var link = document.getElementById('spraaktest-link');
+    if (link) link.hidden = !aan;
+    var vink = el('input', { type: 'checkbox' });
+    vink.checked = aan;
+    vink.addEventListener('change', async function () {
+      var nieuw = vink.checked;
+      if (nieuw && !confirm('Testgereedschap aanzetten?\n\nDe spraaktest en de SOEP-test sturen elke opname en tekst naar Deepgram, Anthropic en Mistral, ook als je praktijk alleen de EU-modus toestaat. De testset-rapporten zetten volledige tekst in het serverlog.\n\nGebruik het alleen met gespeelde consulten. Het aanzetten komt met je naam in het logboek.')) {
+        vink.checked = false; return;
+      }
+      try {
+        staat.instellingen = await vraag('/instellingen', { methode: 'PUT', body: { testgereedschap: nieuw } });
+        meld(nieuw ? 'Testgereedschap staat aan. Zet het uit als je klaar bent.' : 'Testgereedschap staat uit.');
+        teken();
+      } catch (e) { vink.checked = !nieuw; meld(e.message, true); }
+    });
+    return el('div', { klasse: 'kaart', style: 'margin-top:12px' },
+      el('label', { style: 'display:flex;gap:8px;align-items:center;font-weight:600' }, vink,
+        el('span', { tekst: 'Testgereedschap (spraaktest, SOEP-test, testset)' })),
+      el('p', { klasse: 'klein', tekst: aan
+        ? 'Staat aan. Alleen voor gespeelde consulten: opnamen en tekst gaan naar Deepgram, Anthropic en Mistral, en testset-rapporten staan met tekst in het serverlog.'
+        : 'Staat uit. Aanzetten kan hier; het komt met je naam en het tijdstip in het logboek.' }));
+  }
+
   function instellingenblok() {
     var tarief = el('input', { type: 'number', min: '0', step: '1', waarde: staat.instellingen.tarief_per_fte || '' });
     var server = el('input', { waarde: staat.instellingen.serveradres || location.origin });
@@ -496,6 +521,7 @@
     app.appendChild(tegels());
     app.appendChild(el('div', { klasse: 'indeling' }, lijst(), detail()));
     app.appendChild(instellingenblok());
+    app.appendChild(testgereedschapblok());
   }
 
   // ── Start ──

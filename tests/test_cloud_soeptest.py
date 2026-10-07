@@ -12,7 +12,9 @@ from services.cloud_api.config import get_config
 @pytest.fixture(autouse=True)
 def _env(monkeypatch):
     monkeypatch.setenv("API_KEYS", "geheim")
-    monkeypatch.setenv("TESTGEREEDSCHAP", "true")    # off by default (stappenplan VS3)
+    async def aan():
+        return True
+    monkeypatch.setattr(beheer, "testgereedschap_aan", aan)   # the admin switch in Beheer, off by default
     get_config.cache_clear()
     yield
     get_config.cache_clear()
@@ -86,9 +88,12 @@ def test_soeptest_endpoint(monkeypatch):
 
 
 def test_testgereedschap_is_off_unless_switched_on(monkeypatch):
-    """A production server does not carry the test tools: 404 for everyone,
-    also for an administrator, and nothing reaches a provider."""
-    monkeypatch.delenv("TESTGEREEDSCHAP", raising=False)
+    """Until an administrator switches them on in Beheer the test tools are not
+    there: 404 for everyone, also for an administrator, and nothing reaches a
+    provider. Without a register the switch cannot be on."""
+    monkeypatch.undo()
+    monkeypatch.setenv("API_KEYS", "geheim")
+    monkeypatch.delenv("DATABASE_URL", raising=False)
     gezien = []
 
     async def fake_soep(*a, **kw):
@@ -104,10 +109,50 @@ def test_testgereedschap_is_off_unless_switched_on(monkeypatch):
                   api.post("/api/v1/beheer/testset/inzending", json={"titel": "Knie", "gesprek": "Spreker 1: x" * 50}),
                   api.post("/api/v1/beheer/spraaktest", files={"audio": ("x.webm", b"0" * 5000)}),
                   api.get("/beheer/spraaktest")):
-            assert r.status_code == 404 and "TESTGEREEDSCHAP" in r.text, r.text
+            assert r.status_code == 404 and "Beheer" in r.text, r.text
         assert gezien == []
-        monkeypatch.setenv("TESTGEREEDSCHAP", "onwaar")
+    finally:
+        main.app.dependency_overrides.clear()
+
+
+def test_beheerder_zet_testgereedschap_aan_en_uit(monkeypatch):
+    """The switch in Beheer: stored in vs_instellingen, read by the test tools,
+    and every change logged with the administrator's name."""
+    monkeypatch.undo()                       # the real switch, not the fixture's
+    monkeypatch.setenv("API_KEYS", "geheim")
+    opslag, logs = {}, []
+    monkeypatch.setenv("DATABASE_URL", "postgresql://test/test")
+
+    async def execute(query, *args):
+        if "vs_instellingen" in query:
+            opslag[args[0]] = args[1]
+        return "OK"
+
+    async def fetch(query, *args):
+        return [{"sleutel": k, "waarde": v} for k, v in opslag.items()]
+
+    async def fetchrow(query, *args):
+        return {"waarde": opslag[args[0]]} if args[0] in opslag else None
+
+    async def log(door, handeling, praktijk_id=None, **details):
+        logs.append((door, handeling))
+
+    monkeypatch.setattr(register, "execute", execute)
+    monkeypatch.setattr(register, "fetch", fetch)
+    monkeypatch.setattr(register, "fetchrow", fetchrow)
+    monkeypatch.setattr(register, "log", log)
+    main.app.dependency_overrides[beheer.vereis_beheerder] = lambda: "dr-test"
+    try:
+        api = TestClient(main.app)
+        assert api.get("/api/v1/beheer/instellingen").json()["testgereedschap"] is False
         assert api.get("/api/v1/beheer/testset").status_code == 404
+        r = api.put("/api/v1/beheer/instellingen", json={"testgereedschap": True})
+        assert r.status_code == 200 and r.json()["testgereedschap"] is True
+        assert api.get("/api/v1/beheer/testset").status_code == 200
+        r = api.put("/api/v1/beheer/instellingen", json={"testgereedschap": False})
+        assert r.json()["testgereedschap"] is False
+        assert api.get("/api/v1/beheer/testset").status_code == 404
+        assert ("dr-test", "testgereedschap.aan") in logs and ("dr-test", "testgereedschap.uit") in logs
     finally:
         main.app.dependency_overrides.clear()
 

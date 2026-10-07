@@ -79,7 +79,7 @@ Bespreek dat met je accountant of jurist.
 - [ ] Persoonlijke sleutels per gebruiker (`API_USERS`); de gedeelde sleutel ingetrokken
 - [x] Standaardmodus EU in server en extensie (2.21.1, 7 oktober 2026)
 - [ ] Slot op de modus: `TOEGESTANE_MODI=eu` in Railway, of "Alleen EU-modus" bij de praktijk in Beheer
-- [x] Testgereedschap in productie uit: sinds 2.21.1 alleen aanwezig met `TESTGEREEDSCHAP=true` (niet zetten in Railway)
+- [x] Testgereedschap standaard uit, met een schakelaar in Beheer (Instellingen) die de beheerder zelf bedient; wijzigingen in het beheerlog
 - [ ] Stuk 08 verwerkt in de privacyverklaring en in de wachtkamer
 - [ ] Stuk 09 gelezen en afgetekend door elke gebruiker
 - [ ] Stuk 10 verstuurd en het antwoord bewaard

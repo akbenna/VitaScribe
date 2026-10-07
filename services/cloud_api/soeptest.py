@@ -47,7 +47,7 @@ from .config import get_config
 from .medical_vocabulary import correct_transcript_full
 
 logger = structlog.get_logger()
-# Every route here needs TESTGEREEDSCHAP=true on the server (data_policy).
+# Every route here exists only while the administrator has the test tools switched on in Beheer.
 router = APIRouter(tags=["soeptest"], dependencies=[Depends(vereis_testgereedschap)])
 
 TESTSET = Path(__file__).parent / "testset"

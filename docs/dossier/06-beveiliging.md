@@ -23,7 +23,7 @@ gemaakt worden.
 | Fase | `VITASCRIBE_FASE=intern`: openbare aanmelding dicht | ingericht |
 | Filter op identificatoren | Brieven, dossiervragen en post: naam, geboortedatum, BSN, adres en contact gefilterd in de browser, en op de server nog eens | ingericht |
 | Versiecontrole | De extensie meldt haar versie; de server meldt de minimumversie, en het zijpaneel waarschuwt bij een te oude versie | ingericht |
-| Testgereedschap | Spraaktest, SOEP-test en testset-inzendingen sturen naar alle aangesloten diensten en schrijven tekst in het log. Sinds 2.21.1 bestaan die routes alleen met `TESTGEREEDSCHAP=true` op de server; zonder die instelling geven ze 404, ook voor een beheerder | ingericht (standaard uit); in Railway niet zetten |
+| Testgereedschap | Spraaktest, SOEP-test en testset-inzendingen sturen naar alle aangesloten diensten en schrijven tekst in het log. Standaard uit: zolang de schakelaar in Beheer (Instellingen) uit staat, geven die routes 404, ook voor een beheerder. De beheerder zet hem zelf aan en uit; elke wijziging staat met naam en tijdstip in het beheerlog | ingericht (standaard uit); na gebruik uitzetten |
 | Leveranciers | Railway: SOC 2 Type II, server in NL. Mistral: EU. | zie stuk 05 |
 
 ## Logging (NEN 7513)

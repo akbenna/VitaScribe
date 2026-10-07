@@ -188,16 +188,6 @@ def clinical_decision_support() -> bool:
     return _env("CLINICAL_DECISION_SUPPORT", "false") == "true"
 
 
-def testgereedschap_aan() -> bool:
-    """The admin test tools (speech test, SOEP test, test set submissions)
-    send audio and text to every configured provider, in both modes, and the
-    test-set reports write full text to the server log. They are for played
-    consults on a development server. Off unless TESTGEREEDSCHAP=true, so a
-    production server never carries them by accident (DPIA R7, stappenplan
-    VS3)."""
-    return _env("TESTGEREEDSCHAP", "false") == "true"
-
-
 def econsult_nhg() -> bool:
     """NHG input in an e-consult answer (advice the doctor did not give) is
     clinical decision support too. Outside the eu mode it follows
@@ -224,7 +214,6 @@ def summary() -> dict:
         "stt_training_opt_out": True,
         "clinical_decision_support": clinical_decision_support(),
         "econsult_nhg": econsult_nhg(),
-        "testgereedschap": testgereedschap_aan(),
     }
 
 

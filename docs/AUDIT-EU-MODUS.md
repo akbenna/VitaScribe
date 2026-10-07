@@ -198,7 +198,7 @@ praktijk al besloot, is deze modus nu niet voor echte patiënten.
    intrekken.
 4. De DPIA opstellen, met deze audit als technische bijlage.
 5. ~~Het testgereedschap in productie uitzetten.~~ Gedaan in 2.21.1: de routes
-   bestaan alleen met `TESTGEREEDSCHAP=true`. De standaardmodus is sinds
+   staan standaard uit; de beheerder zet ze zelf aan en uit in Beheer. De standaardmodus is sinds
    2.21.1 EU; het slot (`TOEGESTANE_MODI=eu`) blijft een instelling in Railway.
 6. Indienen bij Partner Center, met de toelichting op de rechten en de
    gezondheidsgegevens.

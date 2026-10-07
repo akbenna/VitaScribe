@@ -45,7 +45,7 @@ from .medical_vocabulary import correct_transcript_full
 from .beheer import CSP, _pagina, vereis_beheerder, vereis_testgereedschap
 
 logger = structlog.get_logger()
-# Every route here needs TESTGEREEDSCHAP=true on the server (data_policy).
+# Every route here exists only while the administrator has the test tools switched on in Beheer.
 router = APIRouter(tags=["spraaktest"], dependencies=[Depends(vereis_testgereedschap)])
 
 MAX_BYTES = 60 * 1024 * 1024        # ruim een uur spraak in webm/opus
