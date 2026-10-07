@@ -771,6 +771,19 @@ function check(name, cond, extra) {
   await sleep(300);
   euToegestaan = true;
 
+  // A second server for the EU mode (stuk 14, stap 4): next to the first, not instead of it.
+  await pop.evaluate(() => chrome.storage.sync.set({ apiUrlEu: 'https://eu.voorbeeld.test' }));
+  await pop.evaluate(() => chrome.storage.local.set({ svModus: 'eu' }));
+  const cfgEu = await pop.evaluate(() => SVInstellingen.lees(['apiUrl']));
+  await pop.evaluate(() => chrome.storage.local.set({ svModus: 'claude' }));
+  const cfgClaude = await pop.evaluate(() => SVInstellingen.lees(['apiUrl']));
+  check('EU-modus gaat naar de EU-server, Claude-modus blijft op de gewone server',
+    cfgEu.apiUrl === 'https://eu.voorbeeld.test' && cfgClaude.apiUrl !== 'https://eu.voorbeeld.test', [cfgEu.apiUrl, cfgClaude.apiUrl]);
+  await pop.evaluate(() => chrome.storage.sync.remove('apiUrlEu'));
+  await pop.evaluate(() => chrome.storage.local.set({ svModus: 'eu' }));
+  check('zonder EU-server gebruikt ook de EU-modus de gewone server', (await pop.evaluate(() => SVInstellingen.lees(['apiUrl']))).apiUrl !== 'https://eu.voorbeeld.test');
+  await pop.evaluate(() => chrome.storage.local.set({ svModus: 'claude' }));
+
   // Practice lock (stuk 14, stap 3): only the EU mode.
   alleenEu = true;
   const pop2 = await ctx.newPage();

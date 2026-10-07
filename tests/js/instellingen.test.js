@@ -73,3 +73,32 @@ test('zonder chrome geen fout', async () => {
   await I.bewaar({ apiKey: 'x' });
   await I.migreer();
 });
+
+
+test('EU-modus met een eigen EU-server: adres en sleutel van die server', async () => {
+  const s = opslag({ apiUrl: 'https://railway', apiUrlEu: 'https://eu.server', micDevice: 'm1' },
+    { apiKey: 'sleutel', apiKeyEu: 'eu-sleutel', svModus: 'eu' });
+  assert.deepEqual(await I.lees(['apiUrl', 'apiKey', 'micDevice'], s),
+    { apiUrl: 'https://eu.server', apiKey: 'eu-sleutel', micDevice: 'm1' });
+  // The settings page sees the fields as they are.
+  assert.deepEqual(await I.lees(['apiUrl', 'apiKey'], s, { ruw: true }), { apiUrl: 'https://railway', apiKey: 'sleutel' });
+});
+
+test('EU-server zonder eigen sleutel: dezelfde sleutel', async () => {
+  const s = opslag({ apiUrl: 'https://railway', apiUrlEu: 'https://eu.server' }, { apiKey: 'sleutel', svModus: 'eu' });
+  assert.deepEqual(await I.lees(['apiUrl', 'apiKey'], s), { apiUrl: 'https://eu.server', apiKey: 'sleutel' });
+});
+
+test('Claude-modus, of geen EU-server: de gewone server (niets dicht)', async () => {
+  const claude = opslag({ apiUrl: 'https://railway', apiUrlEu: 'https://eu.server' }, { apiKey: 'sleutel', svModus: 'claude' });
+  assert.deepEqual(await I.lees(['apiUrl', 'apiKey'], claude), { apiUrl: 'https://railway', apiKey: 'sleutel' });
+  const zonder = opslag({ apiUrl: 'https://railway', apiUrlEu: '  ' }, { apiKey: 'sleutel', svModus: 'eu' });
+  assert.deepEqual(await I.lees(['apiUrl', 'apiKey'], zonder), { apiUrl: 'https://railway', apiKey: 'sleutel' });
+});
+
+test('de EU-sleutel blijft ook op het apparaat', async () => {
+  const s = opslag({}, {});
+  await I.bewaar({ apiUrlEu: 'https://eu.server', apiKeyEu: 'eu-geheim' }, s);
+  assert.deepEqual(s.sync.data, { apiUrlEu: 'https://eu.server' });
+  assert.deepEqual(s.local.data, { apiKeyEu: 'eu-geheim' });
+});
