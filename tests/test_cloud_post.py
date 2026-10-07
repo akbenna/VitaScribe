@@ -24,7 +24,8 @@ def api():
     return TestClient(main.app)
 
 
-H = {"X-API-Key": "geheim"}
+# Since 07-10-2026 the default mode is eu; these tests run the claude mode (Anthropic).
+H = {"X-API-Key": "geheim", "X-VitaScribe-Modus": "claude"}
 LAB = (
     "Afzender\tDiagnostiek voor U\n"
     "Patiënt\tMFH Gorris - Aarts 26-10-1961 De Eerensstraat 4 6045 HB ROERMOND\n"

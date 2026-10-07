@@ -47,7 +47,9 @@ def test_the_doctor_decides_never_the_server(monkeypatch):
     monkeypatch.setenv("ALLOWED_MODI", "claude")      # an old setting has no effect
     assert data_policy.kies_modus("eu") == "eu"
     assert data_policy.kies_modus("claude") == "claude"
-    assert data_policy.kies_modus(None) == "claude" and data_policy.kies_modus("onzin") == "claude"
+    # No choice, or an unknown one: the eu mode (since 07-10-2026); never the US route by accident.
+    assert data_policy.kies_modus(None) == "eu" and data_policy.kies_modus("onzin") == "eu"
+    assert data_policy.kies_modus("") == "eu" and data_policy.kies_modus("CLAUDE") == "claude"
     monkeypatch.setenv("EU_LLM_PROVIDER", "anthropic")      # not an EU provider: fail to Mistral
     assert data_policy.eu_llm_provider() == "mistral"
     monkeypatch.setenv("EU_LLM_PROVIDER", "bedrock")
@@ -78,9 +80,11 @@ def test_header_sets_mode_per_request():
     assert r.json()["modus"] == "eu" and r.json()["modi"] == ["claude", "eu"] and r.json()["eu_probleem"] is None
     assert r.headers["x-vitascribe-modus"] == "eu"
     r = api.get("/api/v1/providers", headers={"X-API-Key": "geheim"})
+    assert r.json()["modus"] == "eu" and r.headers["x-vitascribe-modus"] == "eu"   # without a header: eu
+    r = api.get("/api/v1/providers", headers={"X-API-Key": "geheim", "X-VitaScribe-Modus": "claude"})
     assert r.json()["modus"] == "claude" and r.headers["x-vitascribe-modus"] == "claude"
     # the mode does not leak into the next request
-    assert data_policy.modus() == "claude"
+    assert data_policy.modus() == "eu"
 
 
 def test_dictation_soep_uses_mistral_in_eu_mode(monkeypatch):
@@ -156,7 +160,13 @@ def test_letters_ignore_own_us_key_in_eu_mode(monkeypatch):
         assert asyncio.run(praktijk_sleutels.kies_brieven(ident)) == ("mistral", None)
     finally:
         data_policy.herstel_modus(t)
-    assert asyncio.run(praktijk_sleutels.kies_brieven(ident)) == ("anthropic", "eigen-sleutel")
+    # without a choice the same (since 07-10-2026 the default is eu); own key only in the claude mode
+    assert asyncio.run(praktijk_sleutels.kies_brieven(ident)) == ("mistral", None)
+    t = data_policy.zet_modus("claude")
+    try:
+        assert asyncio.run(praktijk_sleutels.kies_brieven(ident)) == ("anthropic", "eigen-sleutel")
+    finally:
+        data_policy.herstel_modus(t)
 
 
 def test_mistral_gets_the_schema_as_instruction(monkeypatch):
@@ -178,17 +188,26 @@ def test_mistral_gets_the_schema_as_instruction(monkeypatch):
 
 
 def test_clinical_support_only_in_claude_mode(monkeypatch):
+    from services.cloud_api import vraagsuggesties
     monkeypatch.setenv("CLINICAL_DECISION_SUPPORT", "true")
-    assert data_policy.clinical_decision_support() is True
+    # without a choice the mode is eu (since 07-10-2026): no clinical support
+    assert data_policy.modus() == "eu"
+    assert data_policy.clinical_decision_support() is False
+    t = data_policy.zet_modus("claude")
+    try:
+        assert data_policy.clinical_decision_support() is True
+        assert vraagsuggesties.toegestaan({"vraagsuggesties": True}) is True
+        monkeypatch.setenv("CLINICAL_DECISION_SUPPORT", "false")
+        assert data_policy.clinical_decision_support() is False
+        monkeypatch.setenv("CLINICAL_DECISION_SUPPORT", "true")
+    finally:
+        data_policy.herstel_modus(t)
     t = data_policy.zet_modus("eu")
     try:
         assert data_policy.clinical_decision_support() is False
-        from services.cloud_api import vraagsuggesties
         assert vraagsuggesties.toegestaan({"vraagsuggesties": True}) is False
     finally:
         data_policy.herstel_modus(t)
-    monkeypatch.setenv("CLINICAL_DECISION_SUPPORT", "false")
-    assert data_policy.clinical_decision_support() is False
 
 
 def test_mistral_model_override_reaches_the_request(monkeypatch):

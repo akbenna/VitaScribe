@@ -54,7 +54,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, Field
 
-from . import audit, licentie, register
+from . import audit, data_policy, licentie, register
 
 logger = structlog.get_logger()
 router = APIRouter(tags=["beheer"])
@@ -189,6 +189,15 @@ async def vereis_beheerder(
     if naam in totp_geheimen():
         raise HTTPException(status_code=401, detail="Log in met je sleutel en de code uit je authenticator-app.")
     return naam
+
+
+async def vereis_testgereedschap() -> None:
+    """The admin test tools exist only on a server that switched them on
+    (TESTGEREEDSCHAP=true); elsewhere they are not there, not even for an
+    administrator."""
+    if not data_policy.testgereedschap_aan():
+        raise HTTPException(status_code=404,
+                            detail="Het testgereedschap staat uit op deze server (TESTGEREEDSCHAP=true zet het aan, alleen voor gespeelde consulten).")
 
 
 class Inloggen(BaseModel):

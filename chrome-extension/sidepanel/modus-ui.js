@@ -44,7 +44,7 @@ var SVModusKnop = (function () {
   /** knoppen: element met twee knoppen [data-modus]; uitleg: element voor de toelichting. */
   function koppel(knoppen, uitleg) {
     if (!knoppen) return;
-    var huidig = 'claude';
+    var huidig = 'eu';
     var toegestaan = ['claude', 'eu'];
     var NAAM = { claude: 'Claude-modus', eu: 'EU-modus' };
 

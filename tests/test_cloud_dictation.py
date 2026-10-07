@@ -14,6 +14,11 @@ from fastapi.testclient import TestClient
 from services.cloud_api import dictation, main
 from services.cloud_api.config import get_config
 
+# Live dictation needs Deepgram and runs only in the claude mode; since
+# 07-10-2026 the default mode is eu, so these tests name their mode.
+CLAUDE = {"X-API-Key": "geheim", "X-VitaScribe-Modus": "claude"}
+AUTH_CLAUDE = {"type": "auth", "api_key": "geheim", "modus": "claude"}
+
 
 @pytest.fixture(autouse=True)
 def _config(monkeypatch):
@@ -90,7 +95,7 @@ def test_relay_retries_with_fewer_keyterms_after_400():
         await dictation.relay_dictation(ws, connect=picky_connect)
 
     with TestClient(app).websocket_connect("/ws") as ws:
-        ws.send_text(json.dumps({"type": "auth", "api_key": "geheim"}))
+        ws.send_text(json.dumps(AUTH_CLAUDE))
         assert ws.receive_json() == {"type": "ready"}
         ws.send_text(json.dumps({"type": "stop"}))
         _receive_until_closed(ws)
@@ -215,7 +220,7 @@ def test_relay_streams_audio_and_returns_transcript():
     client = TestClient(_relay_app(upstream, seen))
 
     with client.websocket_connect("/ws") as ws:
-        ws.send_text(json.dumps({"type": "auth", "api_key": "geheim", "keyterms": ["normaal longen"]}))
+        ws.send_text(json.dumps({**AUTH_CLAUDE, "keyterms": ["normaal longen"]}))
         assert ws.receive_json() == {"type": "ready"}
         ws.send_bytes(b"chunk-1")
         ws.send_bytes(b"chunk-2")
@@ -254,7 +259,7 @@ def test_relay_reports_upstream_failure():
         await dictation.relay_dictation(ws, connect=failing_connect)
 
     with TestClient(app).websocket_connect("/ws") as ws:
-        ws.send_text(json.dumps({"type": "auth", "api_key": "geheim"}))
+        ws.send_text(json.dumps(AUTH_CLAUDE))
         event = ws.receive_json()
 
     assert event["type"] == "error"
@@ -287,7 +292,7 @@ def test_process_soep_returns_all_fields(api):
         resp = api.post(
             "/api/v1/dictation/process",
             json={"text": "keelpijn drie dagen", "mode": "soep", "llm_provider": "anthropic"},
-            headers={"X-API-Key": "geheim"},
+            headers=CLAUDE,
         )
     assert resp.status_code == 200
     body = resp.json()["soep"]
@@ -417,12 +422,23 @@ async def test_refusal_raises_clear_error(monkeypatch):
 
 def test_policy_defaults(monkeypatch):
     from services.cloud_api import data_policy
-    for k in ("PHI_LLM_PROVIDER", "LETTERS_LLM_PROVIDER", "ALLOWED_STT_PROVIDERS", "CLINICAL_DECISION_SUPPORT"):
+    for k in ("PHI_LLM_PROVIDER", "LETTERS_LLM_PROVIDER", "ALLOWED_STT_PROVIDERS", "CLINICAL_DECISION_SUPPORT",
+              "EU_LLM_PROVIDER"):
         monkeypatch.delenv(k, raising=False)
-    assert data_policy.phi_llm_provider("mistral") == "anthropic"
-    assert data_policy.letters_llm_provider() == "anthropic"
-    assert data_policy.stt_provider("openai") == "deepgram"
+    # since 07-10-2026 the default mode is eu: nothing leaves EU companies
+    assert data_policy.modus() == "eu"
+    assert data_policy.phi_llm_provider("anthropic") == "mistral"
+    assert data_policy.letters_llm_provider() == "mistral"
+    assert data_policy.stt_provider("deepgram") == "voxtral"
     assert data_policy.clinical_decision_support() is False
+    t = data_policy.zet_modus("claude")
+    try:
+        assert data_policy.phi_llm_provider("mistral") == "anthropic"
+        assert data_policy.letters_llm_provider() == "anthropic"
+        assert data_policy.stt_provider("openai") == "deepgram"
+        assert data_policy.clinical_decision_support() is False
+    finally:
+        data_policy.herstel_modus(t)
 
 
 def test_deepgram_stream_opts_out_of_training():
@@ -523,7 +539,7 @@ def _dicteer(auth_extra, monkeypatch, cds):
     ])
     client = TestClient(_relay_app(upstream, []))
     with client.websocket_connect("/ws") as ws:
-        ws.send_text(json.dumps({"type": "auth", "api_key": "geheim", **auth_extra}))
+        ws.send_text(json.dumps({**AUTH_CLAUDE, **auth_extra}))
         assert ws.receive_json() == {"type": "ready"}
         ws.send_text(json.dumps({"type": "stop"}))
         _receive_until_closed(ws)

@@ -14,7 +14,7 @@ from fastapi.testclient import TestClient
 from services.cloud_api import consult_live, vraagsuggesties
 from services.cloud_api.config import get_config
 from services.cloud_api.consult_live import Gesprek
-from tests.test_cloud_consult_live import AUTH, FakeUpstream, _app, _final, _tot_gesloten
+from tests.test_cloud_consult_live import AUTH_CLAUDE, FakeUpstream, _app, _final, _tot_gesloten
 
 
 @pytest.fixture(autouse=True)
@@ -36,11 +36,18 @@ def _gesprek(woorden, nadictaat=False):
 
 
 def test_alleen_met_server_en_arts(monkeypatch):
-    assert not vraagsuggesties.toegestaan({"vraagsuggesties": True})          # server uit
-    monkeypatch.setenv("CLINICAL_DECISION_SUPPORT", "true")
-    assert vraagsuggesties.toegestaan({"vraagsuggesties": True})
-    assert not vraagsuggesties.toegestaan({})                                  # arts uit
-    assert not vraagsuggesties.toegestaan({"vraagsuggesties": "ja"})
+    from services.cloud_api import data_policy
+    t = data_policy.zet_modus("claude")
+    try:
+        assert not vraagsuggesties.toegestaan({"vraagsuggesties": True})          # server uit
+        monkeypatch.setenv("CLINICAL_DECISION_SUPPORT", "true")
+        assert vraagsuggesties.toegestaan({"vraagsuggesties": True})
+        assert not vraagsuggesties.toegestaan({})                                  # arts uit
+        assert not vraagsuggesties.toegestaan({"vraagsuggesties": "ja"})
+    finally:
+        data_policy.herstel_modus(t)
+    # since 07-10-2026 the default mode is eu: never suggestions there, whatever server and arts want
+    assert not vraagsuggesties.toegestaan({"vraagsuggesties": True})
 
 
 def test_schoon_houdt_het_kort_en_zonder_dubbelen():
@@ -122,7 +129,7 @@ def test_live_consult_stuurt_suggesties_als_alles_aanstaat(monkeypatch):
     with patch.object(vraagsuggesties, "maak_suggesties", AsyncMock(return_value=uit)):
         client = TestClient(_app(PratendeUpstream([_praat(30)], []), [], []))
         with client.websocket_connect("/ws") as ws:
-            ws.send_text(json.dumps(dict(AUTH, vraagsuggesties=True)))
+            ws.send_text(json.dumps(dict(AUTH_CLAUDE, vraagsuggesties=True)))
             assert ws.receive_json() == {"type": "ready"}
             ws.send_bytes(b"geluid")
             events = []
@@ -142,7 +149,7 @@ def test_live_consult_zonder_instelling_geen_suggesties(monkeypatch):
     with patch.object(vraagsuggesties, "maak_suggesties", maak):
         client = TestClient(_app(PratendeUpstream([_praat(30)], []), [], []))
         with client.websocket_connect("/ws") as ws:
-            ws.send_text(json.dumps(dict(AUTH, vraagsuggesties=True)))   # arts wil, server niet
+            ws.send_text(json.dumps(dict(AUTH_CLAUDE, vraagsuggesties=True)))   # arts wil, server niet
             assert ws.receive_json() == {"type": "ready"}
             ws.send_bytes(b"geluid")
             assert ws.receive_json()["type"] == "voortgang"

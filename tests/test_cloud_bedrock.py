@@ -149,12 +149,17 @@ def test_stream_from_bedrock(fake):
 
 
 def test_policy_reports_eu_and_dossiervraag_uses_bedrock(fake):
-    assert data_policy.phi_llm_provider() == "bedrock"
-    assert data_policy.summary()["patient_data_llm_in_eu"] is True
+    # PHI_LLM_PROVIDER applies to the claude mode; since 07-10-2026 the default mode is eu (Mistral)
+    t = data_policy.zet_modus("claude")
+    try:
+        assert data_policy.phi_llm_provider() == "bedrock"
+        assert data_policy.summary()["patient_data_llm_in_eu"] is True
+    finally:
+        data_policy.herstel_modus(t)
     msgs = fake(text=json.dumps({"antwoord": "Nitrofurantoïne.", "zekerheid": "expliciet",
                                  "bronnen": [], "let_op": ""}))
     dossier = "PATIËNT: J.J.\n== JOURNAAL ==\n14-02-2025 Cystitis, nitrofurantoïne 5 dagen."
-    r = TestClient(main.app).post("/api/v1/dossier/vraag", headers={"X-API-Key": "geheim"},
+    r = TestClient(main.app).post("/api/v1/dossier/vraag", headers={"X-API-Key": "geheim", "X-VitaScribe-Modus": "claude"},
                                   json={"dossier": dossier, "vraag": "Antibiotica?"})
     assert r.status_code == 200, r.text
     assert r.json()["zekerheid"] == "expliciet"
@@ -180,6 +185,10 @@ def test_health_deep_reports_bedrock(monkeypatch):
 def test_letters_in_eu_follow_bedrock(monkeypatch):
     from services.cloud_api import praktijk_sleutels
     ident = SimpleNamespace(brieven_in_eu=True)
-    assert run(praktijk_sleutels.kies_brieven(ident)) == ("bedrock", None)
-    monkeypatch.setenv("PHI_LLM_PROVIDER", "anthropic")
-    assert run(praktijk_sleutels.kies_brieven(ident)) == ("mistral", None)
+    t = data_policy.zet_modus("claude")   # the practice's letters-in-eu choice, in the claude mode
+    try:
+        assert run(praktijk_sleutels.kies_brieven(ident)) == ("bedrock", None)
+        monkeypatch.setenv("PHI_LLM_PROVIDER", "anthropic")
+        assert run(praktijk_sleutels.kies_brieven(ident)) == ("mistral", None)
+    finally:
+        data_policy.herstel_modus(t)

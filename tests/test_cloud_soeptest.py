@@ -12,6 +12,7 @@ from services.cloud_api.config import get_config
 @pytest.fixture(autouse=True)
 def _env(monkeypatch):
     monkeypatch.setenv("API_KEYS", "geheim")
+    monkeypatch.setenv("TESTGEREEDSCHAP", "true")    # off by default (stappenplan VS3)
     get_config.cache_clear()
     yield
     get_config.cache_clear()
@@ -80,6 +81,33 @@ def test_soeptest_endpoint(monkeypatch):
         assert api.post("/api/v1/beheer/soeptest", json={"id": "bestaat-niet"}).status_code == 404
         assert api.post("/api/v1/beheer/soeptest", json={"gesprek": " "}).status_code == 400
         assert api.post("/api/v1/beheer/soeptest", json={"gesprek": "Spreker 1: keelpijn"}).status_code == 200
+    finally:
+        main.app.dependency_overrides.clear()
+
+
+def test_testgereedschap_is_off_unless_switched_on(monkeypatch):
+    """A production server does not carry the test tools: 404 for everyone,
+    also for an administrator, and nothing reaches a provider."""
+    monkeypatch.delenv("TESTGEREEDSCHAP", raising=False)
+    gezien = []
+
+    async def fake_soep(*a, **kw):
+        gezien.append(1)
+        raise AssertionError("geen model-aanroep als het testgereedschap uit staat")
+
+    monkeypatch.setattr(pipeline, "genereer_soep", fake_soep)
+    main.app.dependency_overrides[beheer.vereis_beheerder] = lambda: "test"
+    try:
+        api = TestClient(main.app)
+        for r in (api.get("/api/v1/beheer/testset"),
+                  api.post("/api/v1/beheer/soeptest", json={"id": "01-lage-rugpijn"}),
+                  api.post("/api/v1/beheer/testset/inzending", json={"titel": "Knie", "gesprek": "Spreker 1: x" * 50}),
+                  api.post("/api/v1/beheer/spraaktest", files={"audio": ("x.webm", b"0" * 5000)}),
+                  api.get("/beheer/spraaktest")):
+            assert r.status_code == 404 and "TESTGEREEDSCHAP" in r.text, r.text
+        assert gezien == []
+        monkeypatch.setenv("TESTGEREEDSCHAP", "onwaar")
+        assert api.get("/api/v1/beheer/testset").status_code == 404
     finally:
         main.app.dependency_overrides.clear()
 

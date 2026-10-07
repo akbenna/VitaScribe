@@ -15,7 +15,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from services.cloud_api import llm_service, pipeline
+from services.cloud_api import data_policy, llm_service, pipeline
 
 
 @pytest.fixture(autouse=True)
@@ -94,12 +94,16 @@ async def test_pipeline_merges_decisief_and_detection_into_one_call():
 
     complete_mock = AsyncMock(side_effect=[soep_json, nazorg_json])
 
-    with patch.object(pipeline.stt_service, "transcribe",
-                      new=AsyncMock(return_value=transcript)), \
-         patch.object(pipeline.llm_service, "complete", new=complete_mock), \
-         patch.object(pipeline, "correct_transcript_full",
-                      return_value=(transcript.raw_text, MagicMock(total_corrections=0))):
-        result = await pipeline.process_consultation(Path("/fake/audio.wav"))
+    token = data_policy.zet_modus("claude")   # the eu mode adds a control round (see below)
+    try:
+        with patch.object(pipeline.stt_service, "transcribe",
+                          new=AsyncMock(return_value=transcript)), \
+             patch.object(pipeline.llm_service, "complete", new=complete_mock), \
+             patch.object(pipeline, "correct_transcript_full",
+                          return_value=(transcript.raw_text, MagicMock(total_corrections=0))):
+            result = await pipeline.process_consultation(Path("/fake/audio.wav"))
+    finally:
+        data_policy.herstel_modus(token)
 
     # Precies 2 LLM-calls (geen aparte decisief + detection meer)
     assert complete_mock.await_count == 2
@@ -260,10 +264,14 @@ async def test_pipeline_keeps_parts_and_decisief_covers_all():
     nazorg_json = json.dumps({"decisief": "Keelpijn (R74) en somberheid (P03)", "rode_vlaggen": [], "ontbrekende_info": []})
     transcript = MagicMock(raw_text="keelpijn en ook somber", duration_secs=60.0, provider="deepgram")
     complete_mock = AsyncMock(side_effect=[soep_json, nazorg_json])
-    with patch.object(pipeline.llm_service, "complete", new=complete_mock), \
-         patch.object(pipeline.stt_service, "met_sprekers", return_value="keelpijn en ook somber"), \
-         patch.object(pipeline, "correct_transcript_full", return_value=("keelpijn en ook somber", MagicMock(total_corrections=0))):
-        result = await pipeline.verwerk_transcript(transcript)
+    token = data_policy.zet_modus("claude")   # two calls: no eu control round
+    try:
+        with patch.object(pipeline.llm_service, "complete", new=complete_mock), \
+             patch.object(pipeline.stt_service, "met_sprekers", return_value="keelpijn en ook somber"), \
+             patch.object(pipeline, "correct_transcript_full", return_value=("keelpijn en ook somber", MagicMock(total_corrections=0))):
+            result = await pipeline.verwerk_transcript(transcript)
+    finally:
+        data_policy.herstel_modus(token)
     out = result.to_dict()["soep"]
     assert [d["titel"] for d in out["problemen"]] == ["Keelpijn", "Somberheid"]
     assert out["icpc_code"] == "R74"

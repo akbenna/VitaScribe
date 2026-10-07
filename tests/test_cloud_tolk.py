@@ -31,8 +31,9 @@ def api():
     return TestClient(main.app)
 
 
-H = {"X-API-Key": "geheim"}
-EU = {**H, "X-VitaScribe-Modus": "eu"}
+# Since 07-10-2026 the default mode is eu; the Deepgram/Azure tests name the claude mode.
+H = {"X-API-Key": "geheim", "X-VitaScribe-Modus": "claude"}
+EU = {"X-API-Key": "geheim", "X-VitaScribe-Modus": "eu"}
 
 
 def nep_llm(antwoord, gezien):
@@ -199,7 +200,12 @@ def test_azure_ssml_met_marokkaanse_stem(monkeypatch):
             gezien.update(url=url, headers=headers, ssml=content.decode())
             return Antwoord()
     monkeypatch.setattr(tolk.httpx, "AsyncClient", Client)
-    audio = asyncio.run(tolk.tekst_naar_spraak("Wach 3ndek s5ana? <ja>", tolk.TALEN["ar-MA"], "man"))
+    from services.cloud_api import data_policy
+    t = data_policy.zet_modus("claude")   # Azure (VS) only in the claude mode
+    try:
+        audio = asyncio.run(tolk.tekst_naar_spraak("Wach 3ndek s5ana? <ja>", tolk.TALEN["ar-MA"], "man"))
+    finally:
+        data_policy.herstel_modus(t)
     assert audio == b"MP3"
     assert gezien["url"] == "https://westeurope.tts.speech.microsoft.com/cognitiveservices/v1"
     assert "name='ar-MA-JamalNeural'" in gezien["ssml"] and "xml:lang='ar-MA'" in gezien["ssml"]

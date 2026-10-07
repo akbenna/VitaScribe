@@ -42,10 +42,11 @@ from pydantic import BaseModel, Field
 
 from . import data_policy, leren, pipeline, register, stt_service
 from .medical_vocabulary import correct_transcript_full
-from .beheer import CSP, _pagina, vereis_beheerder
+from .beheer import CSP, _pagina, vereis_beheerder, vereis_testgereedschap
 
 logger = structlog.get_logger()
-router = APIRouter(tags=["spraaktest"])
+# Every route here needs TESTGEREEDSCHAP=true on the server (data_policy).
+router = APIRouter(tags=["spraaktest"], dependencies=[Depends(vereis_testgereedschap)])
 
 MAX_BYTES = 60 * 1024 * 1024        # ruim een uur spraak in webm/opus
 TOEGESTAAN = (".webm", ".wav", ".mp3", ".m4a", ".ogg", ".flac", ".mp4")

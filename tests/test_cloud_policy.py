@@ -58,7 +58,13 @@ def test_consult_recording_requires_consent(tmp_path):
 
 
 def test_health_reports_data_policy():
+    # since 07-10-2026 the default mode is eu: without a header nothing leaves EU companies
     body = TestClient(main.app).get("/health").json()
+    assert body["data_policy"]["modus"] == "eu"
+    assert body["data_policy"]["patient_data_llm"] == "mistral"
+    assert body["data_policy"]["patient_data_llm_in_eu"] is True
+    body = TestClient(main.app).get("/health", headers={"X-VitaScribe-Modus": "claude"}).json()
+    assert body["data_policy"]["modus"] == "claude"
     assert body["data_policy"]["patient_data_llm"] == "anthropic"
     assert body["data_policy"]["patient_data_llm_in_eu"] is False   # Claude (VS), besluit 28-09-2026
 
@@ -69,7 +75,8 @@ def test_patient_instructions_use_patient_model_and_translate(monkeypatch):
     out = json.dumps({"nl": "Wat gaat u doen\nNeem amoxicilline 500 mg, 3 keer per dag, 7 dagen.",
                       "vertaling": "What will you do ..."})
     with patch.object(patient_info.llm_service, "complete", AsyncMock(return_value=out)) as llm:
-        resp = TestClient(main.app).post("/api/v1/patient-instructions", headers={"X-API-Key": "sleutel-a"},
+        resp = TestClient(main.app).post("/api/v1/patient-instructions",
+                                         headers={"X-API-Key": "sleutel-a", "X-VitaScribe-Modus": "claude"},
                                          json={"e": "pneumonie", "p": "amoxicilline 3dd 500 mg 7d", "taal": "en"})
     assert resp.status_code == 200
     assert resp.json()["taal"] == "Engels" and resp.json()["vertaling"]

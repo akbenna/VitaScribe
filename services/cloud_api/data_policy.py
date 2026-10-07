@@ -26,11 +26,15 @@ Two modes (02-10-2026). The doctor chooses, per request, in the extension
 (header X-VitaScribe-Modus, or "modus" in the WebSocket auth message). The
 server always follows that choice and never changes it; it may only advise.
 If the eu mode cannot run (no Mistral key), the request fails with a message:
-it never falls back to Claude on its own. Without a choice: claude.
+it never falls back to Claude on its own. Without a choice: eu (since
+07-10-2026, stappenplan VS2; before that claude). Mistral confirmed zero data
+retention and no training on 06-10-2026, so the eu mode is the mode for real
+patients and the one a request gets when it does not say otherwise.
 
-- "claude" (default): everything above, with all features (live dictation,
-  question suggestions).
-- "eu" (formal mode): nothing leaves EU companies. Patient text and letters go
+- "claude": everything above, with all features (live dictation,
+  question suggestions). Only for played consults until the US parties are
+  covered by agreements.
+- "eu" (default, formal mode): nothing leaves EU companies. Patient text and letters go
   to EU_LLM_PROVIDER (Mistral by default; bedrock also counts as EU), consults
   to Voxtral after the consult. A practice's own US keys are not used. Live
   dictation is refused (it needs Deepgram) and question suggestions cannot
@@ -108,9 +112,11 @@ def modus_weigering(ident=None) -> Optional[str]:
 
 
 def kies_modus(requested: Optional[str] = None) -> str:
-    """The doctor's choice; only an unknown value means the default (claude)."""
+    """The doctor's choice; a missing or unknown value means the default (eu).
+    The safe side: a request that does not say which mode it wants never
+    reaches a US party."""
     gevraagd = (requested or "").strip().lower()
-    return gevraagd if gevraagd in MODI else "claude"
+    return gevraagd if gevraagd in MODI else "eu"
 
 
 def eu_gereed() -> Optional[str]:
@@ -130,7 +136,7 @@ def herstel_modus(token: Token) -> None:
 
 
 def modus() -> str:
-    return _modus.get() or "claude"
+    return _modus.get() or "eu"
 
 
 def eu_modus() -> bool:
@@ -182,6 +188,16 @@ def clinical_decision_support() -> bool:
     return _env("CLINICAL_DECISION_SUPPORT", "false") == "true"
 
 
+def testgereedschap_aan() -> bool:
+    """The admin test tools (speech test, SOEP test, test set submissions)
+    send audio and text to every configured provider, in both modes, and the
+    test-set reports write full text to the server log. They are for played
+    consults on a development server. Off unless TESTGEREEDSCHAP=true, so a
+    production server never carries them by accident (DPIA R7, stappenplan
+    VS3)."""
+    return _env("TESTGEREEDSCHAP", "false") == "true"
+
+
 def econsult_nhg() -> bool:
     """NHG input in an e-consult answer (advice the doctor did not give) is
     clinical decision support too. Outside the eu mode it follows
@@ -208,6 +224,7 @@ def summary() -> dict:
         "stt_training_opt_out": True,
         "clinical_decision_support": clinical_decision_support(),
         "econsult_nhg": econsult_nhg(),
+        "testgereedschap": testgereedschap_aan(),
     }
 
 
