@@ -76,8 +76,8 @@ Op de server staat de omgevingsvariabele `VITASCRIBE_FASE`.
 ### Checklist fase 1
 
 - [x] Verwerkersovereenkomst Railway, getekend door beide partijen
-- [ ] Schriftelijke bevestiging van Railway dat gezondheidsgegevens eronder
-      vallen
+- [x] Railway gevraagd naar gezondheidsgegevens: valt er niet onder
+      (5 oktober 2026); echte consulten via een Europese server
 - [x] Railway actief in het EU-US Data Privacy Framework
 - [ ] SOC 2-rapport van Railway
 - [x] Mistral: ZDR geactiveerd en geen training bevestigd (6 oktober 2026);

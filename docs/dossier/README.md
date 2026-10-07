@@ -67,7 +67,8 @@ Bespreek dat met je accountant of jurist.
 
 - [x] Verwerkersovereenkomst Railway, getekend door beide partijen
 - [x] Railway actief in het EU-US Data Privacy Framework
-- [ ] Schriftelijke bevestiging van Railway dat gezondheidsgegevens eronder vallen
+- [x] Railway gevraagd naar gezondheidsgegevens: valt er niet onder (5 oktober 2026); echte consulten via een Europese server (stuk 14, stap 4)
+- [ ] Europese server draait (Hetzner of Scaleway), met verwerkersovereenkomst, en is ingevuld in de extensie
 - [ ] SOC 2-rapport van Railway opgevraagd en bewaard
 - [x] Mistral: ZDR geactiveerd en geen training bevestigd (6 oktober 2026); online-DPA geldt (stuk 05)
 - [ ] Mistral: subverwerkerslijst en DPA-versie vastgelegd; kloonstem (`/v1/audio/voices`, buiten ZDR) geregeld
