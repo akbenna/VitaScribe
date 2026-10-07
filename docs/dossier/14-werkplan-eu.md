@@ -140,8 +140,11 @@ vervanging**:
 **Wat je doet.**
 
 1. Kies een host:
-   - **Hetzner** (Duitsland): goedkoop en eenvoudig.
-   - **Scaleway** (Frankrijk): werkt meer zoals Railway.
+   - **Hetzner** (Duitsland): goedkoop en eenvoudig; gezondheidsgegevens
+     vastleggen in bijlage 1 van de AVV. Advies.
+   - **Scaleway** (Frankrijk): voor gezondheidsgegevens alleen via het aparte
+     HDS-aanbod, met Business-support (vanaf 250 euro per maand).
+   Vergelijking: `docs/wetgeving/leveranciers/hosting-hetzner-scaleway.md`.
 2. Maak een account op naam van de rechtspersoon en teken de
    verwerkersovereenkomst.
 3. Maak een server (Ubuntu 24.04) en een domein, bijvoorbeeld
