@@ -171,3 +171,80 @@ def test_lange_initialen_worden_ingekort_niet_geweigerd(api):
         })
     assert resp.status_code == 200, resp.text
     assert "patiënt M.J.W.T.B.J." in seen[0]["user"] and "K.L." not in seen[0]["user"]
+
+
+# ── Vraagstelling uit de brief van de aanvrager ──
+
+def _complete(antwoord, seen=None):
+    async def complete(system, user, provider=None, json_mode=False, max_tokens=None, cache_system=False,
+                       quality=False, json_schema=None, model=None):
+        if seen is not None:
+            seen.append({"system": system, "user": user, "provider": provider, "schema": json_schema})
+        return antwoord if isinstance(antwoord, str) else __import__("json").dumps(antwoord)
+    return complete
+
+
+BRIEF_UWV = ("UWV Sociaal Medische Zaken\nPostbus 12345\n\nGeachte collega,\nBetreft: mevrouw J. de Vries, BSN 123456789\n"
+             "Ten behoeve van de beoordeling arbeidsongeschiktheid verzoeken wij u:\n"
+             "1. Welke diagnose is gesteld?\n2. Welke behandeling is ingezet en met welk resultaat?\n"
+             "Een machtiging van betrokkene is bijgevoegd.\nMet vriendelijke groet, dr. P. Jansen, verzekeringsarts")
+
+
+def test_vraagstelling_haalt_de_vragen_eruit(api):
+    seen = []
+    antwoord = {"aanvrager": "uwv", "instantie": "UWV, verzekeringsarts", "doel": "beoordeling arbeidsongeschiktheid",
+                "vragen": ["1. Welke diagnose is gesteld?", "2. Welke behandeling is ingezet en met welk resultaat?"],
+                "onderwerp": "", "periode": "", "toestemming": True, "let_op": ""}
+    with patch.object(letters.llm_service, "complete", _complete(antwoord, seen)):
+        r = api.post("/api/v1/letters/vraagstelling", headers=H, json={"tekst": BRIEF_UWV})
+    assert r.status_code == 200, r.text
+    d = r.json()
+    assert d["aanvrager"] == "uwv" and len(d["vragen"]) == 2 and d["toestemming"] is True
+    # The BSN never reaches the model; the requester list comes from the server.
+    assert "123456789" not in seen[0]["user"] and '"duo"' in seen[0]["system"]
+
+
+def test_vraagstelling_onbekende_aanvrager_wordt_overig(api):
+    antwoord = {"aanvrager": "notaris", "instantie": "", "doel": "", "vragen": ["Wat is er aan de hand?"],
+                "onderwerp": "", "periode": "", "toestemming": "ja", "let_op": ""}
+    with patch.object(letters.llm_service, "complete", _complete(antwoord)):
+        d = api.post("/api/v1/letters/vraagstelling", headers=H, json={"tekst": BRIEF_UWV}).json()
+    assert d["aanvrager"] == "overig" and d["toestemming"] is False
+
+
+def test_vraagstelling_fout_geeft_502(api):
+    with patch.object(letters.llm_service, "complete", _complete("geen json")):
+        assert api.post("/api/v1/letters/vraagstelling", headers=H, json={"tekst": BRIEF_UWV}).status_code == 502
+
+
+# ── Bijsturen ──
+
+def test_bijsturen_herschrijft_met_de_opdracht_en_het_dossier(api):
+    seen = []
+    with patch.object(letters.llm_service, "stream_llm", fake_stream(["Geachte collega,\nKorter."], seen)):
+        r = api.post("/api/v1/letters/bijsturen", headers=H, json={
+            "kind": "verwijzing", "dossier": DOSSIER, "specialisme": "vaatchirurg", "reden": "Zwelling",
+            "brief": "Geachte collega,\nEen lange brief over de zwelling.\nMet collegiale groet,",
+            "opdracht": "Korter, en noem de furosemide",
+        })
+    assert r.status_code == 200, r.text
+    assert "Korter." in r.text
+    call = seen[0]
+    assert "BIJSTUREN" in call["system"] and "verzin niets" in call["system"]
+    assert "DE BRIEF ZOALS HIJ NU IS" in call["user"] and "OPDRACHT VAN DE HUISARTS: Korter, en noem de furosemide" in call["user"]
+    assert "DOSSIER" in call["user"]   # new facts only from the dossier
+
+
+def test_bijsturen_informatiebrief_vraagt_nog_steeds_toestemming(api):
+    r = api.post("/api/v1/letters/bijsturen", headers=H, json={
+        "kind": "informatiebrief", "dossier": DOSSIER, "aanvrager": "uwv", "brief": "Geachte collega, tekst.",
+        "opdracht": "formeler"})
+    assert r.status_code == 400
+
+
+
+def test_correspondentie_niet_raden_maar_verwijzen_en_bijlagen(api):
+    for kind, extra in (("informatiebrief", {"aanvrager": "uwv", "toestemming": True}),
+                        ("verwijzing", {"reden": "x"}), ("verklaring", {"toestemming": True})):
+        system = letters.build_letter_prompts(letters.GenerateRequest(kind=kind, dossier=DOSSIER, **extra))[0]
+        assert "verwijs ik naar de bijgevoegde" in system and "Bijlagen:" in system and "verzin die inhoud" in system, kind

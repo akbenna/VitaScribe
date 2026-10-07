@@ -18,7 +18,7 @@ const EXT = process.env.EXT_DIR || path.join(ROOT, 'chrome-extension');
 const HERE = __dirname;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const BRICKS = fs.readFileSync(path.join(HERE, 'bricks.html'), 'utf8');
-const LETTER = 'Geachte collega,\n\n1. Diagnose: aspecifieke lage rugpijn.\n\nMet collegiale groet,\n[Naam huisarts]';
+const LETTER = 'Geachte collega,\n\n1. Diagnose: aspecifieke lage rugpijn. Voor de details verwijs ik naar de bijgevoegde brief van de orthopeed.\n\nMet collegiale groet,\n[Naam huisarts]\n\nBijlagen:\n- Orthopeed, 12-03-2026, poliklinische brief';
 
 let ok = 0, fail = 0;
 function check(name, cond, extra) {
@@ -33,6 +33,11 @@ function check(name, cond, extra) {
   await pg.setContent(fs.readFileSync(path.join(HERE, 'vraag.html'), 'utf8'));
   const vraagPdf = path.join(os.tmpdir(), 'sv-vraag.pdf');
   await pg.pdf({ path: vraagPdf });
+  // The same letter as a scan: a PDF with only an image, no text layer.
+  const scanPng = await pg.screenshot({ fullPage: true });
+  await pg.setContent('<img style="width:100%" src="data:image/png;base64,' + scanPng.toString('base64') + '">');
+  const scanPdf = path.join(os.tmpdir(), 'sv-vraag-scan.pdf');
+  await pg.pdf({ path: scanPdf });
   await b.close();
 
   const ctx = await chromium.launchPersistentContext(fs.mkdtempSync(path.join(os.tmpdir(), 'sv-')), {
@@ -104,6 +109,12 @@ function check(name, cond, extra) {
         modus: gevraagd === 'eu' ? 'eu' : 'claude', modi: alleenEu ? ['eu'] : ['claude', 'eu'],
         eu_probleem: euToegestaan ? null : 'Op de server is geen Mistral-sleutel ingesteld.' }) });
     }
+    if (url.endsWith('/letters/vraagstelling')) return r.fulfill({ contentType: 'application/json', body: JSON.stringify({
+      aanvrager: 'uwv', instantie: 'UWV, verzekeringsarts', doel: 'beoordeling arbeidsongeschiktheid',
+      vragen: ['1. Welke diagnose is gesteld?', '2. Welke behandeling is ingezet?'], onderwerp: 'rugklachten', periode: '',
+      toestemming: true, let_op: '' }) });
+    if (url.endsWith('/letters/bijsturen')) return r.fulfill({ contentType: 'text/plain; charset=utf-8',
+      body: 'Geachte collega,\n\nKorte versie.\n\nMet collegiale groet,\n[Naam huisarts]' });
     if (url.endsWith('/letters/extract')) return r.fulfill({ contentType: 'application/json', body: JSON.stringify({ text: 'Journaal\nHoofdpijn\nMedicatie\nParacetamol' }) });
     if (url.endsWith('/letters/generate') && body && body.kind === 'verwijzing') return r.fulfill({ contentType: 'text/plain; charset=utf-8',
       body: 'Geachte collega,\n\n**Reden van verwijzing en vraagstelling**\nRecidiverende UWI.\n\n**Anamnese en beloop**\n[aanvullen: aantal UWI afgelopen jaar]\n\nMet collegiale groet,\n\n[Naam huisarts]' });
@@ -308,6 +319,29 @@ function check(name, cond, extra) {
   await panel.setInputFiles('#lt-vraag-file', vraagPdf);
   await sleep(1500);
   check('vraag uit PDF', (await panel.inputValue('#lt-vraag')).includes('Welke diagnose'));
+  const vst = sent.filter((s) => s.url.endsWith('/letters/vraagstelling')).pop();
+  check('de vraag wordt uit de brief gehaald, zonder naam of BSN', vst && vst.body.tekst.includes('Welke diagnose') && !/Pieter|123456789/.test(vst.body.tekst));
+  check('"Is dit de vraag?" met de vragen, ter bevestiging', await panel.isVisible('#lt-vraag-check')
+    && (await panel.$$('#lt-vc-vragen li')).length === 2 && (await panel.textContent('#lt-vc-instantie')).includes('UWV'));
+  await panel.check('#lt-consent');
+  await panel.click('#lt-generate');
+  await sleep(400);
+  check('eerst bevestigen, dan pas schrijven', !sent.some((s) => s.url.endsWith('/letters/generate'))
+    && (await panel.textContent('#lt-status')).includes('Bevestig eerst de vraag'));
+  await panel.click('#lt-vc-ja');
+  check('"Klopt": vragen genummerd in het vak, aanvrager en afbakening ingevuld',
+    (await panel.inputValue('#lt-vraag')).includes('1. Welke diagnose is gesteld?') && !(await panel.inputValue('#lt-vraag')).includes('123456789')
+    && (await panel.inputValue('#lt-aanvrager')) === 'uwv' && (await panel.inputValue('#lt-onderwerp')) === 'rugklachten'
+    && await panel.isHidden('#lt-vraag-check'));
+  await panel.fill('#lt-onderwerp', '');
+  await panel.uncheck('#lt-consent');
+  const extractVoor = sent.filter((s) => s.url.endsWith('/letters/extract')).length;
+  await panel.setInputFiles('#lt-vraag-file', scanPdf);
+  for (let i = 0; i < 40 && !(await panel.isVisible('#lt-vraag-check')); i++) await sleep(100);
+  const ex = sent.filter((s) => s.url.endsWith('/letters/extract')).slice(extractVoor);
+  check('gescande PDF (zonder tekst): de pagina wordt als afbeelding gelezen', ex.length >= 1 && ex[0].body.kind === 'vraag' && ex[0].body.media_type === 'image/jpeg', ex.map((x) => x.body && x.body.kind));
+  await panel.click('#lt-vc-nee');
+  check('"Nee": zelf aanpassen, kaart weg', await panel.isHidden('#lt-vraag-check'));
   await panel.click('#lt-generate');
   await sleep(400);
   check('zonder toestemming niets verstuurd', !sent.some((s) => s.url.endsWith('/letters/generate')));
@@ -324,6 +358,8 @@ function check(name, cond, extra) {
   check('afbakening gaat als opdracht mee', gen && /Beperk de brief tot: rugklachten na ongeval/.test(gen.body.extra) && /periode 2023 – heden/.test(gen.body.extra), gen && gen.body.extra);
   check('brief via eigen server, gefilterd', gen && !/Pieter|123456789/.test(JSON.stringify(gen.body)) && gen.body.toestemming === true);
   check('concept getoond', (await panel.textContent('#lt-out')).includes('[Naam huisarts]'));
+  check('bijlagen waarnaar de brief verwijst: lijst om mee te sturen', await panel.isVisible('#lt-bijlagen')
+    && (await panel.textContent('#lt-bijlagen-lijst')).includes('Orthopeed, 12-03-2026'));
   await panel.click('#lt-new');
   await panel.evaluate(() => { document.getElementById('lt-dossier-meer').open = true; });
   await panel.click('#lt-clear');
@@ -349,6 +385,18 @@ function check(name, cond, extra) {
   await sleep(300);
   check('dezelfde brief leert maar één keer', sent.filter((x) => x.url.endsWith('/leren/brief')).length === 1);
   await panel.click('#leer-dicht');
+  await panel.click('#lt-bij-chips .chip');
+  await sleep(800);
+  const bij = sent.filter((s) => s.url.endsWith('/letters/bijsturen')).pop();
+  check('bijsturen: "Korter" stuurt de huidige brief en de opdracht, met dezelfde gegevens', bij && bij.body.opdracht.startsWith('Maak de brief korter')
+    && bij.body.brief.includes('Recidiverende UWI') && bij.body.kind === 'verwijzing' && bij.body.specialisme === 'uroloog', bij && bij.body);
+  check('bijgestuurde brief in het concept, met "vorige versie"', (await panel.textContent('#lt-out')).includes('Korte versie.') && await panel.isVisible('#lt-bij-terug'));
+  await panel.fill('#lt-bij-opdracht', 'noem ook de kweek van maart');
+  await panel.press('#lt-bij-opdracht', 'Enter');
+  await sleep(800);
+  check('eigen opdracht met Enter', sent.filter((s) => s.url.endsWith('/letters/bijsturen')).pop().body.opdracht === 'noem ook de kweek van maart');
+  await panel.click('#lt-bij-terug');
+  check('"vorige versie" zet de brief terug', (await panel.textContent('#lt-out')).includes('Korte versie.') && await panel.isHidden('#lt-bij-terug'));
   await panel.click('.lt-tegel[data-kind="verklaring"]');
   check('verklaring: doel en knop', await panel.isVisible('#lt-doel') && (await panel.textContent('#lt-generate')) === 'Schrijf verklaring');
   await panel.selectOption('#lt-doel', 'woningurgentie');
