@@ -69,7 +69,8 @@ Bespreek dat met je accountant of jurist.
 - [x] Railway actief in het EU-US Data Privacy Framework
 - [ ] Schriftelijke bevestiging van Railway dat gezondheidsgegevens eronder vallen
 - [ ] SOC 2-rapport van Railway opgevraagd en bewaard
-- [ ] Mistral: verwerkersovereenkomst, ZDR, verwerking in de EU, geen training
+- [x] Mistral: ZDR geactiveerd en geen training bevestigd (6 oktober 2026); online-DPA geldt (stuk 05)
+- [ ] Mistral: subverwerkerslijst en DPA-versie vastgelegd; kloonstem (`/v1/audio/voices`, buiten ZDR) geregeld
 - [x] Rollen vastgesteld: praktijkhouder, één rechtspersoon (stuk 04 vervalt intern)
 - [ ] Handelsregister gecontroleerd; overeenkomsten op naam van de juiste rechtspersoon
 - [ ] Stuk 01 ondertekend; op de server `CLINICAL_DECISION_SUPPORT` en `ECONSULT_NHG_IN_EU` uit, of de keuze vastgelegd
@@ -102,5 +103,10 @@ Bespreek dat met je accountant of jurist.
 - De getekende verwerkersovereenkomst met Railway (envelop
   15F6A42D-5BA0-8848-82F5-EDC780AD0A6F). Bewaar die bij de
   praktijkadministratie, niet hier: er staan persoonsgegevens in.
-- Het SOC 2-rapport van Railway en de overeenkomst met Mistral, zodra binnen.
+- Het SOC 2-rapport van Railway. De bevestiging van Mistral (ZDR, geen
+  training, 6 oktober 2026) staat als afschrift in
+  `docs/wetgeving/bewijs/mistral-zdr-2026-10-06.md`; de originele mails en de
+  schermafdruk van de console horen bij de praktijkadministratie.
+- Het stappenplan voor alle producten van de praktijk:
+  `docs/wetgeving/STAPPENPLAN.md`.
 - De ondertekende versies van de stukken uit dit dossier.

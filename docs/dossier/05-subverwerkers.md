@@ -1,6 +1,6 @@
 # 05 Subverwerkers
 
-Stand 5 oktober 2026.
+Stand 7 oktober 2026.
 
 In fase 1 zijn de praktijk en ProVitaCare één rechtspersoon. Railway en
 Mistral zijn dan rechtstreeks verwerkers van de praktijk, en de
@@ -13,9 +13,18 @@ vooraf (stuk 04, art. 5).
 | Partij | Rol | Vestiging | Verwerking | Grondslag en afspraken | Status |
 |---|---|---|---|---|---|
 | Railway Corp. | Hosting van de VitaScribe-server en de database (register en auditlog) | San Francisco, VS | Server in Nederland (regio Europa-West). Bewaart geen audio of tekst; wel het auditlog zonder inhoud. | Verwerkersovereenkomst getekend (envelop 15F6A42D…). Railway is actief in het EU-US Data Privacy Framework. SOC 2 Type II. | Bevestiging over gezondheidsgegevens gevraagd; SOC 2-rapport op te vragen |
-| Mistral AI SAS | Spraakherkenning (Voxtral), tekst (Mistral Large) en voorlezen (Voxtral TTS): SOEP, controleronde, tolk, brieven, dossiervragen, post | Parijs, Frankrijk | EU | Verwerkersovereenkomst, verwerking in de EU, geen training, zero data retention (ZDR) | **Open**: aangevraagd, nog niet bevestigd |
+| Mistral AI SAS | Spraakherkenning (Voxtral), tekst (Mistral Large) en voorlezen (Voxtral TTS): SOEP, controleronde, tolk, brieven, dossiervragen, post | Parijs, Frankrijk | Standaard binnen de EER (endpoint `api.mistral.ai`). Mistral geeft geen absolute garantie: sommige subverwerkers kunnen gegevens vanuit derde landen verwerken, met SCC's. | Verwerkersovereenkomst: de online-DPA van Mistral geldt via de voorwaarden en wordt niet apart ondertekend. Zero data retention (ZDR) geactiveerd op 6 oktober 2026 voor de organisatie van de praktijk, voor de endpoints `/v1/chat/completions`, `/v1/audio/transcriptions` en `/v1/audio/speech`. Geen training op API-data, schriftelijk bevestigd. | **Bevestigd 6 oktober 2026** (ticket #37361256, zie `docs/wetgeving/bewijs/mistral-zdr-2026-10-06.md`). Nog te doen: subverwerkerslijst met datum vastleggen, DPA-versie en schermafdruk van de console bewaren. |
 
-Zolang Mistral open staat, gebruikt de praktijk alleen gespeelde consulten.
+ZDR geldt niet voor stateful endpoints. VitaScribe gebruikt er één: het klonen
+van een stem voor de tolk (`POST /v1/audio/voices`, `tolk.py`). Mistral bewaart
+die stem van een medewerker, en de code heeft geen verwijderpad. Zolang Mistral
+de bewaartermijn en de verwijdering niet heeft bevestigd, hoort die functie uit
+te staan of apart in register en DPIA te worden opgenomen, met de toestemming
+van de collega. De vervolgvraag aan Mistral staat in het bewijsstuk hierboven.
+
+Zolang het slot op de EU-modus niet aanstaat (`TOEGESTANE_MODI=eu`), gebruikt
+de praktijk alleen gespeelde consulten. Zie `docs/wetgeving/STAPPENPLAN.md`,
+stappen VS2 tot en met VS4.
 
 ## Niet in gebruik voor echte patiënten (Claude-modus)
 

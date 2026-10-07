@@ -80,7 +80,11 @@ Op de server staat de omgevingsvariabele `VITASCRIBE_FASE`.
       vallen
 - [x] Railway actief in het EU-US Data Privacy Framework
 - [ ] SOC 2-rapport van Railway
-- [ ] Mistral: verwerkersovereenkomst, ZDR, verwerking in de EU, geen training
+- [x] Mistral: ZDR geactiveerd en geen training bevestigd (6 oktober 2026);
+      online-DPA geldt; verwerking standaard in de EER zonder absolute garantie
+      (stuk 05, `docs/wetgeving/bewijs/`)
+- [ ] Mistral: subverwerkerslijst en DPA-versie vastgelegd; bewaartermijn en
+      verwijdering van de kloonstem (`/v1/audio/voices`, buiten ZDR) bevestigd
 - [ ] Verwerkersovereenkomst tussen praktijk en ProVitaCare (als dat twee
       verschillende partijen zijn)
 - [ ] DPIA, met docs/AUDIT-EU-MODUS.md als technische bijlage

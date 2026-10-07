@@ -38,7 +38,7 @@ laatste consult op schijf kon bewaren. Dat is in deze versie verwijderd.
 
 | Gegevens | Waar naartoe | Bewaard? |
 |---|---|---|
-| Audio van het consult | Server (Railway, NL) in het werkgeheugen, dan Voxtral (Mistral, FR) | Server: nee, gewist na verwerking. Mistral: hangt af van ZDR (open) |
+| Audio van het consult | Server (Railway, NL) in het werkgeheugen, dan Voxtral (Mistral, FR) | Server: nee, gewist na verwerking. Mistral: nee, ZDR actief sinds 6 oktober 2026 |
 | Geluidscontrole (30 s, 2 min, 5 min) | Hetzelfde stuk audio naar Voxtral | Alleen het aantal woorden in het log |
 | Transcript, SOEP, controleronde, nazorg, medicijncheck | Mistral Large | Server: nee |
 | Dossier en post (vraag aan het dossier) | Eerst gefilterd in de browser (naam, geboortedatum, BSN, adres), dan Mistral | Nee |
@@ -55,17 +55,22 @@ dan genegeerd.
 
 ### Blokkerend voor gebruik met echte patiënten
 
-**1. Mistral: verwerkersovereenkomst en ZDR nog niet bevestigd** (AVG art. 28)
+**1. Mistral: verwerkersovereenkomst en ZDR** (AVG art. 28). Opgelost op
+6 oktober 2026, met één nieuw punt.
 
-De mail aan Mistral is verstuurd en het antwoord is er nog niet. Zonder getekende
-verwerkersovereenkomst mag de praktijk geen gezondheidsgegevens laten verwerken.
-Zonder ZDR bewaart Mistral de verzoeken mogelijk een tijd voor
-misbruikcontrole. Leg in de overeenkomst vast:
+Mistral heeft ZDR geactiveerd voor de organisatie van de praktijk en bevestigd
+dat API-data niet voor training wordt gebruikt (ticket #37361256, afschrift in
+`docs/wetgeving/bewijs/mistral-zdr-2026-10-06.md`). De online-DPA geldt via de
+voorwaarden en wordt niet apart ondertekend. Verwerking vindt standaard in de
+EER plaats; Mistral sluit niet uit dat subverwerkers bepaalde gegevens vanuit
+derde landen verwerken, met SCC's. De subverwerkerslijst is niet meegestuurd en
+moet uit het Trust Center worden vastgelegd.
 
-- de verwerkingslocatie (EU);
-- geen gebruik voor training;
-- de bewaartermijn;
-- welke subverwerkers Mistral inschakelt.
+Nieuw: ZDR geldt alleen voor stateless endpoints. Het klonen van een stem voor
+de tolk (`POST /v1/audio/voices`) is stateful: Mistral bewaart de stem van een
+medewerker, zonder verwijderpad in de code. Die functie hoort uit te staan tot
+Mistral bewaartermijn en verwijdering bevestigt, of apart in register en DPIA
+te komen.
 
 **2. Railway is een Amerikaans bedrijf in de keten** (AVG hoofdstuk V; CLOUD Act)
 
@@ -186,7 +191,8 @@ praktijk al besloot, is deze modus nu niet voor echte patiënten.
 
 ## Volgorde van werk
 
-1. De verwerkersovereenkomst en ZDR van Mistral binnenhalen.
+1. ~~De verwerkersovereenkomst en ZDR van Mistral binnenhalen.~~ Gedaan op
+   6 oktober 2026. Nog: subverwerkerslijst vastleggen en de kloonstem regelen.
 2. Besluiten: Railway met DPA en DPF/SCC, of verhuizen naar een EU-host.
 3. Persoonlijke sleutels per arts (`API_USERS`), en de gedeelde sleutel
    intrekken.
