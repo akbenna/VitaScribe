@@ -160,3 +160,14 @@ def test_verklaring_op_verzoek_van_de_patient(api):
 def test_alle_aanvragers_hebben_lezer_en_groet():
     for naam, tekst in letters._AANVRAGER.items():
         assert "Met collegiale groet" in tekst or "Met vriendelijke groet" in tekst, naam
+
+
+def test_lange_initialen_worden_ingekort_niet_geweigerd(api):
+    seen = []
+    with patch.object(letters.llm_service, "stream_llm", fake_stream(["Geachte collega,"], seen)):
+        resp = api.post("/api/v1/letters/generate", headers=H, json={
+            "kind": "verwijzing", "dossier": DOSSIER, "specialisme": "vaatchirurg", "reden": "Zwelling",
+            "initialen": "M.J.W.T.B.J.K.L.",
+        })
+    assert resp.status_code == 200, resp.text
+    assert "patiënt M.J.W.T.B.J." in seen[0]["user"] and "K.L." not in seen[0]["user"]
