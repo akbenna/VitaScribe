@@ -448,39 +448,34 @@
     teken();
   }
 
-  function testgereedschapblok() {
+  // One compact row inside the settings block: the test tools switch.
+  function testgereedschapveld() {
     var aan = !!staat.instellingen.testgereedschap;
     var link = document.getElementById('spraaktest-link');
     if (link) link.hidden = !aan;
-    var vink = el('input', { type: 'checkbox' });
-    vink.checked = aan;
-    vink.addEventListener('change', async function () {
+    var vink = el('input', { type: 'checkbox', aan: aan, style: 'width:auto;margin:0;flex:none', bij: async function () {
       var nieuw = vink.checked;
-      if (nieuw && !confirm('Testgereedschap aanzetten?\n\nDe spraaktest en de SOEP-test sturen elke opname en tekst naar Deepgram, Anthropic en Mistral, ook als je praktijk alleen de EU-modus toestaat. De testset-rapporten zetten volledige tekst in het serverlog.\n\nGebruik het alleen met gespeelde consulten. Het aanzetten komt met je naam in het logboek.')) {
+      if (nieuw && !confirm('Testgereedschap aanzetten? Alleen voor gespeelde consulten: opnamen en tekst gaan naar Deepgram, Anthropic en Mistral, en testset-rapporten komen in het serverlog.')) {
         vink.checked = false; return;
       }
       try {
         staat.instellingen = await vraag('/instellingen', { methode: 'PUT', body: { testgereedschap: nieuw } });
-        meld(nieuw ? 'Testgereedschap staat aan. Zet het uit als je klaar bent.' : 'Testgereedschap staat uit.');
-        teken();
+        meld(nieuw ? 'Testgereedschap aan.' : 'Testgereedschap uit.'); teken();
       } catch (e) { vink.checked = !nieuw; meld(e.message, true); }
-    });
-    return el('div', { klasse: 'kaart', style: 'margin-top:12px' },
-      el('label', { style: 'display:flex;gap:8px;align-items:center;font-weight:600' }, vink,
-        el('span', { tekst: 'Testgereedschap (spraaktest, SOEP-test, testset)' })),
-      el('p', { klasse: 'klein', tekst: aan
-        ? 'Staat aan. Alleen voor gespeelde consulten: opnamen en tekst gaan naar Deepgram, Anthropic en Mistral, en testset-rapporten staan met tekst in het serverlog.'
-        : 'Staat uit. Aanzetten kan hier; het komt met je naam en het tijdstip in het logboek.' }));
+    } });
+    return el('label', { style: 'display:flex;gap:8px;align-items:center;justify-content:flex-start;margin-top:12px;font-size:14px' }, vink,
+      el('span', { tekst: 'Testgereedschap (spraaktest, SOEP-test), alleen voor gespeelde consulten' }));
   }
 
   function instellingenblok() {
     var tarief = el('input', { type: 'number', min: '0', step: '1', waarde: staat.instellingen.tarief_per_fte || '' });
     var server = el('input', { waarde: staat.instellingen.serveradres || location.origin });
     var winkel = el('input', { waarde: staat.instellingen.winkellink || '', placeholder: 'https://microsoftedge.microsoft.com/addons/detail/...' });
-    return el('details', { klasse: 'kaart', style: 'margin-top:16px' },
+    var blok = el('details', { klasse: 'kaart', style: 'margin-top:16px', open: !!staat.instellingenOpen },
       el('summary', { tekst: 'Instellingen, export en logboek' }),
       el('div', { klasse: 'velden' },
         veld('Tarief per huisarts-FTE per jaar (€)', tarief), veld('Serveradres in het bericht', server), veld('Link naar de extensie in de winkel', winkel, true)),
+      testgereedschapveld(),
       el('div', { klasse: 'knoppen' },
         el('button', { klasse: 'hoofd', tekst: 'Instellingen opslaan', klik: async function () {
           try {
@@ -492,6 +487,9 @@
         el('button', { tekst: 'Register exporteren (JSON)', klik: exporteer }),
         el('button', { tekst: 'Logboek tonen', klik: toonLog })),
       el('div', { id: 'logboek' }));
+    // Stays open across a redraw, so a setting changed here does not fold the block away.
+    blok.addEventListener('toggle', function () { staat.instellingenOpen = blok.open; });
+    return blok;
   }
 
   async function exporteer() {
@@ -521,7 +519,6 @@
     app.appendChild(tegels());
     app.appendChild(el('div', { klasse: 'indeling' }, lijst(), detail()));
     app.appendChild(instellingenblok());
-    app.appendChild(testgereedschapblok());
   }
 
   // ── Start ──
