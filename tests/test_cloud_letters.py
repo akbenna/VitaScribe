@@ -248,3 +248,12 @@ def test_correspondentie_niet_raden_maar_verwijzen_en_bijlagen(api):
                         ("verwijzing", {"reden": "x"}), ("verklaring", {"toestemming": True})):
         system = letters.build_letter_prompts(letters.GenerateRequest(kind=kind, dossier=DOSSIER, **extra))[0]
         assert "verwijs ik naar de bijgevoegde" in system and "Bijlagen:" in system and "verzin die inhoud" in system, kind
+
+
+
+def test_informatiebrief_werkt_vraaggericht():
+    req = letters.GenerateRequest(kind="informatiebrief", dossier=DOSSIER, aanvrager="uwv", toestemming=True,
+                                  vraag="1. Welke diagnose?\n2. Welke behandeling?")
+    system, user, _, _ = letters.build_letter_prompts(req)
+    assert "VRAAGGERICHT" in system and "Vraag 1:" in system and "Antwoord:" in system and "Sla geen vraag over" in system
+    assert "herhaal elke vraag letterlijk" in user

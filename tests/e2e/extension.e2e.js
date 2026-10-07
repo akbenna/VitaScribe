@@ -18,7 +18,7 @@ const EXT = process.env.EXT_DIR || path.join(ROOT, 'chrome-extension');
 const HERE = __dirname;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const BRICKS = fs.readFileSync(path.join(HERE, 'bricks.html'), 'utf8');
-const LETTER = 'Geachte collega,\n\n1. Diagnose: aspecifieke lage rugpijn. Voor de details verwijs ik naar de bijgevoegde brief van de orthopeed.\n\nMet collegiale groet,\n[Naam huisarts]\n\nBijlagen:\n- Orthopeed, 12-03-2026, poliklinische brief';
+const LETTER = 'Geachte collega,\n\nVraag 1: Welke diagnose is gesteld?\nAntwoord: aspecifieke lage rugpijn. Voor de details verwijs ik naar de bijgevoegde brief van de orthopeed.\n\nMet collegiale groet,\n[Naam huisarts]\n\nBijlagen:\n- Orthopeed, 12-03-2026, poliklinische brief';
 
 let ok = 0, fail = 0;
 function check(name, cond, extra) {
@@ -348,6 +348,7 @@ function check(name, cond, extra) {
   check('aanvragers in een uitklaplijst, met IND en DUO', (await panel.$$eval('#lt-aanvrager option', (o) => o.map((x) => x.value))).join() === 'advocaat,letselschade,uwv,bedrijfsarts,sma,verzekeraar,ind,duo,gemeente,ciz,cbr,overig');
   await panel.selectOption('#lt-aanvrager', 'ind');
   check('afbakening zichtbaar bij de informatiebrief', await panel.isVisible('#lt-onderwerp') && await panel.isVisible('#lt-periode'));
+  await panel.fill('#lt-vraag', '1. Welke diagnose is gesteld?\n2. Welke behandeling is ingezet?');
   await panel.fill('#lt-onderwerp', 'rugklachten na ongeval');
   await panel.fill('#lt-periode', '2023 – heden');
   await panel.check('#lt-consent');
@@ -358,6 +359,8 @@ function check(name, cond, extra) {
   check('afbakening gaat als opdracht mee', gen && /Beperk de brief tot: rugklachten na ongeval/.test(gen.body.extra) && /periode 2023 – heden/.test(gen.body.extra), gen && gen.body.extra);
   check('brief via eigen server, gefilterd', gen && !/Pieter|123456789/.test(JSON.stringify(gen.body)) && gen.body.toestemming === true);
   check('concept getoond', (await panel.textContent('#lt-out')).includes('[Naam huisarts]'));
+  check('vraaggericht: het paneel ziet dat vraag 2 geen antwoord heeft', await panel.isVisible('#lt-vragencheck')
+    && (await panel.textContent('#lt-vragencheck')).includes('vraag 2'), await panel.textContent('#lt-vragencheck'));
   check('bijlagen waarnaar de brief verwijst: lijst om mee te sturen', await panel.isVisible('#lt-bijlagen')
     && (await panel.textContent('#lt-bijlagen-lijst')).includes('Orthopeed, 12-03-2026'));
   await panel.click('#lt-new');
