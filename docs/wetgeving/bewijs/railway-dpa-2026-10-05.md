@@ -24,6 +24,22 @@ Afschrift van het antwoord van Railway Support (support@railway.com) aan a.benna
 | Waar staan de logs? | Application-, deploy-, build- en HTTP-logs staan voor elke service in US West, ook voor EU West-services. | Alles wat de server naar stdout schrijft, en elk HTTP-verzoek (IP-adres, pad), ligt in de VS. |
 | Contractuele toezegging alleen-EU? | Nee, op geen enkel plan. | Er is geen garantie dat verwerking in de EU blijft. |
 
+## Wat de getekende DPA zelf zegt
+
+Nagelezen in de getekende versie (DocuSign-envelop 15F6A42D-5BA0-8848-82F5-EDC780AD0A6F, ingangsdatum 5 oktober 2026). De DPA bevestigt de mail van support en gaat op drie punten verder.
+
+| Bepaling | Tekst (samengevat) | Gevolg |
+|---|---|---|
+| Bijlage A, Special Categories | "Sensitive Data or Special Categories of Data: None" | Zoals support schreef: geen gezondheidsgegevens. |
+| Bijlage A, betrokkenen | "Customers and Customer employees" | Patiënten staan niet in de omschrijving. Ook dat sluit gezondheidsgegevens van patiënten buiten de overeenkomst. |
+| Art. 3, plichten van de klant | De klant levert geen persoonsgegevens die "inappropriate for the nature of the Services" zijn, en vrijwaart Railway voor alle claims en schade die daaruit volgen. | Gezondheidsgegevens via Railway laten lopen is niet alleen onbeschermd, het is ook een tekortkoming van de klant, met een vrijwaring. Het risico ligt dan contractueel bij de praktijk. |
+| Art. 9.1, doorgifte | Railway verklaart dat zijn "primary processing operations take place in the United States" en dat doorgifte naar de VS nodig is voor de dienst. Grondslag: DPF of de SCC's (art. 9.2). | De klant erkent doorgifte naar de VS. De keuze voor regio EU West verandert dat contractueel niet. |
+| Bijlage B, partijen | Data-exporteur: "A. Bennaghmouch h.o.d.n. ProVitaCare", Roermond. | De DPA staat op naam van ProVitaCare, niet op die van de praktijk of de holding. Dat raakt besluit 1 in het stappenplan (welke rechtspersoon). |
+| Art. 6, subverwerkers | Algemene toestemming; nieuwe subverwerkers 10 dagen vooraf op trust.railway.com, met bezwaarrecht. | Abonneren op die meldingen (art. 6.2 vraagt dat van de klant). |
+| Art. 8, datalek | Melding "without undue delay", zonder termijn in uren. | De VitaScribe-verwerkersovereenkomst belooft de praktijk 24 uur; die belofte rust voor Railway niet op een termijn van Railway. |
+| Bijlage C, beveiliging | Versleuteling in rust, TLS onderweg, 2FA voor personeel, dagelijkse back-ups "across multiple sites and regions". | Back-ups over meerdere regio's: support schrijft dat volumeback-ups in EU West blijven. Bij twijfel geldt de schriftelijke DPA; dat punt navragen als Railway voor persoonsgegevens blijft. |
+| Art. 5, audit | Eén keer per jaar, op kosten van de klant. | Voor fase 1 genoeg; het SOC 2-rapport is het praktische alternatief. |
+
 ## Conclusie voor de producten
 
 - **VitaScribe en ConsultSpiegel**: echte consulten (gezondheidsgegevens van patiënten) mogen niet via de Railway-server. Dat geldt voor de EU-modus net zo goed als voor de Claude-modus: de server op Railway ziet de audio en de tekst, ook als hij niets bewaart. De route is een server bij een Europese host. Voor VitaScribe is die gebouwd (werkplan stap 4, `deploy/eu/`).
