@@ -11,14 +11,18 @@ var SVPrivacy = (function () {
   function initialen(naam) {
     if (!naam) return 'P.X.';
     var schoon = naam.replace(TITELS, '').replace(/\(.*?\)/g, '').replace(/[,\d]/g, ' ').trim();
-    var out = schoon.split(/\s+/)
+    var letters = [];
+    schoon.split(/[\s-]+/)
       .filter(function (d) { return d && TUSSENVOEGSELS.indexOf(d.toLowerCase()) === -1 && /^[A-Za-zÀ-ÿ]/.test(d); })
-      .map(function (d) {
-        // "J.M." stays "J.M."; a word gives its first letter
-        return /^([A-Za-z]\.)+$/.test(d) ? d.toUpperCase() : d[0].toUpperCase() + '.';
-      })
-      .join('');
-    return out || 'P.X.';
+      .forEach(function (d) {
+        // "J.M." gives J and M; a word gives its first letter
+        if (/^([A-Za-z]\.)+$/.test(d)) d.split('.').filter(Boolean).forEach(function (l) { letters.push(l.toUpperCase()); });
+        else letters.push(d[0].toUpperCase());
+      });
+    // A long name (several first names, a double surname) gives at most four
+    // initials: the first three and the last, so the surname stays.
+    if (letters.length > 4) letters = letters.slice(0, 3).concat(letters.slice(-1));
+    return letters.length ? letters.join('.') + '.' : 'P.X.';
   }
 
   var MAAND = '(?:jan(?:uari)?|feb(?:ruari)?|mrt|maa?rt|apr(?:il)?|mei|jun(?:i)?|jul(?:i)?|aug(?:ustus)?|sep(?:t(?:ember)?)?|okt(?:ober)?|nov(?:ember)?|dec(?:ember)?)';

@@ -1,0 +1,59 @@
+# VitaScribe - tweede server bij een Europese host (stuk 14, stap 4)
+#
+# Naast Railway, niet in plaats van: de extensie stuurt de EU-modus hierheen
+# (Instellingen > Server voor de EU-modus); de Claude-modus blijft op Railway.
+# Dezelfde code als Railway (Dockerfile.railway). Starten, vanuit deze map:
+#
+#   cp env.voorbeeld .env      # en vul de waarden in
+#   docker compose up -d --build
+#
+# Caddy haalt zelf een TLS-certificaat (Let's Encrypt) voor VITASCRIBE_DOMEIN.
+
+services:
+  vitascribe:
+    build:
+      context: ../..
+      dockerfile: Dockerfile.railway
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      PORT: "8002"
+      DATABASE_URL: postgresql://vitascribe:${POSTGRES_PASSWORD}@postgres:5432/vitascribe
+    depends_on:
+      postgres:
+        condition: service_healthy
+    expose:
+      - "8002"
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: vitascribe
+      POSTGRES_DB: vitascribe
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./back-ups:/back-ups
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vitascribe -d vitascribe"]
+      interval: 10s
+      retries: 10
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      VITASCRIBE_DOMEIN: ${VITASCRIBE_DOMEIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddydata:/data
+    depends_on:
+      - vitascribe
+
+volumes:
+  pgdata:
+  caddydata:

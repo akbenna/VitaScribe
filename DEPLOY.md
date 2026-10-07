@@ -570,3 +570,17 @@ De telefoon doet alles namens de arts die koppelde, in de modus van dat
 moment. De tolk via de telefoon gebruikt dus dezelfde aanbieders als het
 zijpaneel. Voorlezen gebeurt met de stemmen van het toestel zelf; alleen
 zonder stem voor een taal valt hij terug op de stem van de server.
+
+
+## Tweede server bij een Europese host (naast Railway)
+
+Railway blijft de hoofdserver, met beide modi. Een tweede server bij een
+Europese host (Hetzner of Scaleway) kan de EU-modus overnemen. In de extensie
+vul je dan *Instellingen › Server voor de EU-modus* in. Wat in de EU-modus
+gebeurt, gaat daarheen; de Claude-modus blijft op Railway. Leeg laten
+betekent: alles op Railway, zoals nu.
+
+Installeren: zie `deploy/eu/README.md`. Dat zijn Docker Compose met
+dezelfde `Dockerfile.railway`, PostgreSQL en Caddy (automatisch TLS). Die
+server krijgt `TOEGESTANE_MODI=eu`. Met dezelfde `API_USERS` werkt dezelfde
+sleutel op beide servers.

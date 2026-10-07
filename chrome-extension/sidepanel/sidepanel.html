@@ -420,10 +420,22 @@
           <span class="lt-links">
             <button id="lt-vraag-pdf" class="lt-link" type="button">uit PDF</button>
             <button id="lt-vraag-shot" class="lt-link" type="button" title="Kopieer eerst een schermafdruk, klik dan hier">uit schermafdruk</button>
+            <button id="lt-vraag-ontleed" class="lt-link" type="button" title="Haal de eigenlijke vragen uit een geplakte brief">vragen eruit</button>
           </span>
           <input type="file" id="lt-vraag-file" accept="application/pdf" hidden>
         </div>
         <textarea id="lt-vraag" rows="4" placeholder="Plak de vragen, of laad ze uit een PDF of schermafdruk."></textarea>
+        <div id="lt-vraag-check" class="lt-vraag-check hidden" role="group" aria-labelledby="lt-vc-kop">
+          <p id="lt-vc-kop" class="lt-vc-kop"><strong>Is dit de vraag?</strong> <span id="lt-vc-instantie"></span></p>
+          <p id="lt-vc-doel" class="lt-vc-doel"></p>
+          <ol id="lt-vc-vragen" class="lt-vc-vragen"></ol>
+          <p id="lt-vc-kader" class="lt-hint"></p>
+          <p id="lt-vc-letop" class="dv-letop hidden"></p>
+          <div class="lt-row">
+            <button id="lt-vc-ja" class="btn primary small" type="button">✓ Klopt, gebruik dit</button>
+            <button id="lt-vc-nee" class="btn small" type="button">Nee, ik pas het zelf aan</button>
+          </div>
+        </div>
         <div class="lt-afbakening">
           <div class="lt-labelrij"><span class="lt-label">Afbakening</span><span class="lt-hint">alleen wat gevraagd is</span></div>
           <div class="lt-rij2">
@@ -509,6 +521,29 @@
     <section id="lt-output" class="lt-card hidden">
       <h2>Concept</h2>
       <div id="lt-out" class="lt-out" contenteditable="true" spellcheck="true"></div>
+      <div id="lt-bijlagen" class="lt-bijlagen hidden">
+        <span class="lt-label">Mee te sturen bijlagen</span>
+        <ul id="lt-bijlagen-lijst" class="lt-bijlagen-lijst"></ul>
+        <p class="lt-hint">De brief verwijst naar deze brieven. Print ze uit Bricks en stuur ze mee; alleen wat bij de vraag
+          hoort, en alleen met toestemming van de patiënt. Wil je dat de brief de inhoud zelf gebruikt, voeg de brief dan toe
+          als PDF of schermafdruk en schrijf opnieuw.</p>
+      </div>
+      <div class="lt-bijsturen" aria-label="Brief bijsturen">
+        <span class="lt-label">Bijsturen</span>
+        <div id="lt-bij-chips" class="chips">
+          <button type="button" class="chip" data-opdracht="Maak de brief korter: alleen wat de vraag beantwoordt.">Korter</button>
+          <button type="button" class="chip" data-opdracht="Maak de toon formeler.">Formeler</button>
+          <button type="button" class="chip" data-opdracht="Schrijf in eenvoudiger taal, zonder vaktermen, voor iemand zonder medische achtergrond.">Eenvoudiger</button>
+          <button type="button" class="chip" data-opdracht="Neem meer relevante feiten uit het dossier op, met datum.">Meer uit dossier</button>
+          <button type="button" class="chip" data-opdracht="Schrijf in telegramstijl onder de kopjes.">Telegramstijl</button>
+        </div>
+        <div class="lt-bij-rij">
+          <input id="lt-bij-opdracht" class="lt-input" maxlength="1000"
+                 placeholder="Wat moet er anders? Bijv. noem ook de MRI van maart, of laat de voorgeschiedenis weg">
+          <button id="lt-bij-go" class="btn small" type="button">Bijsturen</button>
+        </div>
+        <button id="lt-bij-terug" class="lt-link hidden" type="button">↶ vorige versie</button>
+      </div>
       <div class="lt-row">
         <button id="lt-copy" class="btn primary">Kopieer</button>
         <button id="lt-insert" class="btn">Invoegen in veld</button>

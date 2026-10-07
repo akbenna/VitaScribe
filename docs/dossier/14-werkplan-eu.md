@@ -23,7 +23,7 @@ Wat Claude bouwt, komt als pull request met tests. Jij beslist en tekent.
 | 1 | Overeenkomst Mistral met ZDR afronden | jij | 1 tot 4 weken | echte patiënten |
 | 2 | Persoonlijke sleutels, testgereedschap uit | jij | 1 uur | echte patiënten |
 | 3 | Praktijkslot op de modus | Claude, dan jij | 1 dag | fase 2 |
-| 4 | Server naar een Europese host | jij en Claude | 1 week | fase 2 |
+| 4 | Europese server naast Railway | jij en Claude | 1 dag | – |
 | 5 | Claude via AWS Bedrock in Frankfurt | jij en Claude | 1 week | – |
 | 6 | Europese spraakherkenning voor alle talen | jij en Claude | 2 weken | – |
 | 7 | NHG-naslag zonder MDR | Claude, dan jurist | 1 week | – |
@@ -112,43 +112,51 @@ goedgekeurde modus gaan. In fase 2 is dat een eis van elke klantpraktijk.
 **Klaar als.** Een poging in de Claude-modus geeft een nette melding, en de
 DPIA noemt het slot als maatregel (gedaan, R3 en R7).
 
-## Stap 4. Server naar een Europese host
+## Stap 4. Een Europese server naast Railway
 
 **Waarom.** Railway is een Amerikaans bedrijf en valt onder de CLOUD Act (DPIA,
-R4). De server bewaart niets, maar het verkeer gaat er wel doorheen. Met een
-Europese host verdwijnt dat restrisico helemaal. Voor fase 2 is het verhaal
-dan eenvoudig: alles in de EU, bij Europese bedrijven.
+R4). De server bewaart niets, maar het verkeer gaat er wel doorheen. Een
+tweede server bij een Europese host haalt dat restrisico weg voor de
+EU-modus, zonder iets te sluiten. Het is een **alternatief, geen
+vervanging**:
+
+- Railway blijft draaien, met beide modi.
+- De extensie stuurt de EU-modus naar de Europese server, zodra je die
+  invult.
+- Leeg laten betekent: alles zoals nu.
+
+**Gebouwd (versie 2.22.0).**
+
+- In de extensie: *Instellingen › Server voor de EU-modus*, met een eigen
+  sleutel (optioneel) en *Test EU-server*. Alles in de EU-modus volgt dat
+  adres: consult, dicteren, brieven, dossiervraag, e-consult, tolk,
+  telefoon en Beheer. De Claude-modus blijft op de gewone server.
+- `deploy/eu/`: een kant-en-klare installatie met dezelfde code als Railway.
+  Die bestaat uit Docker Compose, PostgreSQL, Caddy met automatisch
+  TLS-certificaat, `env.voorbeeld` en een back-upscript.
+- `deploy/eu/README.md`: de handleiding voor Hetzner of Scaleway, stap voor
+  stap.
 
 **Wat je doet.**
 
-1. Kies een host. Alle drie zijn Europese bedrijven met een eigen
-   verwerkersovereenkomst en draaien de Dockerfile die er al is:
-   - Hetzner (Duitsland);
-   - Scaleway (Frankrijk);
-   - OVHcloud (Frankrijk).
-
-   Advies: Scaleway of Hetzner. Bij beide kun je een beheerde PostgreSQL
-   afnemen. Hetzner is goedkoper. Scaleway zit dichter bij hoe Railway nu
-   werkt.
+1. Kies een host:
+   - **Hetzner** (Duitsland): goedkoop en eenvoudig.
+   - **Scaleway** (Frankrijk): werkt meer zoals Railway.
 2. Maak een account op naam van de rechtspersoon en teken de
-   verwerkersovereenkomst. Bij beide zit die in de voorwaarden; download hem
-   en bewaar hem.
-3. Laat Claude de uitrol klaarzetten: een `docker-compose` of een
-   handleiding voor de gekozen host, met PostgreSQL, TLS en back-ups van het
-   register.
-4. Zet de omgevingsvariabelen over. Gebruik de namen uit Railway; de waarden
-   kopieer je zelf.
-5. Geef de server een eigen domein, bijvoorbeeld
-   `vitascribe.provita-care.nl`. Pas daarna in de extensie het serveradres
-   aan, of laat Claude de standaard aanpassen.
-6. Draai een week naast elkaar. Zet daarna Railway uit en verwijder de
-   database daar.
-7. Werk de stukken 02, 03, 05 en 06 bij: Railway eruit, de nieuwe host erin.
+   verwerkersovereenkomst.
+3. Maak een server (Ubuntu 24.04) en een domein, bijvoorbeeld
+   `vitascribe-eu.provita-care.nl`.
+4. Volg `deploy/eu/README.md`: installeren, `.env` invullen met de waarden
+   uit Railway, starten. Reken op een kwartier.
+5. Vul in de extensie de Server voor de EU-modus in en klik *Test
+   EU-server*.
+6. Laat Claude stuk 02, 03, 05 en 06 bijwerken met de gekozen host.
 
-**Wie.** Jij voor het account, de overeenkomst en het domein. Claude voor de
-uitrolbestanden en de documentatie.
+**Wie.** Jij voor het account, de overeenkomst, het domein en het starten.
+Claude voor de stukken.
 
-**Klaar als.** De extensie praat met de nieuwe host en Railway is opgezegd.
+**Klaar als.** *Test EU-server* zegt "In orde" en een consult in de
+EU-modus loopt via de nieuwe server. Railway blijft daarnaast gewoon werken.
 
 ## Stap 5. Claude via AWS Bedrock in Frankfurt
 

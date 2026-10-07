@@ -12,7 +12,7 @@
 // hoeft in te vullen.
 var STANDAARD_SERVER = 'http://localhost:8002';
 
-var FIELDS = ['apiUrl', 'apiKey', 'sttProvider', 'llmProvider', 'micDevice', 'delenPerMail', 'consultLive'];
+var FIELDS = ['apiUrl', 'apiKey', 'apiUrlEu', 'apiKeyEu', 'sttProvider', 'llmProvider', 'micDevice', 'delenPerMail', 'consultLive'];
 
 var SELECTOR_FIELDS = {
   selJournaal: 'journaal',
@@ -33,7 +33,9 @@ function showToast(message, duration) {
 
 async function loadSettings() {
   await SVInstellingen.migreer();
-  var stored = await SVInstellingen.lees(FIELDS.concat(['bricksSelectors']));
+  // As stored: not the server of the current mode (lib/instellingen.js).
+  var stored = await SVInstellingen.lees(FIELDS.concat(['bricksSelectors']), null, { ruw: true });
+  if (stored.apiUrlEu) document.getElementById('eu-server').open = true;
 
   FIELDS.forEach(function(key) {
     var el = document.getElementById(key);
@@ -409,3 +411,29 @@ document.getElementById('btn-test-mic').addEventListener('click', testMicrophone
 // ── Initialize ──
 loadSettings().then(laadLicentie).catch(function () { /* geen verbinding: dan pas bij Test verbinding */ });
 loadMicDevices();
+
+
+// ── Second server for the EU mode (next to the first, not instead of it) ──
+document.getElementById('test-eu').addEventListener('click', async function () {
+  var uit = document.getElementById('eu-server-uitslag');
+  var url = document.getElementById('apiUrlEu').value.trim().replace(/\/$/, '');
+  if (!url) { uit.textContent = 'Leeg: de EU-modus gebruikt de gewone server.'; return; }
+  if (!/^https:\/\//.test(url)) { uit.textContent = 'Gebruik een https-adres.'; return; }
+  var sleutel = document.getElementById('apiKeyEu').value.trim() || document.getElementById('apiKey').value.trim();
+  uit.textContent = 'Testen…';
+  try {
+    var headers = { 'X-API-Key': sleutel, 'X-VitaScribe-Modus': 'eu' };
+    await SVPraktijk.metKop(headers);
+    headers['X-VitaScribe-Modus'] = 'eu';
+    var r = await fetch(url + '/api/v1/providers', { headers: headers });
+    if (r.status === 401 || r.status === 403) { uit.textContent = 'Server bereikbaar, maar de sleutel wordt niet geaccepteerd.'; return; }
+    if (!r.ok) { uit.textContent = 'Server gaf fout ' + r.status + '.'; return; }
+    var d = await r.json();
+    uit.textContent = d.eu_probleem
+      ? 'Bereikbaar, maar de EU-modus is daar nog niet klaar: ' + d.eu_probleem
+      : 'In orde: de EU-modus gaat naar ' + url + '.';
+    await saveSettings();
+  } catch (e) {
+    uit.textContent = 'Kan ' + url + ' niet bereiken.';
+  }
+});

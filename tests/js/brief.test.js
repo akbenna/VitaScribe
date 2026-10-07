@@ -21,3 +21,9 @@ test('journaal genoeg ingelezen?', () => {
   assert.ok(!SVBrief.journaalGenoeg({ Journaal: 'kort' }));
   assert.ok(SVBrief.journaalGenoeg({ Journaal: 'S: zwelling re enkel sinds 3 weken. '.repeat(12) }));
 });
+
+test('bijlagen onder de brief', () => {
+  const t = 'Geachte collega,\nZie de bijgevoegde brief.\nMet collegiale groet,\n[Naam huisarts]\n\nBijlagen:\n- Cardioloog VieCuri, 12-03-2026, polikliniekbrief\n- MDL-arts, 02-05-2026, scopie-uitslag\n';
+  assert.deepStrictEqual(SVBrief.bijlagen(t), ['Cardioloog VieCuri, 12-03-2026, polikliniekbrief', 'MDL-arts, 02-05-2026, scopie-uitslag']);
+  assert.deepStrictEqual(SVBrief.bijlagen('Geachte collega,\nGeen bijlagen hier.'), []);
+});
