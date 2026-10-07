@@ -65,9 +65,10 @@ DPIA R6). Testgereedschap mag geen echt consult loggen (R7).
 1. Zet op de server `API_USERS=naam:sleutel,...`, met één sleutel per
    gebruiker. Haal `API_KEYS` (de gedeelde sleutel) weg.
 2. Zet in Beheer bij elke beheerder de tweede factor aan (`ADMIN_TOTP`).
-3. Het testgereedschap (spraaktest, soeptest, "Naar testset sturen") zit
-   achter beheerdersrechten. Geef die alleen aan wie het nodig heeft, en
-   gebruik het alleen met gespeelde consulten. Leg dat vast in stuk 09.
+3. Het testgereedschap (spraaktest, soeptest, "Naar testset sturen") staat
+   standaard uit. Zet het alleen aan in Beheer (Instellingen) voor een test met
+   gespeelde consulten, en daarna weer uit; elke wijziging staat met je naam in
+   het beheerlog. Leg dat vast in stuk 09.
 4. Geef elke gebruiker zijn eigen sleutel in Instellingen.
 
 **Wie.** Jij.
