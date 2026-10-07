@@ -641,12 +641,15 @@ function check(name, cond, extra) {
   await sleep(700);
   check('knop van de arts luistert', (await panel.getAttribute('#tk-arts', 'class')).includes('luistert'));
   await panel.click('#tk-arts');
-  await sleep(1000);
+  // The recorder delivers its last piece asynchronously; on a slow runner that takes longer.
+  for (let i = 0; i < 40 && !tb()[1]; i++) await sleep(100);
+  await sleep(300);
   const b1 = tb()[1] ? tb()[1].raw : '';
   check('beurt verstuurd: arts, Turks, met toestemming en opname', /name="spreker"\r\n\r\narts/.test(b1) && /name="taal"\r\n\r\ntr/.test(b1)
     && /name="consent"\r\n\r\ntrue/.test(b1) && b1.includes('filename="beurt.webm"'), b1.slice(0, 300));
   check('vertaling en terugvertaling getoond', (await panel.textContent('.tk-beurt.arts .tk-vert')) === 'Ateşiniz var mı?'
     && (await panel.textContent('.tk-beurt.arts .tk-terug')) === 'Heeft u koorts?');
+  for (let i = 0; i < 40 && !(await panel.isVisible('#tk-scherm')); i++) await sleep(100);
   check('geen stem voor Turks: vertaling groot op het scherm, met uitleg', await panel.isVisible('#tk-scherm')
     && (await panel.textContent('#tk-scherm-tekst')) === 'Ateşiniz var mı?' && (await panel.textContent('#tk-status')).includes('Stemmen toevoegen'));
   await panel.click('#tk-scherm-dicht');

@@ -281,7 +281,8 @@ class ExtractRequest(BaseModel):
 
 class GenerateRequest(BaseModel):
     kind: Literal["informatiebrief", "verwijzing", "verklaring"]
-    initialen: str = Field("P.X.", max_length=12)
+    # Initials only; a longer value is shortened, never a reason to refuse the letter.
+    initialen: str = Field("P.X.", max_length=60)
     dossier: str = Field(..., min_length=10, max_length=MAX_DOSSIER_CHARS)
     # informatiebrief
     aanvrager: Optional[Literal["advocaat", "letselschade", "uwv", "bedrijfsarts", "sma", "verzekeraar",
@@ -301,7 +302,7 @@ class GenerateRequest(BaseModel):
 
 def build_letter_prompts(req: GenerateRequest) -> "tuple[str, str, bool, int]":
     """Return (system, user, quality_model, max_tokens) for a letter request."""
-    initialen = privacy_safety_net(req.initialen.strip() or "P.X.")
+    initialen = privacy_safety_net(req.initialen.strip()[:12] or "P.X.")
     dossier = privacy_safety_net(req.dossier)
     extra = privacy_safety_net(req.extra or "").strip()
     sep = "-" * 40
