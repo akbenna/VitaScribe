@@ -6,7 +6,9 @@
  *   (**vet**, # koppen);
  * - tellen wat de arts nog moet invullen ([aanvullen: ...], [Naam huisarts]);
  * - kiezen of het journaal goed genoeg is ingelezen, of dat alles wat in
- *   beeld staat mee moet.
+ *   beeld staat mee moet;
+ * - de bijlagen onder de brief (specialistenbrieven waarnaar de brief
+ *   verwijst), als lijst om mee te sturen.
  */
 var SVBrief = (function () {
   'use strict';
@@ -33,6 +35,22 @@ var SVBrief = (function () {
     return j.replace(/\s+/g, ' ').length >= MIN_JOURNAAL;
   }
 
-  return { schoon: schoon, openPlekken: openPlekken, journaalGenoeg: journaalGenoeg, MIN_JOURNAAL: MIN_JOURNAAL };
+  /** The enclosures listed under "Bijlagen:" at the end of a letter. */
+  function bijlagen(tekst) {
+    var regels = String(tekst || '').split('\n');
+    var i = regels.map(function (r) { return r.trim().toLowerCase(); }).lastIndexOf('bijlagen:');
+    if (i === -1) return [];
+    var uit = [];
+    for (var j = i + 1; j < regels.length; j++) {
+      var r = regels[j].trim();
+      if (!r) { if (uit.length) break; continue; }
+      if (!/^[-•*]\s*/.test(r) && uit.length) break;
+      r = r.replace(/^[-•*]\s*/, '').trim();
+      if (r) uit.push(r);
+    }
+    return uit;
+  }
+
+  return { bijlagen: bijlagen, schoon: schoon, openPlekken: openPlekken, journaalGenoeg: journaalGenoeg, MIN_JOURNAAL: MIN_JOURNAAL };
 })();
 if (typeof module !== 'undefined') module.exports = SVBrief;

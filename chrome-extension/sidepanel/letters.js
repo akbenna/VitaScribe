@@ -425,23 +425,45 @@
   });
 
   // ── PDF ──
-  async function readPdf(file) {
+  // Text from a PDF, line by line in reading order: pieces on (almost) the same
+  // height form one line, left to right; lines from top to bottom. A scanned
+  // PDF has no text layer: then the pages are rendered and read as images
+  // (soort: 'vraag' or 'dossier', see /letters/extract), at most MAX_SCAN pages.
+  var MAX_SCAN = 4;
+  async function readPdf(file, soort) {
     if (typeof pdfjsLib === 'undefined') throw new Error('PDF-lezer niet geladen.');
     var pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
     var parts = [];
     for (var i = 1; i <= pdf.numPages; i++) {
       var page = await pdf.getPage(i);
       var content = await page.getTextContent();
-      var line = [], lines = [], lastY = null;
-      content.items.forEach(function (it) {
-        var y = it.transform ? Math.round(it.transform[5]) : null;
-        if (lastY !== null && y !== null && Math.abs(y - lastY) > 2) { lines.push(line.join(' ')); line = []; }
-        line.push(it.str); lastY = y;
+      var stukken = content.items.filter(function (it) { return it.str && it.str.trim() && it.transform; })
+        .map(function (it) { return { x: it.transform[4], y: it.transform[5], t: it.str }; });
+      stukken.sort(function (a, b) { return Math.abs(b.y - a.y) > 3 ? b.y - a.y : a.x - b.x; });
+      var lines = [], line = [], lastY = null;
+      stukken.forEach(function (s) {
+        if (lastY !== null && Math.abs(s.y - lastY) > 3) { lines.push(line.join(' ')); line = []; }
+        line.push(s.t); lastY = s.y;
       });
-      lines.push(line.join(' '));
+      if (line.length) lines.push(line.join(' '));
       parts.push(lines.join('\n'));
     }
-    return parts.join('\n\n').replace(/[ \t]+\n/g, '\n');
+    var tekst = parts.join('\n\n').replace(/[ \t]+/g, ' ').replace(/ ?\n ?/g, '\n').trim();
+    if (tekst.replace(/\s/g, '').length >= 80 || !soort) return tekst;
+    // Scanned: read the pages as images.
+    var gelezen = [];
+    for (var p = 1; p <= Math.min(pdf.numPages, MAX_SCAN); p++) {
+      status('Gescande PDF: pagina ' + p + ' van ' + Math.min(pdf.numPages, MAX_SCAN) + ' lezen…');
+      var pg = await pdf.getPage(p);
+      var vp = pg.getViewport({ scale: 1.8 });
+      var c = document.createElement('canvas');
+      c.width = Math.round(vp.width); c.height = Math.round(vp.height);
+      await pg.render({ canvasContext: c.getContext('2d'), viewport: vp }).promise;
+      var url = c.toDataURL('image/jpeg', 0.85);
+      gelezen.push(await extractImage(soort, { url: url, media_type: 'image/jpeg', data: url.split(',')[1] }));
+    }
+    if (pdf.numPages > MAX_SCAN) gelezen.push('[Alleen de eerste ' + MAX_SCAN + " pagina's gelezen.]");
+    return gelezen.join('\n\n').trim();
   }
   function wireDrop(zoneId, inputId, onFile) {
     var zone = $(zoneId), input = $(inputId);
@@ -461,8 +483,8 @@
   wireDrop('lt-pdf-drop', 'lt-pdf-file', async function (file) {
     status('PDF lezen…');
     try {
-      var tekst = await readPdf(file);
-      if (tekst.replace(/\s/g, '').length < 30) throw new Error('Deze PDF bevat geen leesbare tekst (gescand?). Gebruik een schermafdruk.');
+      var tekst = await readPdf(file, 'dossier');
+      if (tekst.replace(/\s/g, '').length < 30) throw new Error('In deze PDF staat geen leesbare tekst. Probeer een schermafdruk.');
       var erbij = voegToe(parseSections(tekst), 'PDF ' + file.name);
       status('PDF gelezen (' + Math.round(tekst.length / 1000) + 'k tekens)' + (erbij ? ', toegevoegd aan het opgehaalde dossier.' : '.'));
     } catch (e) { status('PDF: ' + e.message, true); }
@@ -475,9 +497,71 @@
     if (!f) return;
     status('Vraag-PDF lezen…');
     try {
-      $('lt-vraag').value = await readPdf(f);
-      status('Vraag geladen uit ' + f.name + '. Controleer en verwijder wat niet nodig is.');
+      var tekst = await readPdf(f, 'vraag');
+      if (tekst.replace(/\s/g, '').length < 20) throw new Error('In deze PDF staat geen leesbare tekst. Probeer "uit schermafdruk".');
+      $('lt-vraag').value = tekst;
+      await ontleed();
     } catch (e) { status('PDF: ' + e.message, true); }
+  });
+
+  // ── The question in the request letter: extract it, then let the doctor confirm ──
+  var vc = null;   // the extracted question, waiting for "Klopt" or "Nee"
+
+  async function ontleed() {
+    var ruw = $('lt-vraag').value.trim();
+    if (ruw.length < 20) { status('Plak eerst de brief of de vragen.', true); return; }
+    status('Vraag uit de brief halen…');
+    try {
+      var resp = await api('/api/v1/letters/vraagstelling', { tekst: SVPrivacy.filter(ruw, filterOpts()) });
+      vc = await resp.json();
+    } catch (e) {
+      status(e.message + ' De tekst staat in het vak; pas hem zelf aan.', true);
+      return;
+    }
+    var namen = {};
+    Array.prototype.forEach.call($('lt-aanvrager').options, function (o) { namen[o.value] = o.textContent; });
+    $('lt-vc-instantie').textContent = [vc.instantie, namen[vc.aanvrager] && '(' + namen[vc.aanvrager] + ')'].filter(Boolean).join(' ');
+    $('lt-vc-doel').textContent = vc.doel ? 'Doel: ' + vc.doel : '';
+    var ol = $('lt-vc-vragen');
+    ol.textContent = '';
+    (vc.vragen.length ? vc.vragen : ['(Geen duidelijke vraag gevonden.)']).forEach(function (v) {
+      var li = document.createElement('li');
+      li.textContent = v.replace(/^\s*\d+[.)]\s*/, '');
+      ol.appendChild(li);
+    });
+    var kader = [vc.onderwerp && 'over: ' + vc.onderwerp, vc.periode && 'periode: ' + vc.periode].filter(Boolean);
+    $('lt-vc-kader').textContent = kader.length ? 'Afbakening in de brief, ' + kader.join(', ') + '.' : '';
+    var letop = [vc.let_op, vc.toestemming ? 'De brief noemt een machtiging of toestemming van de patiënt.' : ''].filter(Boolean).join(' ');
+    $('lt-vc-letop').textContent = letop;
+    $('lt-vc-letop').classList.toggle('hidden', !letop);
+    $('lt-vraag-check').classList.remove('hidden');
+    status('Controleer de vraag hieronder voordat je de brief laat schrijven.');
+    $('lt-vraag-check').scrollIntoView({ block: 'nearest' });
+  }
+
+  $('lt-vraag-ontleed').addEventListener('click', ontleed);
+  $('lt-vc-ja').addEventListener('click', function () {
+    if (!vc) return;
+    var regels = [];
+    if (vc.instantie) regels.push('Aanvrager: ' + vc.instantie);
+    if (vc.doel) regels.push('Doel: ' + vc.doel);
+    vc.vragen.forEach(function (v, i) { regels.push(/^\s*\d+[.)]/.test(v) ? v : (i + 1) + '. ' + v); });
+    $('lt-vraag').value = regels.join('\n');
+    if (vc.aanvrager && $('lt-aanvrager').querySelector('option[value="' + vc.aanvrager + '"]')) {
+      $('lt-aanvrager').value = vc.aanvrager;
+      $('lt-aanvrager').dispatchEvent(new Event('change'));
+    }
+    if (vc.onderwerp && !$('lt-onderwerp').value.trim()) $('lt-onderwerp').value = vc.onderwerp;
+    if (vc.periode && !$('lt-periode').value.trim()) $('lt-periode').value = vc.periode;
+    $('lt-vraag-check').classList.add('hidden');
+    vc = null;
+    status('Vraag overgenomen' + ($('lt-consent').checked ? '.' : '. Vink de toestemming aan en klik Schrijf.'));
+  });
+  $('lt-vc-nee').addEventListener('click', function () {
+    $('lt-vraag-check').classList.add('hidden');
+    vc = null;
+    status('Pas de vraag in het vak zelf aan.');
+    $('lt-vraag').focus();
   });
   $('lt-vraag-shot').addEventListener('click', async function () {
     var btn = this; btn.disabled = true; status('Klembord lezen…');
@@ -491,7 +575,7 @@
       if (!blob) throw new Error('Geen afbeelding op het klembord. Maak eerst een schermafdruk van de brief.');
       status('Schermafdruk lezen…');
       $('lt-vraag').value = await extractImage('vraag', await fileToImage(blob));
-      status('Vraag gelezen. Controleer de tekst.');
+      await ontleed();
     } catch (e) { status(e.message, true); } finally { btn.disabled = false; }
   });
 
@@ -532,6 +616,7 @@
     var extra = SVPrivacy.filter(kader.concat([$('lt-extra').value.trim()]).filter(Boolean).join(' '), filterOpts()).trim();
     var body = { kind: lt.kind, initialen: lt.initialen, dossier: dossier, extra: extra || null };
     if (lt.kind === 'informatiebrief') {
+      if (vc) { status('Bevestig eerst de vraag: "Klopt" of "Nee, ik pas het zelf aan".', true); $('lt-vraag-check').scrollIntoView({ block: 'nearest' }); return; }
       if (!$('lt-consent').checked) { status('Vink aan dat er een gerichte vraag en toestemming van de patiënt is.', true); return; }
       body.aanvrager = lt.aanvrager;
       body.vraag = SVPrivacy.filter($('lt-vraag').value, filterOpts()).trim() || null;
@@ -553,31 +638,98 @@
     var btn = this, label = btn.textContent;
     lt.busy = true; btn.disabled = true; btn.textContent = 'Bezig met schrijven…';
     status('');
-    var out = $('lt-out');
-    out.textContent = '';
     $('lt-output').classList.remove('hidden');
+    lt.laatsteBody = body;
+    lt.vorige = null;
+    $('lt-bij-terug').classList.add('hidden');
     try {
-      var resp = await api('/api/v1/letters/generate', body);
-      var reader = resp.body.getReader(), dec = new TextDecoder();
-      for (;;) {
-        var chunk = await reader.read();
-        if (chunk.done) break;
-        out.textContent += dec.decode(chunk.value, { stream: true });
-        out.scrollTop = out.scrollHeight;
-      }
-      // Plain text for Bricks and mail; then say what is still open.
-      out.textContent = SVBrief.schoon(out.textContent);
-      lt.concept = { soort: body.kind, tekst: out.textContent };
-      var open = SVBrief.openPlekken(out.textContent).filter(function (x) { return !/^\[Naam huisarts\]$/i.test(x); });
-      status(open.length
-        ? 'Concept klaar. Nog invullen: ' + open.join(' · ') + '. Controleer de brief voordat je hem verstuurt.'
-        : 'Concept klaar. Controleer de brief voordat je hem verstuurt.', false);
+      await schrijf('/api/v1/letters/generate', body);
+      lt.concept = { soort: body.kind, tekst: $('lt-out').textContent };
     } catch (e) {
-      if (!out.textContent) $('lt-output').classList.add('hidden');
+      if (!$('lt-out').textContent) $('lt-output').classList.add('hidden');
       status(e.message, true);
     } finally {
       lt.busy = false; btn.disabled = false; btn.textContent = label;
     }
+  });
+
+  // Stream a letter into the concept; then plain text, and say what is still open.
+  async function schrijf(pad, body) {
+    var out = $('lt-out');
+    out.textContent = '';
+    var resp = await api(pad, body);
+    var reader = resp.body.getReader(), dec = new TextDecoder();
+    for (;;) {
+      var chunk = await reader.read();
+      if (chunk.done) break;
+      out.textContent += dec.decode(chunk.value, { stream: true });
+      out.scrollTop = out.scrollHeight;
+    }
+    out.textContent = SVBrief.schoon(out.textContent);
+    toonBijlagen(out.textContent);
+    var open = SVBrief.openPlekken(out.textContent).filter(function (x) { return !/^\[Naam huisarts\]$/i.test(x); });
+    status(open.length
+      ? 'Concept klaar. Nog invullen: ' + open.join(' · ') + '. Controleer de brief voordat je hem verstuurt.'
+      : 'Concept klaar. Controleer de brief voordat je hem verstuurt.', false);
+  }
+
+  // The specialist letters the letter refers to: a checklist to print and enclose.
+  function toonBijlagen(tekst) {
+    var lijst = SVBrief.bijlagen(tekst);
+    var ul = $('lt-bijlagen-lijst');
+    ul.textContent = '';
+    lijst.forEach(function (b) {
+      var li = document.createElement('li');
+      var lab = document.createElement('label');
+      lab.className = 'lt-check';
+      var cb = document.createElement('input');
+      cb.type = 'checkbox';
+      lab.append(cb, ' ' + b);
+      li.appendChild(lab);
+      ul.appendChild(li);
+    });
+    $('lt-bijlagen').classList.toggle('hidden', !lijst.length);
+  }
+
+  // ── Bijsturen: the doctor says what should change, the letter is rewritten ──
+  async function bijsturen(opdracht) {
+    opdracht = String(opdracht || '').trim();
+    if (lt.busy || !lt.laatsteBody) return;
+    if (opdracht.length < 2) { status('Schrijf wat er anders moet, of kies een knop.', true); $('lt-bij-opdracht').focus(); return; }
+    var huidig = $('lt-out').innerText.trim();
+    if (huidig.length < 10) return;
+    lt.busy = true;
+    $('lt-bij-go').disabled = true;
+    lt.vorige = huidig;
+    status('Bijsturen: ' + opdracht);
+    try {
+      await schrijf('/api/v1/letters/bijsturen', Object.assign({}, lt.laatsteBody, {
+        brief: huidig, opdracht: SVPrivacy.filter(opdracht, filterOpts()),
+      }));
+      $('lt-bij-opdracht').value = '';
+      $('lt-bij-terug').classList.remove('hidden');
+    } catch (e) {
+      $('lt-out').textContent = lt.vorige;
+      status(e.message, true);
+    } finally {
+      lt.busy = false;
+      $('lt-bij-go').disabled = false;
+    }
+  }
+  $('lt-bij-go').addEventListener('click', function () { bijsturen($('lt-bij-opdracht').value); });
+  $('lt-bij-opdracht').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); bijsturen(this.value); }
+  });
+  $('lt-bij-chips').querySelectorAll('.chip').forEach(function (c) {
+    c.addEventListener('click', function () { bijsturen(c.dataset.opdracht); });
+  });
+  $('lt-bij-terug').addEventListener('click', function () {
+    if (lt.vorige === null) return;
+    $('lt-out').textContent = lt.vorige;
+    toonBijlagen(lt.vorige);
+    lt.vorige = null;
+    this.classList.add('hidden');
+    status('Vorige versie teruggezet.');
   });
 
   // The letter as the doctor sends it: learn from what was changed, once per concept.
@@ -603,7 +755,13 @@
     lt.concept = null;
     $('lt-output').classList.add('hidden');
     $('lt-out').textContent = '';
-    ['lt-vraag', 'lt-reden', 'lt-extra', 'lt-onderwerp', 'lt-periode', 'lt-verkl-vraag'].forEach(function (id) { $(id).value = ''; });
+    ['lt-vraag', 'lt-reden', 'lt-extra', 'lt-onderwerp', 'lt-periode', 'lt-verkl-vraag', 'lt-bij-opdracht'].forEach(function (id) { $(id).value = ''; });
+    $('lt-vraag-check').classList.add('hidden');
+    $('lt-bijlagen').classList.add('hidden');
+    vc = null;
+    lt.laatsteBody = null;
+    lt.vorige = null;
+    $('lt-bij-terug').classList.add('hidden');
     $('lt-consent').checked = false;
     $('lt-verkl-ok').checked = false;
     status('');

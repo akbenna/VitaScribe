@@ -141,3 +141,16 @@
 .ec-veld-stappen { margin: 0; padding-left: 18px; font-size: 12px; }
 .ec-veld button { align-self: flex-start; }
 #ec-veld-info { margin: 0; }
+
+/* Vraagstelling bevestigen */
+.lt-vraag-check { border: 1px solid #93c5fd; background: #eff6ff; border-radius: 8px; padding: 8px 10px; display: flex; flex-direction: column; gap: 4px; }
+.lt-vc-kop, .lt-vc-doel { margin: 0; font-size: 13px; }
+.lt-vc-kop span, .lt-vc-doel { color: var(--muted); }
+.lt-vc-vragen { margin: 2px 0; padding-left: 20px; font-size: 13px; }
+.lt-vc-vragen li { margin: 2px 0; }
+/* Bijsturen */
+.lt-bijsturen { display: flex; flex-direction: column; gap: 6px; border-top: 1px dashed var(--border); padding-top: 8px; }
+.lt-bij-rij { display: flex; gap: 6px; }
+.lt-bij-rij .lt-input { flex: 1; min-width: 0; }
+.lt-bijlagen { border: 1px solid #fcd34d; background: #fffbeb; border-radius: 8px; padding: 8px 10px; display: flex; flex-direction: column; gap: 4px; }
+.lt-bijlagen-lijst { list-style: none; margin: 0; padding: 0; font-size: 13px; }
