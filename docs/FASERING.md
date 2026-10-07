@@ -114,9 +114,10 @@ Komt erbij, bovenop fase 1:
   - Rekening houden met de nieuwe richtlijn productaansprakelijkheid.
 - **Organisatie.** Support, een incident- en datalekprocedure richting meerdere
   verwerkingsverantwoordelijken, en releasebeheer.
-- **Hosting.** Railway kan, binnen het Data Privacy Framework. Een Europese
-  host maakt het verhaal tegenover praktijken eenvoudiger. Met een eigen
-  domeinnaam is een verhuizing klein werk.
+- **Hosting.** Echte consulten lopen via een server bij een Europese host
+  (stuk 14, stap 4): de DPA van Railway dekt geen gezondheidsgegevens
+  (antwoord van 5 oktober 2026). Railway blijft voor gespeelde consulten. Met
+  een eigen domeinnaam is een verhuizing klein werk.
 - Daarna: `VITASCRIBE_FASE=extern` en openbaar maken in de winkel.
 
 ## Dossier

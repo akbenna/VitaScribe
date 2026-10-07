@@ -1,14 +1,14 @@
 # Railway Corp. (hosting: VitaScribe-server, ConsultSpiegel, ProVita SciencePulse-pipeline)
 
-Stand 7 oktober 2026. Bronnen: `docs/fase2/LEVERANCIERS-EN-VERWERKERS.md` (Bricks Companion, 5 oktober 2026), `docs/dossier/05-subverwerkers.md` (VitaScribe, 5 oktober 2026), `docs/AUDIT-EU-MODUS.md` (VitaScribe). De site van Railway was vanuit deze omgeving niet bereikbaar; wat hieronder over de DPA-tekst staat komt uit de eigen samenvatting in de Bricks-repo en moet tegen de getekende envelop worden nagelezen.
+Stand 7 oktober 2026. Bronnen: de getekende DPA zelf (nagelezen op 7 oktober 2026), het antwoord van Railway Support van 5 oktober 2026 (beide in `bewijs/railway-dpa-2026-10-05.md`), `docs/dossier/05-subverwerkers.md` en `docs/AUDIT-EU-MODUS.md` (VitaScribe).
 
 ## Wat vastligt
 
-- Verwerkersovereenkomst getekend op 5 oktober 2026 (DocuSign-envelop 15F6A42D-5BA0-8848-82F5-EDC780AD0A6F), op naam van ProVita. Railway is verwerker, de praktijk of ProVita verwerkingsverantwoordelijke.
+- Verwerkersovereenkomst getekend op 5 oktober 2026 (DocuSign-envelop 15F6A42D-5BA0-8848-82F5-EDC780AD0A6F). Exporteur in bijlage B: "A. Bennaghmouch h.o.d.n. ProVitaCare". Railway is verwerker; wie verwerkingsverantwoordelijke is, hangt af van besluit 1.
 - Railway is actief in het EU-US Data Privacy Framework; subsidiair SCC's (DPA art. 9.6). SOC 2 Type II.
 - Infrastructuur: Google Cloud. Subverwerkers op trust.railway.com, wijzigingen 10 dagen vooraf.
 - Regio van de projecten: Europa-West (europe-west4, Nederland) voor VitaScribe en ConsultSpiegel volgens de audit; de regio staat nergens in code of configuratie en moet in het Railway-dashboard per project worden vastgelegd met een schermafdruk.
-- Bijlage A van de DPA vermeldt bij bijzondere categorieën "None". De Bricks-repo concludeerde daaruit: geen gezondheidsgegevens via Railway, ook niet gepseudonimiseerd.
+- Bijlage A van de DPA vermeldt bij bijzondere categorieën "None", en als betrokkenen alleen klanten en hun medewerkers. Art. 3 verbiedt gegevens die niet bij de dienst passen en legt dat risico, met vrijwaring, bij de klant. Art. 9.1 zegt dat de verwerking primair in de VS plaatsvindt.
 
 ## Antwoord van Railway (5 oktober 2026)
 
