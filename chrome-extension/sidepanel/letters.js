@@ -667,10 +667,25 @@
     }
     out.textContent = SVBrief.schoon(out.textContent);
     toonBijlagen(out.textContent);
+    toonVragencheck(out.textContent);
     var open = SVBrief.openPlekken(out.textContent).filter(function (x) { return !/^\[Naam huisarts\]$/i.test(x); });
     status(open.length
       ? 'Concept klaar. Nog invullen: ' + open.join(' · ') + '. Controleer de brief voordat je hem verstuurt.'
       : 'Concept klaar. Controleer de brief voordat je hem verstuurt.', false);
+  }
+
+  // Question-focused letters: is every question of the requester answered?
+  function toonVragencheck(tekst) {
+    var el = $('lt-vragencheck');
+    var vraag = lt.laatsteBody && lt.laatsteBody.kind === 'informatiebrief' ? (lt.laatsteBody.vraag || '') : '';
+    var c = vraag ? SVBrief.vragenCheck(vraag, tekst) : { gevraagd: [] };
+    el.classList.toggle('hidden', !c.gevraagd.length);
+    if (!c.gevraagd.length) return;
+    var goed = !c.ontbreekt.length;
+    el.classList.toggle('fout', !goed);
+    el.textContent = goed
+      ? '✓ Alle ' + c.gevraagd.length + ' vragen staan in de brief, elk met een antwoord.'
+      : '⚠ Niet gevonden in de brief: vraag ' + c.ontbreekt.join(', ') + '. Stuur bij ("beantwoord ook vraag ' + c.ontbreekt[0] + '") of vul aan.';
   }
 
   // The specialist letters the letter refers to: a checklist to print and enclose.
@@ -727,6 +742,7 @@
     if (lt.vorige === null) return;
     $('lt-out').textContent = lt.vorige;
     toonBijlagen(lt.vorige);
+    toonVragencheck(lt.vorige);
     lt.vorige = null;
     this.classList.add('hidden');
     status('Vorige versie teruggezet.');
@@ -758,6 +774,7 @@
     ['lt-vraag', 'lt-reden', 'lt-extra', 'lt-onderwerp', 'lt-periode', 'lt-verkl-vraag', 'lt-bij-opdracht'].forEach(function (id) { $(id).value = ''; });
     $('lt-vraag-check').classList.add('hidden');
     $('lt-bijlagen').classList.add('hidden');
+    $('lt-vragencheck').classList.add('hidden');
     vc = null;
     lt.laatsteBody = null;
     lt.vorige = null;

@@ -51,6 +51,26 @@ var SVBrief = (function () {
     return uit;
   }
 
-  return { bijlagen: bijlagen, schoon: schoon, openPlekken: openPlekken, journaalGenoeg: journaalGenoeg, MIN_JOURNAAL: MIN_JOURNAAL };
+  /** Which questions were asked (numbers in the request) and which the letter
+   *  answers ("Vraag N:"). Without numbering, every line ending in "?" counts. */
+  function vragenCheck(vraagTekst, brief) {
+    var regels = String(vraagTekst || '').split('\n').map(function (r) { return r.trim(); }).filter(Boolean);
+    var gevraagd = [];
+    regels.forEach(function (r) {
+      var m = r.match(/^(?:vraag\s*)?(\d{1,2})\s*[.):]/i);
+      if (m && gevraagd.indexOf(+m[1]) === -1) gevraagd.push(+m[1]);
+    });
+    if (!gevraagd.length) {
+      var n = regels.filter(function (r) { return /\?\s*$/.test(r); }).length;
+      for (var i = 1; i <= n; i++) gevraagd.push(i);
+    }
+    var beantwoord = [];
+    var re = /^\s*vraag\s*(\d{1,2})\s*[:.)]/gim, m2;
+    while ((m2 = re.exec(String(brief || '')))) if (beantwoord.indexOf(+m2[1]) === -1) beantwoord.push(+m2[1]);
+    return { gevraagd: gevraagd, beantwoord: beantwoord,
+      ontbreekt: gevraagd.filter(function (n) { return beantwoord.indexOf(n) === -1; }) };
+  }
+
+  return { vragenCheck: vragenCheck, bijlagen: bijlagen, schoon: schoon, openPlekken: openPlekken, journaalGenoeg: journaalGenoeg, MIN_JOURNAAL: MIN_JOURNAAL };
 })();
 if (typeof module !== 'undefined') module.exports = SVBrief;

@@ -27,3 +27,11 @@ test('bijlagen onder de brief', () => {
   assert.deepStrictEqual(SVBrief.bijlagen(t), ['Cardioloog VieCuri, 12-03-2026, polikliniekbrief', 'MDL-arts, 02-05-2026, scopie-uitslag']);
   assert.deepStrictEqual(SVBrief.bijlagen('Geachte collega,\nGeen bijlagen hier.'), []);
 });
+
+test('vraaggericht: welke vragen zijn beantwoord', () => {
+  const vraag = 'Aanvrager: UWV\n1. Welke diagnose?\n2. Welke behandeling?\n3. Wat is de prognose?';
+  const brief = 'Geachte collega,\n\nVraag 1: Welke diagnose?\nAntwoord: lumbago.\n\nVraag 2: Welke behandeling?\nAntwoord: fysiotherapie.';
+  assert.deepStrictEqual(SVBrief.vragenCheck(vraag, brief), { gevraagd: [1, 2, 3], beantwoord: [1, 2], ontbreekt: [3] });
+  // Without numbering: lines ending in a question mark.
+  assert.deepStrictEqual(SVBrief.vragenCheck('Kunt u de diagnose geven?\nEn de medicatie?', 'Vraag 1: x\nAntwoord: y\nVraag 2: z\nAntwoord: w').ontbreekt, []);
+});

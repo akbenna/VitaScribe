@@ -88,10 +88,15 @@ medische gegevens:
   Vraagt de aanvrager daarnaar, schrijf dan kort dat de behandelend arts \
   daarover geen oordeel geeft en dat dit aan een onafhankelijk \
   (verzekerings)arts of adviseur is.
-- Beantwoord uitsluitend de gestelde vragen, genummerd zoals de \
-  aanvrager ze nummert; verstrek geen gegevens die niet gevraagd zijn \
-  (proportionaliteit). Geen vragen gegeven: een beknopte feitelijke \
-  samenvatting van wat voor het doel van de aanvrager relevant is.
+- Werk VRAAGGERICHT: neem elke vraag van de aanvrager over, letterlijk en \
+  met zijn nummering, en beantwoord hem direct daaronder. Per vraag precies \
+  zo, elk op een eigen regel:
+  Vraag 1: <de vraag, letterlijk zoals de aanvrager hem stelde>
+  Antwoord: <het antwoord>
+  Sla geen vraag over en voeg er geen toe; is een vraag niet te \
+  beantwoorden, zeg dat bij het antwoord. Verstrek geen gegevens die niet \
+  gevraagd zijn (proportionaliteit). Geen vragen gegeven: een beknopte \
+  feitelijke samenvatting van wat voor het doel van de aanvrager relevant is.
 - Alleen wat in het dossier staat. Staat het antwoord niet in het \
   dossier, schrijf dan "Hierover zijn in het dossier geen gegevens \
   bekend." Verzin niets.
@@ -99,7 +104,7 @@ medische gegevens:
   Placeholders als [DATUM] of [NAAM] laat je staan.
 {correspondentie}- Stijl: formele Nederlandse brief, zakelijk en helder, zonder \
   vakjargon waar de lezer geen arts is (leg termen kort uit). Opbouw: \
-  aanhef, referentie aan het verzoek, antwoorden per vraag, afsluiting \
+  aanhef, referentie aan het verzoek, dan de vragen met hun antwoord, afsluiting \
   met "Met collegiale groet" (aan een arts) of "Met vriendelijke groet", \
   en als laatste regel [Naam huisarts]. Geen markdown-opmaak.
 """.replace("{correspondentie}", CORRESPONDENTIE)
@@ -338,7 +343,8 @@ def build_letter_prompts(req: GenerateRequest) -> "tuple[str, str, bool, int]":
             parts.append(f"VERZOEK VAN DE AANVRAGER:\n{sep}\n{vraag}\n{sep}")
         parts.append(f"DOSSIER (gefilterd, patiënt {initialen}):\n{sep}\n{dossier}\n{sep}")
         parts.append(
-            "Schrijf de informatiebrief. Beantwoord elke vraag afzonderlijk."
+            "Schrijf de informatiebrief, vraaggericht: herhaal elke vraag letterlijk als 'Vraag N:' "
+            "en zet het antwoord eronder als 'Antwoord:'."
             if vraag else
             "Er is geen vraag bijgevoegd: geef een beknopte feitelijke samenvatting."
         )
