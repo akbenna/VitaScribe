@@ -130,7 +130,7 @@ function check(name, cond, extra) {
         patient: 'In uw urine zit een bacterie. U krijgt een kuur.', brief: null, let_op: '',
         lab: { bevindingen: [{ bepaling: 'E. coli', waarde: '>100.000 CFU/mL', richting: 'afwijkend', duiding: 'urineweginfectie' }],
           oordeel: 'afwijkend', beleid: 'Fosfomycine 3 g eenmalig.', vergelijking: '' } } : {
-        cds: body.cds, soort: 'lab',
+        cds: body.cds, soort: 'lab', antwoord: body.vraag ? 'gammaGT 330 is hoger dan de vorige 120 in beeld.' : '',
         samenvatting: 'DM-lab: gammaGT 330 en ALAT 64 verhoogd, nierfunctie goed; correleren aan vorige waarden via aanvrager.',
         patient: 'Uw bloeduitslag is binnen. Twee leverwaarden zijn wat verhoogd; de huisarts kijkt dit na.',
         brief: null, let_op: '',
@@ -494,8 +494,20 @@ function check(name, cond, extra) {
   check('medicatieprofiel dat twee keer in beeld staat gaat één keer mee', (t3.match(/MIDDEL-17 /g) || []).length === 1, (t3.match(/MIDDEL-17 /g) || []).length);
   check('andere patiënt: geen eerdere vragen als context', d3 && d3.body.eerder.length === 0);
   check('initialen van de juiste patiënt', /Ingelezen \(A\.M\.\)/.test(await panel.textContent('#dv-bron')), await panel.textContent('#dv-bron'));
-  check('antwoord met aanwijzingen gemarkeerd als "Alleen aanwijzingen"', (await panel.textContent('.dv-item:first-child .dv-zeker')) === 'Alleen aanwijzingen'
-    && (await panel.getAttribute('.dv-item:first-child', 'class')).includes('indirect'));
+  // Thinking along about what is in view: the same assessment as Post, with the typed question as focus.
+  await panel.fill('#dv-input', 'Is de gammaGT gestegen?');
+  await panel.click('#dv-meedenken');
+  await sleep(1500);
+  const mdv = sent.filter((x) => x.url.endsWith('/post/beoordeel')).pop();
+  check('meedenken: wat in beeld is, als scherm, met de vraag als focus en zonder naam',
+    mdv && mdv.body.bron === 'scherm' && mdv.body.vraag === 'Is de gammaGT gestegen?' && !/Amer|Moulay|03-06-1941/.test(mdv.body.tekst)
+    && /blaasspoeling/.test(mdv.body.tekst), mdv && { bron: mdv.body.bron, vraag: mdv.body.vraag });
+  const mdTekst = await panel.textContent('.dv-item.dv-md');
+  check('meedenken: antwoord, waarden met pijl, oordeel en kopieerknoppen', mdTekst.includes('hoger dan de vorige') &&
+    mdTekst.includes('↑ gammaGT 330 U/L') && mdTekst.includes('Via aanvrager') &&
+    (await panel.$$('.dv-item.dv-md .dv-acties button')).length === 2 && (await panel.inputValue('#dv-input')) === '', mdTekst.slice(0, 300));
+  check('antwoord met aanwijzingen gemarkeerd als "Alleen aanwijzingen"', (await panel.textContent('.dv-item:nth-child(2) .dv-zeker')) === 'Alleen aanwijzingen'
+    && (await panel.getAttribute('.dv-item:nth-child(2)', 'class')).includes('indirect'));
 
   console.log('Advies bij een gevoelig dossier');
   check('gewoon dossier (dementie, incontinentie): geen advies', await panel.isHidden('#gevoelig-advies'));
@@ -609,7 +621,8 @@ function check(name, cond, extra) {
   await page.goto('https://test.bfrcloud.com/post');
   await sleep(500);
   await panel.bringToFront();
-  const postReqs = () => sent.filter((x) => x.url.endsWith('/post/beoordeel'));
+  // Only the Post tab's own requests (not the dossiervraag's "denk mee", bron: scherm).
+  const postReqs = () => sent.filter((x) => x.url.endsWith('/post/beoordeel') && x.body.bron !== 'scherm');
   await panel.click('.view-tab[data-view="post"]');
   check('vierde tabblad Post, met de dossiervraag eronder', await panel.isVisible('#view-post') && await panel.isVisible('#dv-input'));
   await sleep(5500);

@@ -134,3 +134,33 @@ def test_schema_is_strikt():
         if s.get("type") == "array":
             controleer(s["items"])
     controleer(post.SCHEMA)
+
+
+# ── Meedenken over wat in beeld is (dossiervraagbalk) ──
+
+def test_scherm_met_vraag(api):
+    seen = []
+    antwoord = dict(ANTWOORD, antwoord="gammaGT en ALAT verhoogd; eerdere waarden in beeld lagen lager.")
+    with patch.object(post.llm_service, "complete", fake_complete(antwoord, seen)):
+        r = api.post("/api/v1/post/beoordeel", headers=H, json={
+            "tekst": LAB, "cds": True, "bron": "scherm", "vraag": "Is dit gestegen sinds vorig jaar?"})
+    assert r.status_code == 200, r.text
+    d = r.json()
+    assert d["antwoord"].startswith("gammaGT en ALAT verhoogd")
+    assert "BRON: geen los postbericht" in seen[0]["system"] and "VRAAG VAN DE ARTS" in seen[0]["system"]
+    assert "VRAAG VAN DE ARTS: Is dit gestegen sinds vorig jaar?" in seen[0]["user"]
+    assert "SCHERM (in beeld in Bricks):" in seen[0]["user"] and "Gorris" not in seen[0]["user"]
+    assert "antwoord" in seen[0]["schema"]["required"]
+
+
+def test_zonder_vraag_geen_antwoord_en_zonder_cds_feitelijk(api, monkeypatch):
+    seen = []
+    antwoord = dict(ANTWOORD, antwoord="iets wat niet gevraagd is")
+    with patch.object(post.llm_service, "complete", fake_complete(antwoord, seen)):
+        d = api.post("/api/v1/post/beoordeel", headers=H, json={"tekst": LAB, "cds": True}).json()
+    assert d["antwoord"] == "" and "BERICHT:" in seen[0]["user"] and "BRON: geen los" not in seen[0]["system"]
+    monkeypatch.setenv("CLINICAL_DECISION_SUPPORT", "false")
+    with patch.object(post.llm_service, "complete", fake_complete(antwoord, seen)):
+        api.post("/api/v1/post/beoordeel", headers=H, json={"tekst": LAB, "cds": True, "bron": "scherm", "vraag": "Wat moet ik doen?"})
+    assert "klinische ondersteuning op deze server uit staat" in seen[-1]["system"]
+    assert api.post("/api/v1/post/beoordeel", headers=H, json={"tekst": LAB, "bron": "elders"}).status_code == 422
