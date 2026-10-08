@@ -131,11 +131,14 @@ niveaus, vast te leggen in het compliance-spoor en daarna in `data_policy.py`:
 | EU | EU- of adequaat bedrijf, verwerking in de EER of adequaat land, DPA staat gezondheidsgegevens toe | Mistral (met ZDR), Voxtral, Gladia, Speechmatics |
 | EU-regio | verwerking in de EER, Amerikaanse moeder | Bedrock Frankfurt, Azure EU |
 
-De EU-modus staat dan alleen niveau "EU" en hoger toe. Bij Mistral moet nog
-worden nagevraagd welke subverwerkers het ZDR-verkeer via `api.mistral.ai`
-werkelijk raken. Is dat Google of CoreWeave, dan hoort dat in het register en
-de DPIA, en is het eerlijke woord voor de EU-modus "Europese aanbieders",
-niet "geen Amerikaanse partijen".
+De EU-modus staat dan alleen niveau "EU" en hoger toe. Mistral heeft op
+7 oktober bevestigd welke subverwerkers het verkeer raken: voor het EU-endpoint
+`api.eu.mistral.ai` zijn dat Azure (Noorwegen, Zweden), Google Cloud
+(Nederland) en CoreWeave (Spanje), met Cloudflare (VS) voor metadata zonder
+inhoud (`docs/wetgeving/leveranciers/mistral.md`). Die horen in het register en
+de DPIA, en het eerlijke woord voor de EU-modus is "Europese aanbieders",
+niet "geen Amerikaanse partijen". De code roept nu `api.mistral.ai` aan; het
+voorstel is het EU-endpoint als instelling, na een proef met de sleutel.
 
 ## 4. Kostprijs per functie
 
@@ -289,8 +292,8 @@ jaar.
 | Wanneer | Wat | Wie |
 |---|---|---|
 | Nu | Intended Use-document (stuk 01 aanscherpen) en de pakketgrens langs de MDR | compliance-spoor, daarna instellingen in VitaScribe |
-| Nu | Cyso: certificaat en DPA opvragen; bij ja, de EU-server daar | praktijkhouder |
-| Nu | Mistral: welke subverwerkers het ZDR-verkeer raken | praktijkhouder (vervolgmail) |
+| Nu | Cyso: certificaat en DPA opvragen (mail opgesteld op 8 oktober); bij ja, de EU-server daar | praktijkhouder |
+| Nu | Mistral: EU-endpoint `api.eu.mistral.ai` beproeven en als instelling invoeren (subverwerkers zijn bevestigd op 7 oktober) | VitaScribe, na besluit |
 | Nu | Besluit 1: op welke rechtspersoon contracten en certificaat komen | praktijkhouder, accountant |
 | Fase 1 | ISMS opzetten en NEN 7510:2024 + ISO 27001 aanvragen bij Kiwa, Brand Compliance of DigiTrust; begeleiding licht houden (Ateron of een pakket voor kleine bedrijven, met de gratis NEN-compliancetool) | praktijkhouder |
 | Fase 1 | Trust Centre, subverwerkerslijst, BoZ-model, model-DPIA | compliance-spoor |

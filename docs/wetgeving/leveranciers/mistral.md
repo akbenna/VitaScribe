@@ -12,18 +12,21 @@ Status per 7 oktober 2026. Bron: supportticket #37361256, antwoord van Anna (Mis
 | 3. Verwerking binnen EU/EER | Standaard binnen de EER, tenzij het Amerikaanse endpoint expliciet wordt aangeroepen. Mistral kan niet bevestigen dat nooit gegevens buiten de EER worden verwerkt: sommige subverwerkers verwerken bepaalde gegevens vanuit derde landen, met passende waarborgen (SCC's). | Geen volledige EER-garantie. Dit is een restrisico in de DPIA en een reden om de pseudonimisering vóór verzending te houden waar dat kan. De lijst met subverwerkers is niet meegestuurd: zelf ophalen uit het Trust Center en als bijlage opnemen. |
 | 4. Geen training op API-data | Bevestigd. In de Admin console staan training op API-aanroepen en Labs-modellen uit. | Afdoende. Schermafdruk van de console-instelling bij het dossier. |
 
-## Subverwerkers (gevonden 8 oktober 2026)
+## Subverwerkers en kloonstem (antwoord van Mistral, 7 oktober 2026)
 
-Het Trust Center van Mistral (`trust.mistral.ai/subprocessors`) noemt onder
-meer Microsoft (Zweden, Noorwegen), Google (Nederland, België; de VS alleen
-voor het Amerikaanse endpoint), CoreWeave (inferentie in de EER) en Mistral
-Compute (Frankrijk). Mistral is een Frans bedrijf, maar er zitten dus
-Amerikaanse moederbedrijven in de keten. Voor de CLOUD Act is dat hetzelfde
-punt als bij Azure en AWS. Te vragen: welke van deze subverwerkers het
-ZDR-verkeer via `api.mistral.ai` voor deze organisatie werkelijk raken.
-Gebruik daarom voor de EU-modus de woorden "Europese aanbieders", niet "geen
-Amerikaanse partijen". Zie `docs/bedrijf/BLAUWDRUK.md`, paragraaf 3, in de
-VitaScribe-repo.
+Op de vervolgvragen van 7 oktober antwoordde Anna (Mistral AI Support) dezelfde dag, ticket #37361256:
+
+- **Inferentie via het EU-endpoint (`api.eu.mistral.ai`)** voor `/v1/audio/transcriptions` en `/v1/chat/completions` loopt via Azure (Noorwegen, Zweden), Google Cloud (Nederland) en CoreWeave (Spanje). Alle drie hebben een Amerikaans moederbedrijf; de verwerking zelf is in de EER.
+- **Cloudflare (VS)** kan metadata zonder inhoud verwerken (request-ID's, tijdstempels) voor de routering, onder SCC's (module 4).
+- **Doorgifte voor onderhoud.** De DPA staat toe dat subverwerkers buiten de EER "marginally" op afstand bij gegevens kunnen voor onderhoud of beheer.
+- **Kloonstem.** `/v1/audio/voices` valt buiten ZDR en volgt de standaardtermijn, "typically 30 days" voor misbruikmonitoring. Verwijderen kan met `DELETE /v1/audio/voices/{voice_id}` of in de console.
+- **DPA-versie.** De DPA zit in de Commercial Terms of Service; de versies en data staan onder de knop "versions" bij de DPA op `legal.mistral.ai`.
+
+Wat dat betekent:
+
+1. **Het endpoint in de code.** VitaScribe roept `api.mistral.ai` aan, niet het EU-endpoint dat Mistral noemt. Mistral zei op 6 oktober dat de producten standaard in de EER draaien zolang het Amerikaanse endpoint niet wordt aangeroepen, maar de subverwerkers zijn alleen voor `api.eu.mistral.ai` opgegeven. Besluit voor het compliance-spoor: de code op het EU-endpoint zetten, als instelling, na een proef met de sleutel (spraak, tekst, voorlezen en stemmen).
+2. **Woorden.** De EU-modus gebruikt Europese aanbieders, maar niet zonder Amerikaanse partijen in de keten. Register en DPIA noemen Azure, Google, CoreWeave en Cloudflare bij naam, met de doorgiftegrond.
+3. **Kloonstem.** Blijft uit, tot de code de stem na gebruik zelf verwijdert met het DELETE-verzoek. Ook dan ligt de stem tot dat moment bij Mistral, buiten ZDR, en hoort hij met toestemming van de collega in het register.
 
 ## Nog open bij Mistral
 
