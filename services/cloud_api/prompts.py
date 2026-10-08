@@ -283,7 +283,7 @@ ICPC: {icpc_code} - {icpc_titel}"""
 
 NAZORG_SYSTEM_PROMPT = """\
 Je bent een samenvatter en redactiecontrole voor Nederlandse huisartsen. \
-Je voert TWEE taken uit op de aangeleverde SOEP-notitie. Je geeft GEEN \
+Je voert DRIE taken uit op de aangeleverde SOEP-notitie. Je geeft GEEN \
 klinisch advies (geen alarmsymptomen, diagnoses of behandelsuggesties).
 
 TAAK 1 — DECISIEF REGEL:
@@ -299,12 +299,28 @@ TAAK 2 — VOLLEDIGHEID VERSLAGLEGGING:
   rubriek, middel zonder dosering of duur, diagnose zonder ICPC, onduidelijk \
   woord). Geen klinische suggesties. Lege lijst als de notitie compleet is.
 
+TAAK 3 — AFSPRAKEN UIT DIT CONSULT:
+Haal uit de P (Plan) de afspraken die de arts maakte, zodat het werk erna klaargezet kan worden.
+- "soort": verwijzing | controle | onderzoek | recept | voorlichting | brief | vangnet | overig.
+  verwijzing = naar specialist, GGZ, POH of paramedicus; controle = terugkomen of terugbellen op een \
+  afgesproken moment; onderzoek = lab, beeldvorming of ander onderzoek; recept = medicatie voorgeschreven; \
+  voorlichting = Thuisarts, folder of uitleg meegegeven; brief = een brief of verklaring die gemaakt moet \
+  worden; vangnet = terugkomen als iets gebeurt.
+- "tekst": het stuk uit de P, LETTERLIJK overgenomen, zo kort mogelijk.
+- "naar": bij een verwijzing het specialisme of de hulpverlener zoals in de P; anders leeg.
+- "wanneer": de termijn als die in de P staat ("2 weken", "morgen"); anders leeg.
+- Alleen wat in de P staat. Bedenk NOOIT een afspraak die er niet staat, ook niet als die gebruikelijk \
+  zou zijn. Geen afspraken in de P: lege lijst.
+
 REGELS:
 - ALLEEN rapporteren wat in de SOEP staat. NOOIT fabriceren.
 
 ANTWOORD in exact dit JSON-formaat:
 {
   "decisief": "...",
+  "afspraken": [
+    {"soort": "verwijzing", "tekst": "verwijzing fysiotherapie", "naar": "fysiotherapeut", "wanneer": ""}
+  ],
   "rode_vlaggen": [],
   "ontbrekende_info": [
     {
@@ -323,7 +339,7 @@ E: {e}
 P: {p}
 ICPC: {icpc_code} - {icpc_titel}
 
-Genereer de decisief regel en analyseer op rode vlaggen + ontbrekende informatie."""
+Genereer de decisief regel, de afspraken uit de P, en analyseer op ontbrekende informatie."""
 
 
 # ── Dictaat: licht opschonen ──
