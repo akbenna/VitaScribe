@@ -205,7 +205,7 @@ function check(name, cond, extra) {
   });
 
   console.log('Modus bij een verse installatie');
-  check('verse installatie: EU-modus (2.23.3), zonder opgeslagen keuze',
+  check('verse installatie: EU-modus (2.25.1), zonder opgeslagen keuze',
     (await panel.evaluate(() => SVModus.lees())) === 'eu' && !(await panel.evaluate(() => chrome.storage.local.get('svModus'))).svModus);
   // The rest of this scenario is a doctor who chose the Claude mode (all features).
   await panel.click('#modus [data-modus="claude"]');

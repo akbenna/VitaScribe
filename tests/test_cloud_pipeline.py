@@ -278,6 +278,12 @@ async def test_pipeline_keeps_parts_and_decisief_covers_all():
     nazorg_prompt = complete_mock.await_args_list[1].kwargs["user_prompt"]
     assert "(1) virale faryngitis" in nazorg_prompt and "(2) depressieve klachten" in nazorg_prompt
     assert "R74, P03" in nazorg_prompt
+    # Sources per sentence, per part, without an extra call to the language model
+    assert complete_mock.await_count == 2
+    keel = [b for b in out["bronnen"] if b["probleem"] == 0 and b["veld"] == "s"]
+    assert keel and keel[0]["bronnen"][0]["tekst"] == "keelpijn en ook somber"
+    assert keel[0]["status"] == "deels" and keel[0]["ontbreekt"] == ["3d"]      # "3 days" was never said
+    assert any(b["probleem"] == 1 and "ggz" in b["ontbreekt"] for b in out["bronnen"])
 
 
 # ── Taal van het consult (upload) ──
@@ -387,3 +393,46 @@ async def test_eu_mode_fixed_check_marks_a_template_exam():
     teksten = {m["tekst"] for m in out["markeringen"]}
     assert {"Lasègue", "5/5", "400 mg"} <= teksten
     assert out["o"] == "Lasègue neg. Kracht re been 5/5."      # marked, not removed
+
+
+# ── Afspraken uit dit consult: alleen wat in de P staat ──
+
+def test_afspraken_alleen_wat_in_de_p_staat():
+    plan = "Verwijzing fysiotherapie. Controle over 2 weken. Paracetamol 1000 mg zo nodig. Terug bij koorts."
+    ruw = [
+        {"soort": "verwijzing", "tekst": "Verwijzing fysiotherapie", "naar": "fysiotherapeut", "wanneer": ""},
+        {"soort": "controle", "tekst": "Controle over 2 weken", "naar": "x", "wanneer": "2 weken"},
+        {"soort": "vangnet", "tekst": "Terug bij koorts", "wanneer": ""},
+        {"soort": "onderzoek", "tekst": "Bloedonderzoek CRP en BSE", "wanneer": ""},     # not in P: invented
+        {"soort": "raar", "tekst": "Paracetamol"},                                        # unknown kind
+        "geen dict",
+    ]
+    uit = pipeline.afspraken_uit(ruw, plan)
+    assert [a["soort"] for a in uit] == ["verwijzing", "controle", "vangnet"]
+    assert uit[0]["naar"] == "fysiotherapeut" and uit[1]["naar"] == ""          # "naar" only for a referral
+    assert uit[1]["wanneer"] == "2 weken"
+    assert pipeline.afspraken_uit(None, plan) == [] and pipeline.afspraken_uit(ruw, "") == []
+    many = [{"soort": "overig", "tekst": "Paracetamol"}] * 20
+    assert len(pipeline.afspraken_uit(many, plan)) == pipeline.MAX_AFSPRAKEN
+
+
+@pytest.mark.asyncio
+async def test_pipeline_geeft_afspraken_mee_in_dezelfde_aanroep():
+    soep_json = json.dumps({"s": "keelpijn", "o": "keel rood", "e": "faryngitis", "p": "Verwijzing KNO-arts. Controle 1 week.",
+                            "icpc_code": "R74", "icpc_titel": "x"})
+    nazorg_json = json.dumps({"decisief": "Keelpijn", "rode_vlaggen": [], "ontbrekende_info": [],
+                              "afspraken": [{"soort": "verwijzing", "tekst": "Verwijzing KNO-arts", "naar": "KNO-arts", "wanneer": ""},
+                                            {"soort": "recept", "tekst": "Amoxicilline 3dd500mg", "wanneer": ""}]})
+    transcript = MagicMock(raw_text="keelpijn al lang " * 5, duration_secs=60.0, provider="deepgram")
+    complete_mock = AsyncMock(side_effect=[soep_json, nazorg_json])
+    tok = data_policy.zet_modus("claude")   # the eu mode adds its control pass; that is a separate call
+    try:
+        with patch.object(pipeline.llm_service, "complete", new=complete_mock), \
+             patch.object(pipeline.stt_service, "met_sprekers", return_value="keelpijn al lang " * 5), \
+             patch.object(pipeline, "correct_transcript_full", return_value=("keelpijn al lang " * 5, MagicMock(total_corrections=0))):
+            out = (await pipeline.verwerk_transcript(transcript)).to_dict()["soep"]
+    finally:
+        data_policy.herstel_modus(tok)
+    assert complete_mock.await_count == 2                                 # no extra call
+    assert out["afspraken"] == [{"soort": "verwijzing", "tekst": "Verwijzing KNO-arts", "naar": "KNO-arts", "wanneer": ""}]
+    assert "AFSPRAKEN" in complete_mock.await_args_list[1].kwargs["system_prompt"]

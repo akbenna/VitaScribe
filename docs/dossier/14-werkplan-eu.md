@@ -89,7 +89,7 @@ goedgekeurde modus gaan. In fase 2 is dat een eis van elke klantpraktijk.
 - De schakelaar in het paneel staat dan grijs, met de uitleg: "Je praktijk
   gebruikt alleen de EU-modus".
 
-**Gebouwd (versie 2.21.0). Sinds 2.23.3 (7 oktober 2026) is EU bovendien de standaardmodus van server en extensie, en staat het testgereedschap standaard uit, met een schakelaar in Beheer die de beheerder zelf bedient.**
+**Gebouwd (versie 2.21.0). Sinds 2.25.1 (7 oktober 2026) is EU bovendien de standaardmodus van server en extensie, en staat het testgereedschap standaard uit, met een schakelaar in Beheer die de beheerder zelf bedient.**
 
 - Server: `TOEGESTANE_MODI` (`eu`, `claude` of beide; een tikfout betekent
   alleen EU).

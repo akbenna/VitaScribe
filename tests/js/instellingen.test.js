@@ -96,7 +96,7 @@ test('Claude-modus, of geen EU-server: de gewone server (niets dicht)', async ()
   assert.deepEqual(await I.lees(['apiUrl', 'apiKey'], zonder), { apiUrl: 'https://railway', apiKey: 'sleutel' });
 });
 
-test('geen modus gekozen: EU-modus, dus ook de EU-server (2.23.3)', async () => {
+test('geen modus gekozen: EU-modus, dus ook de EU-server (2.25.1)', async () => {
   const s = opslag({ apiUrl: 'https://railway', apiUrlEu: 'https://eu.server' }, { apiKey: 'sleutel' });
   assert.deepEqual(await I.lees(['apiUrl', 'apiKey'], s), { apiUrl: 'https://eu.server', apiKey: 'sleutel' });
 });

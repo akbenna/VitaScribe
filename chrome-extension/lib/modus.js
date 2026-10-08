@@ -30,7 +30,7 @@ var SVModus = (function () {
           lang: 'EU-modus: spraak en tekst alleen via Mistral (Frankrijk, EU). Tekst via Mistral (Frankrijk), het consult via Voxtral na afloop. Live dicteren en klinische ondersteuning (vraagsuggesties, NHG-toets, aandachtspunten) staan in deze modus uit: alleen verslaglegging.' }
   };
 
-  // Unknown or missing: eu (the mode for real patients; since 2.23.3).
+  // Unknown or missing: eu (the mode for real patients; since 2.25.1).
   function geldig(m) { return m === 'claude' ? 'claude' : 'eu'; }
 
   function opslag() {

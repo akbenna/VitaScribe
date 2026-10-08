@@ -47,7 +47,19 @@ let twoProblems = false;
 let noSpeech = false;
 const REPORT = {
   soep: { s: 'Sinds 3 dagen keelpijn, geen koorts.', o: 'Keel rood, geen beslag.', e: 'Virale faryngitis.',
-          p: 'Paracetamol zo nodig. Terug bij koorts > 3 dagen.', icpc_code: 'R74', icpc_titel: 'Acute infectie bovenste luchtwegen' },
+          p: 'Paracetamol zo nodig. Terug bij koorts > 3 dagen.', icpc_code: 'R74', icpc_titel: 'Acute infectie bovenste luchtwegen',
+          // Sources per sentence, as the server sends them (bronnen.py)
+          bronnen: [
+            { probleem: 0, veld: 'p', zin: 'Paracetamol zo nodig.', status: 'bron', score: 1,
+              bronnen: [{ spreker: 'Spreker 1', tekst: 'Neem paracetamol als het nodig is.' }], ontbreekt: [] },
+            { probleem: 0, veld: 'p', zin: 'Terug bij koorts > 3 dagen.', status: 'deels', score: 0.5,
+              bronnen: [{ spreker: 'Spreker 2', tekst: 'Nee, geen koorts.' }], ontbreekt: ['Terug'] },
+          ],
+          // What the doctor agreed in P (pipeline.afspraken_uit)
+          afspraken: [
+            { soort: 'verwijzing', tekst: 'Verwijzing KNO-arts', naar: 'KNO', wanneer: '' },
+            { soort: 'vangnet', tekst: 'Terug bij koorts > 3 dagen', naar: '', wanneer: '' },
+          ] },
   decisief: 'Keelpijn 3d, viraal (R74), expectatief',
   transcript_raw: 'Ik heb sinds drie dagen keelpijn, geen koorts.',
 };
@@ -356,6 +368,18 @@ async function listenPill(page, clickStop) {
   check('zijpaneel toont hetzelfde verslag met decisief',
     (await side.$eval('.soep-text[data-key="s"]', (e) => e.textContent)) === REPORT.soep.s &&
     (await side.textContent('#soep-decisief')).includes('R74'));
+  // Sources: a word nobody said is underlined; clicking a sentence shows where it was said.
+  check('bronnen: woord dat niemand zei is onderstreept',
+    (await side.$$eval('.soep-text[data-key="p"] .sv-onbekend', (n) => n.map((x) => x.textContent))).join() === 'Terug');
+  check('bronnen: overzicht onder het verslag', (await side.textContent('#soep-bronnen')).includes('1 van de 2 zinnen'));
+  const bronVak = '.soep-row:has(.soep-text[data-key="p"]) + .soep-bron';
+  check('bronnen: dicht tot je op een zin klikt', await side.$eval(bronVak, (e) => e.classList.contains('hidden')));
+  await side.click('.soep-text[data-key="p"]', { position: { x: 4, y: 8 } });
+  await sleep(200);
+  const bronTekst = await side.$eval(bronVak, (e) => (e.classList.contains('hidden') ? '' : e.textContent));
+  check('bronnen: klik op de zin toont de plek in het gesprek', /Uit het gesprek/.test(bronTekst) && bronTekst.includes('Neem paracetamol'), bronTekst);
+  check('bronnen: het verslag zelf blijft gelijk (invoegen)',
+    (await side.$eval('.soep-text[data-key="p"]', (e) => e.innerText.trim())) === REPORT.soep.p);
   await side.evaluate(() => {
     const s = document.querySelector('.soep-text[data-key="s"]');
     s.textContent = 'Sinds 3 dagen keelpijn, aangepast in het zijpaneel.';
@@ -368,6 +392,17 @@ async function listenPill(page, clickStop) {
   await sleep(900);
   const pNa = await sw.evaluate(() => chrome.storage.session.get('svConsult').then((r) => r.svConsult.result.soep.p));
   check('medicatievoorstel "Vervang" gaat ook mee naar het verslag', pNa.includes('Paracetamol 1000 mg zo nodig'), pNa);
+  // Agreements from P, with one button each.
+  const afs = await side.$$eval('#afs:not(.hidden) .afs-item', (li) => li.map((x) => x.querySelector('.afs-soort').textContent + ':' + x.querySelector('button').textContent));
+  check('afspraken uit dit consult onder het verslag', afs.join() === 'Verwijzing:Verwijsbrief,Vangnet:Kopieer', afs);
+  await side.click('#afs .afs-item button');
+  await sleep(300);
+  const verw = await side.evaluate(() => ({ view: !document.getElementById('view-letters').classList.contains('hidden'),
+    spec: document.getElementById('lt-spec').value, reden: document.getElementById('lt-reden').value,
+    gedaan: document.querySelector('#afs .afs-item input').checked }));
+  check('verwijzing: verwijsbrief open met specialisme en reden, afgevinkt',
+    verw.view && verw.spec === 'KNO-arts' && verw.reden === 'Verwijzing KNO-arts' && verw.gedaan, verw);
+  await side.evaluate(() => window.SVViews.show('dictate'));
   await tab.bringToFront();
 
   console.log('H. Invoegen in de velden via het bolletje');
@@ -433,8 +468,11 @@ async function listenPill(page, clickStop) {
   await sleep(700);
   check('nieuw verslag zichtbaar, met afsluitknop', !(await side.$eval('#soep', (e) => e.classList.contains('hidden'))) &&
     !(await side.$eval('#btn-consult-afsluiten', (e) => e.classList.contains('hidden'))));
+  await side.evaluate(() => { document.getElementById('lt-reden').value = 'Verwijzing KNO-arts'; });
   await side.click('#btn-consult-afsluiten');
   await sleep(700);
+  check('afsluiten: ook het brievenformulier is leeg (hoort bij deze patiënt)',
+    (await side.$eval('#lt-reden', (e) => e.value)) === '');
   const naAfsluiten = await sw.evaluate(() => chrome.storage.session.get('svConsult').then((r) => r.svConsult || {}));
   check('afsluiten: verslag weg en consult leeg', (await side.$eval('#soep', (e) => e.classList.contains('hidden'))) && !naAfsluiten.state, naAfsluiten);
   check('afsluiten: startknop weer klaar', await side.$eval('#consult-idle', (e) => !e.classList.contains('hidden')) &&

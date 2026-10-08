@@ -32,6 +32,17 @@ jouw verantwoordelijkheid (WGBO). Dat verandert niet door de software.
 4. **Lees elk verslag helemaal.** Begin bij de **gele markeringen**: die zinnen
    vond de controle niet terug in het gesprek. Klopt het niet, haal het weg.
    Klopt het wel, dan mag het blijven.
+   Daarna de **gestippeld onderstreepte woorden**: die zijn nergens in het
+   gesprek gezegd, bijvoorbeeld een dosering, een zijde of een bevinding.
+   Klik op een zin om te zien waar hij in het gesprek staat. De regel onder
+   het verslag telt hoeveel zinnen duidelijk teruggevonden zijn. Een zin
+   zonder bron is niet per se fout: een conclusie of samenvatting staat vaak
+   niet letterlijk in het gesprek. Jij beslist.
+   Onder het verslag staan de **afspraken uit dit consult**: wat in de P
+   staat, met een knop die het werk klaarzet (de verwijsbrief met
+   specialisme en reden, Thuisarts, of kopiëren voor de agenda). VitaScribe
+   stelt zelf geen afspraak voor; staat iets er niet in, dan zat het niet in
+   de P.
 5. **"Niet in de opname"** betekent dat dat deel van het consult ontbreekt.
    Vul het zelf aan.
 6. **Geen verslag bij weinig spraak.** Dan was er te weinig te horen. Schrijf

@@ -33,7 +33,7 @@ jobs:
           tests/test_cloud_thuisarts.py tests/test_cloud_extension_download.py
           tests/test_pack_extension.py tests/test_cloud_register.py tests/test_cloud_consult_live.py
           tests/test_cloud_vraagsuggesties.py tests/test_cloud_dossiervraag.py tests/test_cloud_meedenken.py tests/test_cloud_post.py
-          tests/test_cloud_bedrock.py tests/test_cloud_spraaktest.py tests/test_cloud_modus.py tests/test_cloud_soeptest.py tests/test_cloud_tolk.py tests/test_cloud_leren.py tests/test_cloud_econsult.py tests/test_cloud_telefoon.py tests/test_cloud_modusslot.py tests/test_cloud_eu_spraak.py
+          tests/test_cloud_bedrock.py tests/test_cloud_spraaktest.py tests/test_cloud_modus.py tests/test_cloud_soeptest.py tests/test_cloud_tolk.py tests/test_cloud_leren.py tests/test_cloud_econsult.py tests/test_cloud_telefoon.py tests/test_cloud_modusslot.py tests/test_cloud_eu_spraak.py tests/test_cloud_bronnen.py
 
   extension:
     runs-on: ubuntu-latest
@@ -45,7 +45,7 @@ jobs:
       - name: Syntaxcontrole
         run: for f in chrome-extension/*/*.js; do node --check "$f"; done
       - name: Koppeltabel Thuisarts, QR en praktijknummer (node --test)
-        run: node --test tests/js/thuisarts.test.js tests/js/praktijk.test.js tests/js/consult-live.test.js tests/js/dossiervraag.test.js tests/js/post.test.js tests/js/gevoelig.test.js tests/js/tolk.test.js tests/js/leren.test.js tests/js/econsult.test.js tests/js/brief.test.js tests/js/privacy.test.js
+        run: node --test tests/js/thuisarts.test.js tests/js/praktijk.test.js tests/js/consult-live.test.js tests/js/dossiervraag.test.js tests/js/post.test.js tests/js/gevoelig.test.js tests/js/tolk.test.js tests/js/leren.test.js tests/js/econsult.test.js tests/js/brief.test.js tests/js/privacy.test.js tests/js/bronnen.test.js tests/js/afspraken.test.js
       - run: npm install --no-save playwright@1.56 && npx playwright install --with-deps chromium
       - name: End-to-end in Chromium (nagebootst Bricks, gesimuleerde server)
         run: node tests/e2e/extension.e2e.js
