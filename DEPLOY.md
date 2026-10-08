@@ -434,6 +434,35 @@ Nodig: `MISTRAL_API_KEY` van een betaald Mistral-account met
 verwerkersovereenkomst. `/health/deep` meldt dan ook de controle `mistral`.
 Terugzetten: `ALLOWED_STT_PROVIDERS=deepgram`.
 
+### Gladia of Speechmatics als Europese spraakdienst (werkplan stap 6)
+
+Voxtral verstaat geen Turks, Pools of Oekraïens. Gladia (Parijs) en
+Speechmatics (Cambridge, VK, met het EU-endpoint `eu1`) verstaan alle talen
+van de tolk. Ze werken zoals Voxtral: de opname gaat na het consult (of per
+tolkbeurt) in één keer weg, met sprekerscheiding en dezelfde woordenlijst
+(geleerde woorden van de arts plus de vaste lijst). Na het ophalen van de
+tekst wist de server de opdracht bij de dienst, zodat daar niets blijft
+staan.
+
+1. Vraag een proefsleutel en de verwerkersovereenkomst aan.
+2. Zet de sleutel in Railway: `GLADIA_API_KEY` of `SPEECHMATICS_API_KEY`.
+   Er verandert dan nog niets voor de artsen.
+3. Vergelijk in `/beheer › Spraaktest` met *EU-dienst: Gladia* of
+   *Speechmatics* tegen Deepgram, met gespeelde consulten, ook in het Turks of
+   Arabisch. De kosten staan er als "volgens offerte"; zet
+   `PRIJS_GLADIA_PER_MINUUT` of `PRIJS_SPEECHMATICS_PER_MINUUT` (dollars) om
+   ze uit te laten rekenen.
+4. Kies: `EU_STT_PROVIDER=gladia` of `speechmatics`. In de EU-modus gaan dan
+   consult, tolk en telefoon-tolk naar die dienst; de tolk biedt alle talen
+   aan. De Claude-modus blijft Deepgram, tenzij je daar ook
+   `ALLOWED_STT_PROVIDERS=gladia` (of `speechmatics`) zet.
+
+`/health/deep` meldt `gladia` en `speechmatics` (alleen of de sleutel er
+is). Terug: `EU_STT_PROVIDER=voxtral`.
+
+Nog niet: live dicteren via deze diensten. Dicteren blijft in de EU-modus
+geweigerd en in de Claude-modus via Deepgram (EU-endpoint).
+
 ### Route A: Claude in Amazon Bedrock (EU)
 
 Hetzelfde model (Haiku 4.5, Sonnet 5 voor SOEP), maar verwerkt door AWS in de
@@ -452,6 +481,10 @@ toegang tot prompts of antwoorden en is dan geen subverwerker.
    `BEDROCK_SOEP_MODEL` en `BEDROCK_MODEL`.
 4. Test lokaal, zonder patiëntgegevens:
    `AWS_ACCESS_KEY_ID=… AWS_SECRET_ACCESS_KEY=… python scripts/bedrock_check.py`
+   Of zet eerst alleen de sleutels in Railway en draai in `/beheer ›
+   Spraaktest` de SOEP-test met *EU-model: Claude via Bedrock (Frankfurt)*:
+   de gespeelde consulten via Bedrock, naast Claude direct. Er verandert
+   niets voor de artsen tot je stap 5 zet.
 5. Zet in Railway: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`,
    `BEDROCK_REGION=eu-central-1`, eventueel de model-ID's, en als laatste
    `PHI_LLM_PROVIDER=bedrock` (en `LETTERS_LLM_PROVIDER=bedrock`).

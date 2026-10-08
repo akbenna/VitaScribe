@@ -78,15 +78,30 @@ chrome.tabs.onRemoved.addListener(async (tabId) => {
   if (svTarget && svTarget.tabId === tabId) chrome.storage.session.remove('svTarget');
 });
 
-// Open side panels announce themselves over a port.
+// Open side panels announce themselves over a port, and say in which window.
+// While the panel is open in a window, the consult pill on the pages of that
+// window is hidden (the panel shows the same); minimise, and it is back.
 const sidePanelPorts = new Set();
+const panelWindow = new Map();   // port -> windowId
+function panelWindows() { return new Set(panelWindow.values()); }
+async function rebroadcastConsult() {
+  try { consultBroadcast(await consultGet()); } catch (e) { /* no consult state yet */ }
+}
 chrome.runtime.onConnect.addListener((port) => {
   if (port.name !== 'sv-sidepanel') return;
   sidePanelPorts.add(port);
+  port.onMessage.addListener((msg) => {
+    if (msg && msg.action === 'SV_PANEEL_VENSTER' && typeof msg.windowId === 'number') {
+      panelWindow.set(port, msg.windowId);
+      rebroadcastConsult();
+    }
+  });
   port.onDisconnect.addListener(() => {
     sidePanelPorts.delete(port);
+    const had = panelWindow.delete(port);
     // Panel closed while dictating: its microphone is gone, so is the pill.
     if (sidePanelPorts.size === 0) panelDictationState('idle');
+    if (had) rebroadcastConsult();
   });
 });
 
@@ -302,7 +317,7 @@ function consultParts(soep) {
   return parts.length ? parts : [soep || {}];
 }
 
-function consultPillState(c) {
+function consultPillState(c, paneel) {
   if (!c || !c.state || c.dismissed) return { state: 'idle' };
   const soepParts = c.result ? consultParts(c.result.soep) : [];
   return {
@@ -311,14 +326,16 @@ function consultPillState(c) {
     message: c.state === 'error' ? (c.message || '') : '', code: c.code || '', retry: !!c.retry,
     stil: c.state === 'recording' && !!c.stil,
     gehoord: c.state === 'recording' ? (c.gehoord || 0) : 0,
+    paneel: !!paneel,   // the side panel is open in this window: the page pill stays out of the way
   };
 }
 
 async function consultBroadcast(c) {
-  const pillState = consultPillState(c);
+  const open = panelWindows();
   const tabs = await chrome.tabs.query({}).catch(() => []);
   for (const tab of tabs) {
     if (!tab.id || !/^https?:/.test(tab.url || '')) continue;
+    const pillState = consultPillState(c, open.has(tab.windowId));
     chrome.tabs.sendMessage(tab.id, { action: 'SV_CONSULT_PILL', pill: pillState }, { frameId: 0 }).catch(() => {});
   }
 }
@@ -518,7 +535,7 @@ async function consultCommand(cmd, sender, msg) {
     await consultUpdate({}, true);
     return { ok: true };
   }
-  if (cmd === 'pill') return consultPillState(await consultGet());
+  if (cmd === 'pill') return consultPillState(await consultGet(), !!(sender && sender.tab && panelWindows().has(sender.tab.windowId)));
   if (cmd === 'edit') {
     // The doctor changed the report in the side panel: "Invoegen" on the pill
     // and in the popup must use that version, not the original.

@@ -264,8 +264,13 @@ async def health_deep(token: str = ""):
         await run("register", check_register())
 
     needed = ["deepgram_eu", data_policy.phi_llm_provider(), data_policy.letters_llm_provider()]
+    eu_spraak = data_policy.eu_stt_provider() if "eu" in data_policy.server_modi() else None
     if data_policy.stt_provider() == "voxtral":
         needed.append("mistral")
+    for dienst in ("gladia", "speechmatics"):   # werkplan stap 6: a key is all we can check for free
+        checks[dienst] = "ok" if data_policy.stt_sleutel(dienst) else "geen sleutel"
+        if dienst in (data_policy.stt_provider(), eu_spraak):
+            needed.append(dienst)
     if register.actief():
         needed.append("register")
     ok = all(checks.get(n) == "ok" for n in needed)

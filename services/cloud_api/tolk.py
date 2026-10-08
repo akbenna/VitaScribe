@@ -18,9 +18,10 @@ en markeringen in de EU-modus inbegrepen).
 De server bewaart niets: geen audio, geen tekst. Het auditlog krijgt alleen
 wie, welke taal en hoe lang.
 
-Welke talen kunnen, hangt af van de modus. In de EU-modus verstaat alleen
-Voxtral (Mistral, EU) de spraak, en Voxtral kent geen Turks, Pools of
-Oekraïens. In de Claude-modus verstaat Deepgram (EU-eindpunt) alle talen
+Welke talen kunnen, hangt af van de modus. In de EU-modus verstaat de
+Europese spraakdienst (EU_STT_PROVIDER) de spraak. Voxtral (Mistral, de
+standaard) kent geen Turks, Pools of Oekraïens; Gladia en Speechmatics
+(werkplan stap 6) verstaan alle talen hieronder. In de Claude-modus verstaat Deepgram (EU-eindpunt) alle talen
 hieronder, ook Marokkaans- en Syrisch-Arabisch als eigen dialect.
 
 Endpoints (API-sleutel verplicht):
@@ -97,8 +98,11 @@ def kies(code: Optional[str]) -> Taal:
 
 
 def verstaat(taal: Taal) -> bool:
-    """Kan de spraakherkenning van deze modus deze taal verstaan?"""
-    return taal.voxtral is not None if data_policy.eu_modus() else True
+    """Kan de spraakherkenning van deze modus deze taal verstaan? Gladia en
+    Speechmatics (werkplan stap 6) verstaan alle talen hier; Voxtral niet."""
+    if data_policy.eu_modus() and data_policy.eu_stt_provider() == "voxtral":
+        return taal.voxtral is not None
+    return True
 
 
 async def talen_overzicht() -> List[dict]:
@@ -111,7 +115,8 @@ async def talen_overzicht() -> List[dict]:
             "verstaat": verstaat(t),
             "stem": await stem_bron(t),
             "waarom": "" if verstaat(t) else
-                      f"In de EU-modus verstaat de spraakherkenning (Voxtral, Mistral) geen {t.naam}.",
+                      f"In de EU-modus verstaat de spraakherkenning (Voxtral, Mistral) geen {t.naam}. "
+                      "Met Gladia of Speechmatics op de server wel.",
         })
     return uit
 
@@ -148,7 +153,9 @@ async def spraak_naar_tekst(audio: bytes, taal: Taal, deepgram_sleutel: Optional
                             content_type: str = "audio/webm") -> str:
     """Vervangbaar in tests."""
     if data_policy.eu_modus():
-        res = await stt_service._transcribe_voxtral(audio, taal.voxtral, naam="beurt.webm", diarize=False)
+        dienst = data_policy.eu_stt_provider()
+        res = await stt_service.transcribe_eu(audio, taal.voxtral if dienst == "voxtral" else taal.deepgram,
+                                              naam="beurt.webm", diarize=False, provider=dienst)
         tekst = res.raw_text.strip()
         return stt_service.nederlandse_vulwoorden(tekst) if taal.code == "nl" else tekst
     return await _deepgram_beurt(audio, taal, deepgram_sleutel or "", content_type)
@@ -264,11 +271,11 @@ VERTAAL_AUTO_SCHEMA = {
 async def kandidaten(audio: bytes, patient: Taal, sleutel: Optional[str],
                      content_type: str = "audio/webm") -> List["tuple[str, str]"]:
     """Hands-free: who spoke is not known. EU: Voxtral detects the language
-    itself (one call). Otherwise Deepgram hears the turn twice, as Dutch and
+    itself (one call; Gladia and Speechmatics as well). Otherwise Deepgram hears the turn twice, as Dutch and
     as the patient's language, at the same time; the language model then sees
     which of the two is a sensible utterance. Replaceable in tests."""
     if data_policy.eu_modus():
-        res = await stt_service._transcribe_voxtral(audio, None, naam="beurt.wav", diarize=False)
+        res = await stt_service.transcribe_eu(audio, None, naam="beurt.wav", diarize=False)
         return [("automatisch herkend", res.raw_text.strip())]
     import asyncio
     nl, ander = await asyncio.gather(
