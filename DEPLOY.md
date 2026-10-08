@@ -502,6 +502,30 @@ instructie mee en de server knipt het JSON-object uit het antwoord; dat is
 getest, maar controleer na de omschakeling een paar SOEP's, dossiervragen en
 Post-beoordelingen.
 
+### Visites (opnemen op de telefoon)
+
+Een visite thuis opnemen op de telefoon; terug in de praktijk staat het
+verslag in het zijpaneel. Staat standaard uit: zet `VISITE=true`. Met het
+register (`DATABASE_URL`) overleven de wachtende verslagen een herstart;
+zonder register staan ze in het geheugen.
+
+- De extensie maakt per browser een sleutelpaar (RSA-OAEP 2048). Alleen de
+  openbare sleutel gaat naar de server; de geheime sleutel kan de browser
+  niet uit.
+- De telefoon krijgt via de QR-code een toestelsleutel die alleen kan
+  insturen: geen lijst, geen verslag. Op de server staat alleen de SHA-256
+  ervan. Een telefoon die 60 dagen niets instuurde, vervalt; ontkoppelen kan
+  in het paneel.
+- De server maakt het verslag zoals bij een consult, in de modus van het
+  koppelen, gooit de opname meteen weg en versleutelt verslag én aanduiding
+  voor de browsers van de arts (AES-256-GCM, sleutel met RSA-OAEP). Daarna
+  kan hij ze zelf niet meer lezen.
+- Een envelop wordt gewist bij "Consult afsluiten" of met ✕, en anders
+  na 48 uur.
+
+Dit is een nieuwe, kortdurende opslag (versleuteld, ≤ 48 uur): neem hem op
+in de DPIA voordat je hem voor echte patiënten aanzet.
+
 ### Back-up van het register
 
 - Zet in Railway de back-ups van de PostgreSQL-dienst aan (Backups, dagelijks)

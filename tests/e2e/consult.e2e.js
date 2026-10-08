@@ -90,10 +90,53 @@ function cors(res) {
   res.setHeader('Access-Control-Allow-Headers', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
 }
+// Visits (visite.py): off until section V. The fake server encrypts like the real one.
+const { webcrypto } = require('crypto');
+let visiteAan = false;
+let visiteOntvanger = null;
+const visiteWeg = [];
+const b64 = (u) => Buffer.from(u).toString('base64');
+async function envelop(inhoud) {
+  const s = webcrypto.subtle;
+  const aes = webcrypto.getRandomValues(new Uint8Array(32));
+  const iv = webcrypto.getRandomValues(new Uint8Array(12));
+  const k = await s.importKey('raw', aes, 'AES-GCM', false, ['encrypt']);
+  const data = await s.encrypt({ name: 'AES-GCM', iv }, k, new TextEncoder().encode(JSON.stringify(inhoud)));
+  const pub = await s.importKey('spki', Buffer.from(visiteOntvanger.spki, 'base64'), { name: 'RSA-OAEP', hash: 'SHA-256' }, false, ['encrypt']);
+  return { v: 1, iv: b64(iv), data: b64(new Uint8Array(data)),
+           sleutels: { [visiteOntvanger.kid]: b64(new Uint8Array(await s.encrypt({ name: 'RSA-OAEP' }, pub, aes))) } };
+}
+const VISITE_VERSLAG = { soep: { s: 'Wond onderbeen li sinds 2 weken.', o: 'Wond 3 cm, schoon.', e: 'Ulcus cruris.', p: 'Wondcontrole POH.' },
+                         decisief: 'Visite: ulcus cruris li' };
+
+async function visiteRoute(req, res, url) {
+  const json = (code, d) => { res.writeHead(code, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(d)); };
+  if (!visiteAan) return json(404, { detail: 'Visites staan uit op deze server.' });
+  if (url.pathname === '/api/v1/visite/ontvanger') {
+    let body = '';
+    for await (const c of req) body += c;
+    visiteOntvanger = JSON.parse(body);
+    return json(200, { ok: true });
+  }
+  if (url.pathname === '/api/v1/visite/koppel') return json(200, { pad: '/v#toestel', modus: 'claude' });
+  if (!visiteOntvanger) return json(200, { visites: [] });
+  if (url.pathname === '/api/v1/visite/postbus') {
+    const nu = Date.now() / 1000;
+    return json(200, { visites: visiteWeg.includes('v1') ? [] : [
+      { id: 'v1', gemaakt: nu - 600, verloopt: nu + 3600, status: 'klaar', kop: await envelop({ aanduiding: 'mw. J., wond' }) },
+      { id: 'v2', gemaakt: nu - 60, verloopt: nu + 3600, status: 'verwerken', kop: await envelop({ aanduiding: 'dhr. K.' }) }] });
+  }
+  const m = url.pathname.match(/^\/api\/v1\/visite\/postbus\/(\w+)$/);
+  if (m && req.method === 'DELETE') { visiteWeg.push(m[1]); return json(200, { ok: true }); }
+  if (m) return json(200, { id: m[1], envelop: await envelop(VISITE_VERSLAG) });
+  return json(404, {});
+}
+
 const server = http.createServer((req, res) => {
   cors(res);
   if (req.method === 'OPTIONS') { res.writeHead(204); res.end(); return; }
   const url = new URL(req.url, 'http://x');
+  if (url.pathname.startsWith('/api/v1/visite/')) { visiteRoute(req, res, url); return; }
   if (url.pathname === '/api/v1/providers') {
     const key = req.headers['x-api-key'];
     if (!key) { res.writeHead(401, { 'Content-Type': 'application/json' }); res.end('{"detail":"API sleutel ontbreekt."}'); return; }
@@ -631,6 +674,32 @@ async function listenPill(page, clickStop) {
   await sleep(400);
   check('uit = niet meer meegestuurd', (await sw.evaluate(() => consultConfig())).vraagsuggesties === false);
   await opt.close();
+
+  console.log('V. Visites: versleuteld verslag van de telefoon openen');
+  visiteAan = true;
+  const vp = await ctx.newPage();
+  vp.on('pageerror', (e) => errs.push('visite: ' + e.message));
+  await vp.goto(`chrome-extension://${id}/sidepanel/sidepanel.html`);
+  await vp.waitForSelector('#vis:not(.hidden) .vis-item', { timeout: 8000 }).catch(() => {});
+  const visItems = await vp.$$eval('#vis .vis-item', (li) => li.map((x) => x.querySelector('.vis-wat').textContent + '|' +
+    (x.querySelector('button').disabled ? 'dicht' : 'open')));
+  check('visites: aanduiding ontsleuteld in deze browser, nog niet klaar = dicht',
+    visItems.join() === 'mw. J., wond|open,dhr. K. · verslag wordt gemaakt…|dicht', visItems);
+  check('visites: alleen de openbare sleutel ging naar de server', !!(visiteOntvanger && visiteOntvanger.spki && visiteOntvanger.kid));
+  await vp.click('#vis .vis-item button');
+  await sleep(600);
+  check('visites: verslag geopend in het paneel',
+    (await vp.$eval('.soep-text[data-key="s"]', (e) => e.textContent)) === VISITE_VERSLAG.soep.s &&
+    (await vp.textContent('#soep-decisief')).includes('ulcus cruris'));
+  await vp.click('#vis-koppel');
+  await sleep(400);
+  check('visites: QR om de telefoon te koppelen', await vp.$eval('#vis-dialoog', (e) => !e.classList.contains('hidden')) &&
+    !!(await vp.$('#vis-qr svg')));
+  await vp.click('#vis-sluit');
+  await vp.click('#btn-consult-afsluiten');
+  await sleep(800);
+  check('visites: consult afsluiten haalt de geopende visite van de server', visiteWeg.join() === 'v1', visiteWeg);
+  await vp.close();
 
   console.log('O. Microfoon hoort niets');
   await ctx.close();
