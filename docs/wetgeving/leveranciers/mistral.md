@@ -12,6 +12,19 @@ Status per 7 oktober 2026. Bron: supportticket #37361256, antwoord van Anna (Mis
 | 3. Verwerking binnen EU/EER | Standaard binnen de EER, tenzij het Amerikaanse endpoint expliciet wordt aangeroepen. Mistral kan niet bevestigen dat nooit gegevens buiten de EER worden verwerkt: sommige subverwerkers verwerken bepaalde gegevens vanuit derde landen, met passende waarborgen (SCC's). | Geen volledige EER-garantie. Dit is een restrisico in de DPIA en een reden om de pseudonimisering vóór verzending te houden waar dat kan. De lijst met subverwerkers is niet meegestuurd: zelf ophalen uit het Trust Center en als bijlage opnemen. |
 | 4. Geen training op API-data | Bevestigd. In de Admin console staan training op API-aanroepen en Labs-modellen uit. | Afdoende. Schermafdruk van de console-instelling bij het dossier. |
 
+## Subverwerkers (gevonden 8 oktober 2026)
+
+Het Trust Center van Mistral (`trust.mistral.ai/subprocessors`) noemt onder
+meer Microsoft (Zweden, Noorwegen), Google (Nederland, België; de VS alleen
+voor het Amerikaanse endpoint), CoreWeave (inferentie in de EER) en Mistral
+Compute (Frankrijk). Mistral is een Frans bedrijf, maar er zitten dus
+Amerikaanse moederbedrijven in de keten. Voor de CLOUD Act is dat hetzelfde
+punt als bij Azure en AWS. Te vragen: welke van deze subverwerkers het
+ZDR-verkeer via `api.mistral.ai` voor deze organisatie werkelijk raken.
+Gebruik daarom voor de EU-modus de woorden "Europese aanbieders", niet "geen
+Amerikaanse partijen". Zie `docs/bedrijf/BLAUWDRUK.md`, paragraaf 3, in de
+VitaScribe-repo.
+
 ## Nog open bij Mistral
 
 1. De subverwerkerslijst met locaties: niet geleverd in het antwoord. Ophalen uit het Trust Center en vastleggen met datum.

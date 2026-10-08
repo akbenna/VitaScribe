@@ -1,5 +1,12 @@
 # Europese host voor echte patiënten: Hetzner of Scaleway
 
+> **Herzien op 8 oktober 2026.** Het advies hieronder (Hetzner) is achterhaald.
+> Er zijn Nederlandse hosts met een NEN 7510-claim voor vergelijkbaar geld,
+> zoals Cyso Cloud (€22 per maand voor 2 vCPU en 4 GB). Zie
+> `docs/bedrijf/BLAUWDRUK.md` in de VitaScribe-repo, paragraaf 5. Wat hier
+> over Scaleway staat (geen gezondheidsgegevens buiten het HDS-aanbod) blijft
+> gelden. Begin geen Hetzner-account voordat Cyso is uitgezocht.
+
 Stand 7 oktober 2026. Besluitstuk bij besluit 2 uit het stappenplan. Prijzen
 zijn exclusief btw. De sites van beide hosts waren vanuit de werkomgeving niet
 rechtstreeks te openen; de cijfers komen uit zoekresultaten (eigen pagina's van
