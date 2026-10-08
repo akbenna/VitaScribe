@@ -91,6 +91,12 @@ jouw verantwoordelijkheid (WGBO). Dat verandert niet door de software.
 
 ## Visites
 
+De kaart *Visites* staat onderaan het tabblad Consult en is ingeklapt: een
+consult doe je dertig keer per dag, een visite een of twee keer. De kop zegt
+of er een visite klaarstaat ("1 klaar", met een gekleurde rand) en hoeveel
+visites er nog in de ronde staan. Klik op de kop om de kaart open te klappen;
+VitaScribe onthoudt je keuze.
+
 1. **Koppelen, eenmalig.** Zijpaneel, kaart *Visites*: *telefoon koppelen*
    en de QR-code scannen. Zet de pagina op het beginscherm van de telefoon.
 2. **Bij de patiënt.** Typ een korte aanduiding, nooit naam of BSN (bijv.

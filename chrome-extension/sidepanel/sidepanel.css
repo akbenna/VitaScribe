@@ -475,6 +475,12 @@ body.consult-running .dv-balk { border-color: var(--rec); background: #fff5f5; }
 .vis { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; margin-top: 8px; font-size: 12px; }
 .vis-kop { display: flex; align-items: center; gap: 6px; }
 .vis-kop .ruimte { flex: 1; }
+.vis { margin-top: 14px; }
+.vis-toggle { background: none; border: 0; padding: 0; font: inherit; color: inherit; cursor: pointer; display: inline-flex; gap: 4px; align-items: center; }
+.vis-pijl { display: inline-block; width: 10px; color: var(--muted, #5b6778); }
+#vis-aantal { color: var(--muted, #5b6778); }
+.vis.nieuw { border-color: var(--brand); }
+.vis.nieuw #vis-aantal { color: var(--brand-dark); font-weight: 600; }
 .vis-lijst { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
 .vis-item { display: grid; grid-template-columns: auto 1fr auto auto; gap: 6px; align-items: center; }
 .vis-item.open .vis-wat { font-weight: 600; }

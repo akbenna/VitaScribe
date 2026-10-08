@@ -121,25 +121,6 @@
             title="Verslag, dictaat en markeringen weg; klaar voor het volgende consult">✓ Consult afsluiten · nieuw consult</button>
   </section>
 
-  <section id="vis" class="vis hidden" aria-live="polite">
-    <div class="vis-kop">
-      <strong>Visites</strong> <span id="vis-aantal"></span>
-      <span class="ruimte"></span>
-      <button id="vis-koppel" class="lt-link" type="button" title="Telefoon koppelen om visites op te nemen">telefoon koppelen</button>
-    </div>
-    <ul id="vis-lijst" class="vis-lijst"></ul>
-    <p id="vis-leeg" class="note">Nog geen visites. Neem een visite op met de telefoon; het verslag verschijnt hier.</p>
-    <div id="vis-ronde" class="vis-ronde">
-      <div class="vis-kop"><b>Ronde</b> <span id="vis-ronde-sub" class="muted"></span><span class="ruimte"></span>
-        <button id="vis-ronde-plus" class="lt-link" type="button" title="Zet de patiënt die nu in Bricks open staat klaar voor de visiteronde">+ patiënt in beeld</button></div>
-      <ol id="vis-ronde-lijst" class="vis-ronde-lijst"></ol>
-      <div id="vis-ronde-acties" class="vis-ronde-acties hidden">
-        <button id="vis-ronde-stuur" class="btn small" type="button">Naar telefoon</button>
-        <button id="vis-ronde-wis" class="lt-link" type="button">ronde wissen</button>
-      </div>
-    </div>
-  </section>
-
   <section class="target" id="target">
     <span class="target-label">Doelveld</span>
     <span id="target-name" class="target-name muted">Klik in Bricks in een veld</span>
@@ -283,6 +264,29 @@
     <ul id="leer-lijst" class="leer-lijst"></ul>
     <p class="note">Alleen wat je onthoudt, gaat voortaan mee; niets over deze patiënt. Alles terugzien en aanpassen:
       <a href="#" id="leer-alles">wat VitaScribe leerde</a>.</p>
+  </section>
+
+  <section id="vis" class="vis hidden" aria-live="polite">
+    <div class="vis-kop">
+      <button id="vis-toggle" class="vis-toggle" type="button" aria-expanded="false" aria-controls="vis-inhoud"
+              title="Visites tonen of verbergen"><span class="vis-pijl">▸</span> <strong>Visites</strong></button>
+      <span id="vis-aantal"></span>
+      <span class="ruimte"></span>
+      <button id="vis-koppel" class="lt-link" type="button" title="Telefoon koppelen om visites op te nemen">telefoon koppelen</button>
+    </div>
+    <div id="vis-inhoud" class="vis-inhoud hidden">
+    <ul id="vis-lijst" class="vis-lijst"></ul>
+    <p id="vis-leeg" class="note">Nog geen visites. Neem een visite op met de telefoon; het verslag verschijnt hier.</p>
+    <div id="vis-ronde" class="vis-ronde">
+      <div class="vis-kop"><b>Ronde</b> <span id="vis-ronde-sub" class="muted"></span><span class="ruimte"></span>
+        <button id="vis-ronde-plus" class="lt-link" type="button" title="Zet de patiënt die nu in Bricks open staat klaar voor de visiteronde">+ patiënt in beeld</button></div>
+      <ol id="vis-ronde-lijst" class="vis-ronde-lijst"></ol>
+      <div id="vis-ronde-acties" class="vis-ronde-acties hidden">
+        <button id="vis-ronde-stuur" class="btn small" type="button">Naar telefoon</button>
+        <button id="vis-ronde-wis" class="lt-link" type="button">ronde wissen</button>
+      </div>
+    </div>
+    </div>
   </section>
 
   <p id="status" class="status" role="status"></p>
