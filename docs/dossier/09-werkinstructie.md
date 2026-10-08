@@ -32,6 +32,12 @@ jouw verantwoordelijkheid (WGBO). Dat verandert niet door de software.
 4. **Lees elk verslag helemaal.** Begin bij de **gele markeringen**: die zinnen
    vond de controle niet terug in het gesprek. Klopt het niet, haal het weg.
    Klopt het wel, dan mag het blijven.
+   Daarna de **gestippeld onderstreepte woorden**: die zijn nergens in het
+   gesprek gezegd, bijvoorbeeld een dosering, een zijde of een bevinding.
+   Klik op een zin om te zien waar hij in het gesprek staat. De regel onder
+   het verslag telt hoeveel zinnen duidelijk teruggevonden zijn. Een zin
+   zonder bron is niet per se fout: een conclusie of samenvatting staat vaak
+   niet letterlijk in het gesprek. Jij beslist.
 5. **"Niet in de opname"** betekent dat dat deel van het consult ontbreekt.
    Vul het zelf aan.
 6. **Geen verslag bij weinig spraak.** Dan was er te weinig te horen. Schrijf

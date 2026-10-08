@@ -757,7 +757,9 @@
       cTimer = setInterval(tick, 1000);
       var nad = /nadicteren/i.test(cState.label || '');
       // EU mode: the speech check heard the conversation (a count, no text).
-      cPill.text.textContent = cState.stil ? (/spraak gehoord/.test(cState.label || '') ? 'geen gesprek gehoord: microfoon?' : 'geen geluid: microfoon?')
+      // Silence is the more urgent message, but the doctor still sees that this is the after-dictation.
+      var stilTekst = /spraak gehoord/.test(cState.label || '') ? 'geen gesprek gehoord: microfoon?' : 'geen geluid: microfoon?';
+      cPill.text.textContent = cState.stil ? (nad ? 'nadicteren · ' : '') + stilTekst
         : (nad ? 'nadicteren' : (cState.gehoord ? '✓ gehoord · ' + cState.gehoord + ' woorden' : ''));
       if (cState.stil) cPill.root.className = 'c warn';
       show(nad ? ['paneel', 'stop'] : ['paneel', 'nadictaat', 'stop']);

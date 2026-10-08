@@ -270,6 +270,12 @@ async def test_pipeline_keeps_parts_and_decisief_covers_all():
     nazorg_prompt = complete_mock.await_args_list[1].kwargs["user_prompt"]
     assert "(1) virale faryngitis" in nazorg_prompt and "(2) depressieve klachten" in nazorg_prompt
     assert "R74, P03" in nazorg_prompt
+    # Sources per sentence, per part, without an extra call to the language model
+    assert complete_mock.await_count == 2
+    keel = [b for b in out["bronnen"] if b["probleem"] == 0 and b["veld"] == "s"]
+    assert keel and keel[0]["bronnen"][0]["tekst"] == "keelpijn en ook somber"
+    assert keel[0]["status"] == "deels" and keel[0]["ontbreekt"] == ["3d"]      # "3 days" was never said
+    assert any(b["probleem"] == 1 and "ggz" in b["ontbreekt"] for b in out["bronnen"])
 
 
 # ── Taal van het consult (upload) ──

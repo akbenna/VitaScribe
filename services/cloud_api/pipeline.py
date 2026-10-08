@@ -99,11 +99,15 @@ class PipelineResult:
     llm_provider: str = ""
     # EU mode: what the control pass found unsupported; shown, never removed.
     markeringen: List[Dict] = field(default_factory=list)
+    # Per report sentence the passage of the conversation it rests on (bronnen.py).
+    bronnen: List[Dict] = field(default_factory=list)
 
     def to_dict(self) -> dict:
         soep = asdict(self.soep)
         if self.markeringen:
             soep["markeringen"] = self.markeringen
+        if self.bronnen:
+            soep["bronnen"] = self.bronnen
         return {
             "transcript": self.transcript,
             "transcript_raw": self.transcript_raw,
@@ -345,6 +349,18 @@ async def verwerk_transcript(
                     result.markeringen.append(m)
             logger.info("pipeline.controle", markeringen=len(result.markeringen),
                         vast=sum(1 for m in result.markeringen if m.get("bron") == "vast"))
+
+        # ── Step 2c: sources (both modes): per sentence where in the conversation it was said ──
+        # No language model: free, nothing extra leaves the server, a source cannot be invented.
+        try:
+            from .bronnen import bronnen_bij_soep
+            delen = result.soep.problemen or [{k: getattr(result.soep, k) for k in SOEP_VELDEN}]
+            result.bronnen = bronnen_bij_soep(result.transcript, delen)
+            logger.info("pipeline.bronnen", zinnen=len(result.bronnen),
+                        met_bron=sum(1 for b in result.bronnen if b["status"] == "bron"),
+                        zonder=sum(1 for b in result.bronnen if b["status"] == "geen"))
+        except Exception as e:  # the report stands without sources
+            logger.warning("pipeline.bronnen_fout", error=type(e).__name__)
 
     # ── Step 3: Nazorg (decisief regel + rode vlaggen) in EEN call ──
     # Beide taken werken op de SOEP; samenvoegen scheelt een derde LLM-call.
