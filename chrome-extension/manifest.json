@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "VitaScribe — AI Consultassistent",
-  "version": "2.25.1",
+  "version": "2.27.1",
   "description": "Dicteren, SOEP, tolk, brieven en dossiervragen voor Bricks Huisarts",
   "icons": {
     "16": "icons/icon16.png",
@@ -90,7 +90,8 @@
         "<all_urls>"
       ],
       "js": [
-        "content/dictation-target.js"
+        "content/dictation-target.js",
+        "content/foto-upload.js"
       ],
       "all_frames": true,
       "run_at": "document_idle",

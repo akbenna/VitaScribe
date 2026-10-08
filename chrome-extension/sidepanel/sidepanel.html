@@ -56,6 +56,19 @@
     </div>
   </div>
 
+  <div id="vis-dialoog" class="tel-dialoog hidden" role="dialog" aria-labelledby="vis-doel">
+    <div class="tel-dialoog-kaart">
+      <h2 id="vis-doel">Telefoon koppelen voor visites</h2>
+      <div id="vis-qr" class="tel-qr"></div>
+      <p class="lt-hint">Scan met de camera van de telefoon en zet de pagina op het beginscherm. De telefoon kan daarna
+        visites insturen in de <b id="vis-modus"></b>, ook zonder deze computer. Hij kan geen verslag lezen: alleen deze
+        browser kan ze openen.</p>
+      <p class="note">Een verslag ligt versleuteld klaar en wordt na 48 uur gewist. Telefoon kwijt?
+        <button id="vis-ontkoppel" class="lt-link" type="button">Ontkoppel alle telefoons</button></p>
+      <button id="vis-sluit" class="btn" type="button">Klaar</button>
+    </div>
+  </div>
+
   <nav class="views" role="tablist">
     <button class="view-tab active" data-view="dictate" role="tab" aria-selected="true" title="Consult opnemen, dicteren en SOEP">Consult</button>
     <button class="view-tab" data-view="tolk" role="tab" aria-selected="false" title="Tolk: arts en patiënt spreken om beurten; VitaScribe vertaalt en leest voor">Tolk</button>
@@ -106,6 +119,16 @@
     </div>
     <button id="btn-consult-afsluiten" class="btn consult-afsluiten hidden"
             title="Verslag, dictaat en markeringen weg; klaar voor het volgende consult">✓ Consult afsluiten · nieuw consult</button>
+  </section>
+
+  <section id="vis" class="vis hidden" aria-live="polite">
+    <div class="vis-kop">
+      <strong>Visites</strong> <span id="vis-aantal"></span>
+      <span class="ruimte"></span>
+      <button id="vis-koppel" class="lt-link" type="button" title="Telefoon koppelen om visites op te nemen">telefoon koppelen</button>
+    </div>
+    <ul id="vis-lijst" class="vis-lijst"></ul>
+    <p id="vis-leeg" class="note">Nog geen visites. Neem een visite op met de telefoon; het verslag verschijnt hier.</p>
   </section>
 
   <section class="target" id="target">
@@ -739,6 +762,7 @@
   <script src="../lib/post.js"></script>
   <script src="../lib/bronnen.js"></script>
   <script src="../lib/afspraken.js"></script>
+  <script src="../lib/visite.js"></script>
   <script src="sidepanel.js"></script>
   <script src="letters.js"></script>
   <script src="views.js"></script>
@@ -757,6 +781,7 @@
   <script src="tolk-ui.js"></script>
   <script src="leren-ui.js"></script>
   <script src="afspraken-ui.js"></script>
+  <script src="visite-ui.js"></script>
   <script src="modus-ui.js"></script>
   <script src="../lib/gevoelig.js"></script>
   <script src="gevoelig-ui.js"></script>

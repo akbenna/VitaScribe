@@ -78,7 +78,7 @@ Bespreek dat met je accountant of jurist.
 - [ ] Stuk 02 in het verwerkingsregister van de praktijk
 - [ ] Stuk 03 (DPIA) ingevuld, besproken en ondertekend
 - [ ] Persoonlijke sleutels per gebruiker (`API_USERS`); de gedeelde sleutel ingetrokken
-- [x] Standaardmodus EU in server en extensie (2.25.1, 7 oktober 2026)
+- [x] Standaardmodus EU in server en extensie (2.27.1, 7 oktober 2026)
 - [ ] Slot op de modus: `TOEGESTANE_MODI=eu` in Railway, of "Alleen EU-modus" bij de praktijk in Beheer
 - [x] Testgereedschap standaard uit, met een schakelaar in Beheer (Instellingen) die de beheerder zelf bedient; wijzigingen in het beheerlog
 - [ ] Stuk 08 verwerkt in de privacyverklaring en in de wachtkamer
