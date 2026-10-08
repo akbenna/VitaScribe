@@ -45,7 +45,7 @@ jobs:
       - name: Syntaxcontrole
         run: for f in chrome-extension/*/*.js; do node --check "$f"; done
       - name: Koppeltabel Thuisarts, QR en praktijknummer (node --test)
-        run: node --test tests/js/thuisarts.test.js tests/js/praktijk.test.js tests/js/consult-live.test.js tests/js/dossiervraag.test.js tests/js/post.test.js tests/js/gevoelig.test.js tests/js/tolk.test.js tests/js/leren.test.js tests/js/econsult.test.js tests/js/brief.test.js tests/js/privacy.test.js tests/js/bronnen.test.js tests/js/afspraken.test.js tests/js/visite.test.js
+        run: node --test tests/js/thuisarts.test.js tests/js/praktijk.test.js tests/js/consult-live.test.js tests/js/dossiervraag.test.js tests/js/post.test.js tests/js/gevoelig.test.js tests/js/tolk.test.js tests/js/leren.test.js tests/js/econsult.test.js tests/js/brief.test.js tests/js/privacy.test.js tests/js/bronnen.test.js tests/js/afspraken.test.js tests/js/visite.test.js tests/js/foto-upload.test.js
       - run: npm install --no-save playwright@1.56 && npx playwright install --with-deps chromium
       - name: End-to-end in Chromium (nagebootst Bricks, gesimuleerde server)
         run: node tests/e2e/extension.e2e.js
