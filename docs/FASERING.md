@@ -76,11 +76,15 @@ Op de server staat de omgevingsvariabele `VITASCRIBE_FASE`.
 ### Checklist fase 1
 
 - [x] Verwerkersovereenkomst Railway, getekend door beide partijen
-- [ ] Schriftelijke bevestiging van Railway dat gezondheidsgegevens eronder
-      vallen
+- [x] Railway gevraagd naar gezondheidsgegevens: valt er niet onder
+      (5 oktober 2026); echte consulten via een Europese server
 - [x] Railway actief in het EU-US Data Privacy Framework
 - [ ] SOC 2-rapport van Railway
-- [ ] Mistral: verwerkersovereenkomst, ZDR, verwerking in de EU, geen training
+- [x] Mistral: ZDR geactiveerd en geen training bevestigd (6 oktober 2026);
+      online-DPA geldt; verwerking standaard in de EER zonder absolute garantie
+      (stuk 05, `docs/wetgeving/bewijs/`)
+- [ ] Mistral: subverwerkerslijst en DPA-versie vastgelegd; bewaartermijn en
+      verwijdering van de kloonstem (`/v1/audio/voices`, buiten ZDR) bevestigd
 - [ ] Verwerkersovereenkomst tussen praktijk en ProVitaCare (als dat twee
       verschillende partijen zijn)
 - [ ] DPIA, met docs/AUDIT-EU-MODUS.md als technische bijlage
@@ -110,9 +114,10 @@ Komt erbij, bovenop fase 1:
   - Rekening houden met de nieuwe richtlijn productaansprakelijkheid.
 - **Organisatie.** Support, een incident- en datalekprocedure richting meerdere
   verwerkingsverantwoordelijken, en releasebeheer.
-- **Hosting.** Railway kan, binnen het Data Privacy Framework. Een Europese
-  host maakt het verhaal tegenover praktijken eenvoudiger. Met een eigen
-  domeinnaam is een verhuizing klein werk.
+- **Hosting.** Echte consulten lopen via een server bij een Europese host
+  (stuk 14, stap 4): de DPA van Railway dekt geen gezondheidsgegevens
+  (antwoord van 5 oktober 2026). Railway blijft voor gespeelde consulten. Met
+  een eigen domeinnaam is een verhuizing klein werk.
 - Daarna: `VITASCRIBE_FASE=extern` en openbaar maken in de winkel.
 
 ## Dossier

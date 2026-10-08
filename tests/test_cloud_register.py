@@ -331,15 +331,17 @@ def test_letters_use_practice_key_and_dictation_data_never_does(api):
         gezien.append((provider, api_key))
         yield "Geachte collega,"
 
+    # Own US keys count only in the claude mode (since 07-10-2026 the default is eu).
+    claude = {"X-API-Key": beheerder, "X-VitaScribe-Modus": "claude"}
     with patch.object(letters.llm_service, "stream_llm", nep):
-        r = api.post("/api/v1/letters/generate", headers={"X-API-Key": beheerder},
+        r = api.post("/api/v1/letters/generate", headers=claude,
                      json={"kind": "verwijzing", "dossier": "Journaal: hoofdpijn", "reden": "beoordeling"})
     assert r.status_code == 200, r.text
     assert gezien == [("openai", "sk-proj-" + "b" * 40)]
 
     # Schermafdrukken kunnen personalia tonen: die gaan naar het patiëntmodel, nooit op de praktijksleutel.
     with patch.object(letters.llm_service, "stream_llm", nep):
-        api.post("/api/v1/letters/extract", headers={"X-API-Key": beheerder},
+        api.post("/api/v1/letters/extract", headers=claude,
                  json={"kind": "dossier", "media_type": "image/png", "data": "aGFsbG8gd2VyZWxk"})
     assert gezien[-1] == ("anthropic", None)
 
@@ -348,7 +350,7 @@ def test_required_own_keys_block_server_keys(api):
     p = _praktijk(api)
     _activeer(api, p["id"], eigen_sleutels_verplicht=True)
     sleutel = _gebruiker(api, p["id"])["sleutel"]
-    r = api.post("/api/v1/letters/generate", headers={"X-API-Key": sleutel},
+    r = api.post("/api/v1/letters/generate", headers={"X-API-Key": sleutel, "X-VitaScribe-Modus": "claude"},
                  json={"kind": "verwijzing", "dossier": "Journaal: hoofdpijn", "reden": "beoordeling"})
     assert r.status_code == 403 and "eigen AI-sleutel" in r.json()["detail"]
 

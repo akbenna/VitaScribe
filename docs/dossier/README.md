@@ -67,17 +67,20 @@ Bespreek dat met je accountant of jurist.
 
 - [x] Verwerkersovereenkomst Railway, getekend door beide partijen
 - [x] Railway actief in het EU-US Data Privacy Framework
-- [ ] Schriftelijke bevestiging van Railway dat gezondheidsgegevens eronder vallen
+- [x] Railway gevraagd naar gezondheidsgegevens: valt er niet onder (5 oktober 2026); echte consulten via een Europese server (stuk 14, stap 4)
+- [ ] Europese server draait (Hetzner of Scaleway), met verwerkersovereenkomst, en is ingevuld in de extensie
 - [ ] SOC 2-rapport van Railway opgevraagd en bewaard
-- [ ] Mistral: verwerkersovereenkomst, ZDR, verwerking in de EU, geen training
+- [x] Mistral: ZDR geactiveerd en geen training bevestigd (6 oktober 2026); online-DPA geldt (stuk 05)
+- [ ] Mistral: subverwerkerslijst en DPA-versie vastgelegd; kloonstem (`/v1/audio/voices`, buiten ZDR) geregeld
 - [x] Rollen vastgesteld: praktijkhouder, één rechtspersoon (stuk 04 vervalt intern)
 - [ ] Handelsregister gecontroleerd; overeenkomsten op naam van de juiste rechtspersoon
 - [ ] Stuk 01 ondertekend; op de server `CLINICAL_DECISION_SUPPORT` en `ECONSULT_NHG_IN_EU` uit, of de keuze vastgelegd
 - [ ] Stuk 02 in het verwerkingsregister van de praktijk
 - [ ] Stuk 03 (DPIA) ingevuld, besproken en ondertekend
 - [ ] Persoonlijke sleutels per gebruiker (`API_USERS`); de gedeelde sleutel ingetrokken
-- [ ] Slot op de modus: `TOEGESTANE_MODI=eu`, of "Alleen EU-modus" bij de praktijk in Beheer
-- [ ] Testgereedschap in productie uit, of alleen gebruikt met gespeelde consulten
+- [x] Standaardmodus EU in server en extensie (2.27.1, 7 oktober 2026)
+- [ ] Slot op de modus: `TOEGESTANE_MODI=eu` in Railway, of "Alleen EU-modus" bij de praktijk in Beheer
+- [x] Testgereedschap standaard uit, met een schakelaar in Beheer (Instellingen) die de beheerder zelf bedient; wijzigingen in het beheerlog
 - [ ] Stuk 08 verwerkt in de privacyverklaring en in de wachtkamer
 - [ ] Stuk 09 gelezen en afgetekend door elke gebruiker
 - [ ] Stuk 10 verstuurd en het antwoord bewaard
@@ -102,5 +105,10 @@ Bespreek dat met je accountant of jurist.
 - De getekende verwerkersovereenkomst met Railway (envelop
   15F6A42D-5BA0-8848-82F5-EDC780AD0A6F). Bewaar die bij de
   praktijkadministratie, niet hier: er staan persoonsgegevens in.
-- Het SOC 2-rapport van Railway en de overeenkomst met Mistral, zodra binnen.
+- Het SOC 2-rapport van Railway. De bevestiging van Mistral (ZDR, geen
+  training, 6 oktober 2026) staat als afschrift in
+  `docs/wetgeving/bewijs/mistral-zdr-2026-10-06.md`; de originele mails en de
+  schermafdruk van de console horen bij de praktijkadministratie.
+- Het stappenplan voor alle producten van de praktijk:
+  `docs/wetgeving/STAPPENPLAN.md`.
 - De ondertekende versies van de stukken uit dit dossier.

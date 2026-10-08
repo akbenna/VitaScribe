@@ -28,13 +28,16 @@ browser, deze host (Duitsland of Frankrijk), Mistral (Frankrijk).
 4. Voeg je SSH-sleutel toe. Zet een firewall met alleen poort 22, 80 en 443
    open.
 
-**Scaleway** (Frankrijk). Werkt meer zoals Railway, iets duurder.
+Neem bij stap 2 in bijlage 1 van de AVV gezondheidsgegevens (art. 9 AVG)
+van patiënten op, en vraag Hetzner per ticket te bevestigen dat die eronder
+vallen. Is de CX22 of CX23 uitverkocht (sinds juni 2026 vaak), neem dan een
+CPX22. Zie `docs/wetgeving/leveranciers/hosting-hetzner-scaleway.md`.
 
-1. Account op naam van de rechtspersoon. De DPA staat in de voorwaarden;
-   download hem.
-2. Instances › Create: regio Paris of Amsterdam, *Ubuntu 24.04*, type
-   DEV1-M of PLAY2-SMALL.
-3. Security group: poort 22, 80 en 443.
+**Scaleway** (Frankrijk). Let op: het gewone aanbod van Scaleway is **niet**
+bedoeld voor gezondheidsgegevens; de DPA verwijst daarvoor naar het aparte
+HDS-aanbod (verkooptraject, alleen Franse datacenters, Business-support
+verplicht). Gebruik een gewoon Scaleway-account dus alleen voor gespeelde
+consulten. Zie het besluitstuk hierboven.
 
 ## 2. Domein
 

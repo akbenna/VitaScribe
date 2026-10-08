@@ -107,6 +107,9 @@ def _tot_gesloten(ws):
 
 
 AUTH = {"type": "auth", "api_key": "geheim", "consent": True}
+# Live text via Deepgram runs only in the claude mode; since 07-10-2026 the
+# default mode is eu, so the Deepgram tests say which mode they want.
+AUTH_CLAUDE = {**AUTH, "modus": "claude"}
 
 
 # === Adres en opbouw van het gesprek ===
@@ -162,7 +165,7 @@ def test_live_consult_levert_na_stop_het_verslag():
     client = TestClient(_app(upstream, gezien, verwerkt))
 
     with client.websocket_connect("/ws") as ws:
-        ws.send_text(json.dumps(dict(AUTH, keyterms=["Lachman"])))
+        ws.send_text(json.dumps(dict(AUTH_CLAUDE, keyterms=["Lachman"])))
         assert ws.receive_json() == {"type": "ready"}
         ws.send_bytes(b"stuk-1")
         ws.send_bytes(b"stuk-2")
@@ -190,7 +193,7 @@ def test_live_consult_levert_na_stop_het_verslag():
 def test_live_consult_zonder_spraak_meldt_leeg():
     client = TestClient(_app(FakeUpstream([]), [], []))
     with client.websocket_connect("/ws") as ws:
-        ws.send_text(json.dumps(AUTH))
+        ws.send_text(json.dumps(AUTH_CLAUDE))
         assert ws.receive_json() == {"type": "ready"}
         ws.send_text(json.dumps({"type": "stop"}))
         events = _tot_gesloten(ws)
@@ -225,7 +228,7 @@ def test_wegvallende_spraakherkenning_vraagt_om_terugval():
     verwerkt = []
     client = TestClient(_app(FakeUpstream([], valt_weg=True), [], verwerkt))
     with client.websocket_connect("/ws") as ws:
-        ws.send_text(json.dumps(AUTH))
+        ws.send_text(json.dumps(AUTH_CLAUDE))
         assert ws.receive_json() == {"type": "ready"}
         events = _tot_gesloten(ws)
     fout = [e for e in events if e["type"] == "error"][0]
@@ -244,7 +247,7 @@ def test_onbereikbare_spraakherkenning_vraagt_om_terugval():
         await consult_live.volg_consult(ws, connect=kapot)
 
     with TestClient(app).websocket_connect("/ws") as ws:
-        ws.send_text(json.dumps(AUTH))
+        ws.send_text(json.dumps(AUTH_CLAUDE))
         event = ws.receive_json()
     assert event["type"] == "error"
     assert event["terugval"] is True
@@ -282,7 +285,7 @@ def test_live_consult_met_nadictaat():
     verwerkt = []
     client = TestClient(_app(upstream, [], verwerkt))
     with client.websocket_connect("/ws") as ws:
-        ws.send_text(json.dumps(AUTH))
+        ws.send_text(json.dumps(AUTH_CLAUDE))
         assert ws.receive_json() == {"type": "ready"}
         ws.send_bytes(b"stuk")
         ws.send_text(json.dumps({"type": "nadictaat", "vanaf": 10.0}))
@@ -303,7 +306,7 @@ def test_taal_gaat_naar_deepgram_en_de_verwerking():
     verwerkt_taal.clear()
     client = TestClient(_app(upstream, gezien, verwerkt))
     with client.websocket_connect("/ws") as ws:
-        ws.send_text(json.dumps(dict(AUTH, taal="tr", keyterms=["Lachman"])))
+        ws.send_text(json.dumps(dict(AUTH_CLAUDE, taal="tr", keyterms=["Lachman"])))
         assert ws.receive_json() == {"type": "ready"}
         ws.send_text(json.dumps({"type": "stop"}))
         _tot_gesloten(ws)

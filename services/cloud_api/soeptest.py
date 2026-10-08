@@ -42,12 +42,13 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from . import data_policy, icpc_controle, leren, pipeline, register
-from .beheer import vereis_beheerder
+from .beheer import vereis_beheerder, vereis_testgereedschap
 from .config import get_config
 from .medical_vocabulary import correct_transcript_full
 
 logger = structlog.get_logger()
-router = APIRouter(tags=["soeptest"])
+# Every route here exists only while the administrator has the test tools switched on in Beheer.
+router = APIRouter(tags=["soeptest"], dependencies=[Depends(vereis_testgereedschap)])
 
 TESTSET = Path(__file__).parent / "testset"
 MAX_GESPREK = 100_000

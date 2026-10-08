@@ -25,7 +25,8 @@ def api():
     return TestClient(main.app)
 
 
-H = {"X-API-Key": "geheim"}
+# Since 07-10-2026 the default mode is eu; H is the claude mode, EU the eu mode.
+H = {"X-API-Key": "geheim", "X-VitaScribe-Modus": "claude"}
 EU = {"X-API-Key": "geheim", "X-VitaScribe-Modus": "eu"}
 BERICHT = "Dokter, mag ik ibuprofen nemen voor mijn knie? Ik gebruik al bloedverdunners."
 DOSSIER = (

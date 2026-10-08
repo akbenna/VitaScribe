@@ -191,6 +191,32 @@ async def vereis_beheerder(
     return naam
 
 
+TESTGEREEDSCHAP = "testgereedschap"
+
+
+async def testgereedschap_aan() -> bool:
+    """The administrator's switch in Beheer (Instellingen). The test tools
+    (speech test, SOEP test, test set) send audio and text to every
+    provider, in both modes, and the test-set reports write full text to the
+    server log; they are meant for played consults (DPIA R7). Off until an
+    administrator switches them on; without a register they stay off."""
+    if not register.actief():
+        return False
+    try:
+        rij = await register.fetchrow("SELECT waarde FROM vs_instellingen WHERE sleutel = $1", TESTGEREEDSCHAP)
+    except Exception as e:      # register unreachable: the safe side
+        logger.warning("beheer.testgereedschap_onleesbaar", fout=type(e).__name__)
+        return False
+    return bool(rij) and rij["waarde"] == "aan"
+
+
+async def vereis_testgereedschap() -> None:
+    """The test tools exist only while the administrator has them switched on."""
+    if not await testgereedschap_aan():
+        raise HTTPException(status_code=404,
+                            detail="Het testgereedschap staat uit. Zet het aan in Beheer, onder Instellingen (alleen voor gespeelde consulten).")
+
+
 class Inloggen(BaseModel):
     sleutel: str = Field(..., max_length=200)
     code: str = Field("", max_length=10)
@@ -479,6 +505,7 @@ class Instellingen(BaseModel):
     tarief_per_fte: Optional[float] = Field(None, ge=0, le=1_000_000)
     serveradres: Optional[str] = Field(None, max_length=200)
     winkellink: Optional[str] = Field(None, max_length=500)
+    testgereedschap: Optional[bool] = None
 
 
 @router.get("/api/v1/beheer/instellingen")
@@ -489,12 +516,20 @@ async def instellingen_lezen(_: str = Depends(vereis_beheerder)):
         "tarief_per_fte": float(uit["tarief_per_fte"]) if uit.get("tarief_per_fte") else None,
         "serveradres": uit.get("serveradres", ""),
         "winkellink": uit.get("winkellink", ""),
+        "testgereedschap": uit.get(TESTGEREEDSCHAP) == "aan",
     }
 
 
 @router.put("/api/v1/beheer/instellingen")
 async def instellingen_opslaan(invoer: Instellingen, door: str = Depends(vereis_beheerder)):
     for k, v in invoer.model_dump(exclude_unset=True).items():
+        if k == TESTGEREEDSCHAP:
+            # Who switched the test tools on or off, and when, stays in the admin log.
+            await register.execute(
+                "INSERT INTO vs_instellingen (sleutel, waarde) VALUES ($1, $2) "
+                "ON CONFLICT (sleutel) DO UPDATE SET waarde = EXCLUDED.waarde", k, "aan" if v else "uit")
+            await register.log(door, "testgereedschap.aan" if v else "testgereedschap.uit")
+            continue
         await register.execute(
             "INSERT INTO vs_instellingen (sleutel, waarde) VALUES ($1, $2) "
             "ON CONFLICT (sleutel) DO UPDATE SET waarde = EXCLUDED.waarde", k, "" if v is None else str(v))

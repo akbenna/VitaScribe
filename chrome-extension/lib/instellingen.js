@@ -36,7 +36,9 @@ var SVInstellingen = (function () {
     if (!(opties && opties.ruw) && (keys.indexOf('apiUrl') !== -1 || keys.indexOf('apiKey') !== -1)) {
       var basis = await lees(keys, s, { ruw: true });
       var modus = (await s.local.get(MODUS))[MODUS];
-      if (modus === 'eu') {
+      // Same rule as SVModus.geldig: only an explicit 'claude' is the Claude mode;
+      // nothing stored means the eu mode (since 2.27.1), so its server as well.
+      if (modus !== 'claude') {
         var eu = await lees(['apiUrlEu', 'apiKeyEu'], s, { ruw: true });
         var adres = String(eu.apiUrlEu || '').trim();
         if (adres) {

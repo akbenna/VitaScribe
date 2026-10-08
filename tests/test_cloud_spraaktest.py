@@ -14,6 +14,9 @@ from services.cloud_api.config import get_config
 @pytest.fixture(autouse=True)
 def _env(monkeypatch):
     monkeypatch.setenv("API_KEYS", "geheim")
+    async def aan():
+        return True
+    monkeypatch.setattr(beheer, "testgereedschap_aan", aan)   # the admin switch in Beheer, off by default
     monkeypatch.setenv("MISTRAL_API_KEY", "mistral-test")
     get_config.cache_clear()
     yield

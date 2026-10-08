@@ -67,7 +67,7 @@ def test_visit_end_to_end_only_the_browser_can_read(monkeypatch, tmp_path):
     gezien = {}
     prive, token = _koppel(api, monkeypatch, gezien)
     tel = {"X-VitaScribe-Visite": token}
-    assert api.post("/api/v1/visite/hallo", headers=tel).json() == {"modus": "claude", "naam": "Dr. A"}
+    assert api.post("/api/v1/visite/hallo", headers=tel).json() == {"modus": "eu", "naam": "Dr. A"}   # paired without a chosen mode: eu (the default since the eu-default change)
 
     r = api.post("/api/v1/visite/opname", headers=tel,
                  files={"audio": ("visite.webm", b"\x1aE\xdf\xa3" + b"0" * 4000, "audio/webm")},

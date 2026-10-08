@@ -44,8 +44,15 @@ def test_alleen_eu_weigert_claude_met_uitleg(api, monkeypatch):
     # The extension can always ask which modes are allowed, also from the wrong mode.
     p = api.get("/api/v1/providers", headers=CLAUDE)
     assert p.status_code == 200 and p.json()["modi"] == ["eu"]
-    # Without a mode header the default is claude: refused as well.
+    # Without a mode header the default is eu (since 07-10-2026): allowed.
+    assert api.get("/api/v1/tolk/talen", headers={"X-API-Key": "geheim"}).status_code == 200
+
+
+def test_zonder_kopregel_is_de_modus_eu(api, monkeypatch):
+    """A request that does not say which mode it wants never reaches a US party."""
+    monkeypatch.setenv("TOEGESTANE_MODI", "claude")
     assert api.get("/api/v1/tolk/talen", headers={"X-API-Key": "geheim"}).status_code == 403
+    assert api.get("/api/v1/tolk/talen", headers=CLAUDE).status_code == 200
 
 
 def test_tikfout_opent_nooit_de_vs_route(monkeypatch):

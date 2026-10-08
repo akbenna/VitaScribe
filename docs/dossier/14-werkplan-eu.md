@@ -65,9 +65,10 @@ DPIA R6). Testgereedschap mag geen echt consult loggen (R7).
 1. Zet op de server `API_USERS=naam:sleutel,...`, met één sleutel per
    gebruiker. Haal `API_KEYS` (de gedeelde sleutel) weg.
 2. Zet in Beheer bij elke beheerder de tweede factor aan (`ADMIN_TOTP`).
-3. Het testgereedschap (spraaktest, soeptest, "Naar testset sturen") zit
-   achter beheerdersrechten. Geef die alleen aan wie het nodig heeft, en
-   gebruik het alleen met gespeelde consulten. Leg dat vast in stuk 09.
+3. Het testgereedschap (spraaktest, soeptest, "Naar testset sturen") staat
+   standaard uit. Zet het alleen aan in Beheer (Instellingen) voor een test met
+   gespeelde consulten, en daarna weer uit; elke wijziging staat met je naam in
+   het beheerlog. Leg dat vast in stuk 09.
 4. Geef elke gebruiker zijn eigen sleutel in Instellingen.
 
 **Wie.** Jij.
@@ -88,7 +89,7 @@ goedgekeurde modus gaan. In fase 2 is dat een eis van elke klantpraktijk.
 - De schakelaar in het paneel staat dan grijs, met de uitleg: "Je praktijk
   gebruikt alleen de EU-modus".
 
-**Gebouwd (versie 2.21.0).**
+**Gebouwd (versie 2.21.0). Sinds 2.27.1 (7 oktober 2026) is EU bovendien de standaardmodus van server en extensie, en staat het testgereedschap standaard uit, met een schakelaar in Beheer die de beheerder zelf bedient.**
 
 - Server: `TOEGESTANE_MODI` (`eu`, `claude` of beide; een tikfout betekent
   alleen EU).
@@ -139,8 +140,11 @@ vervanging**:
 **Wat je doet.**
 
 1. Kies een host:
-   - **Hetzner** (Duitsland): goedkoop en eenvoudig.
-   - **Scaleway** (Frankrijk): werkt meer zoals Railway.
+   - **Hetzner** (Duitsland): goedkoop en eenvoudig; gezondheidsgegevens
+     vastleggen in bijlage 1 van de AVV. Advies.
+   - **Scaleway** (Frankrijk): voor gezondheidsgegevens alleen via het aparte
+     HDS-aanbod, met Business-support (vanaf 250 euro per maand).
+   Vergelijking: `docs/wetgeving/leveranciers/hosting-hetzner-scaleway.md`.
 2. Maak een account op naam van de rechtspersoon en teken de
    verwerkersovereenkomst.
 3. Maak een server (Ubuntu 24.04) en een domein, bijvoorbeeld

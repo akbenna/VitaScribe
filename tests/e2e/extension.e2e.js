@@ -64,7 +64,7 @@ function check(name, cond, extra) {
     const modusKop = r.request().headers()['x-vitascribe-modus'] || '';
     sent.push({ url, body, raw, modus: modusKop });
     if (url.endsWith('/tolk/talen')) return r.fulfill({ contentType: 'application/json', body: JSON.stringify({
-      modus: modusKop || 'claude', nl_stem: 'mistral', talen: [
+      modus: modusKop || 'eu', nl_stem: 'mistral', talen: [
         { code: 'tr', naam: 'Turks', eigen: 'Türkçe', verstaat: modusKop !== 'eu', stem: 'computer',
           waarom: modusKop === 'eu' ? 'In de EU-modus verstaat de spraakherkenning (Voxtral, Mistral) geen Turks.' : '' },
         { code: 'ar-MA', naam: 'Marokkaans-Arabisch (Darija)', eigen: 'الدارجة', verstaat: true, stem: 'mistral', waarom: '' }] }) });
@@ -106,7 +106,7 @@ function check(name, cond, extra) {
     if (url.endsWith('/providers')) {
       const gevraagd = r.request().headers()['x-vitascribe-modus'];
       return r.fulfill({ contentType: 'application/json', body: JSON.stringify({
-        modus: gevraagd === 'eu' ? 'eu' : 'claude', modi: alleenEu ? ['eu'] : ['claude', 'eu'],
+        modus: gevraagd === 'claude' ? 'claude' : 'eu', modi: alleenEu ? ['eu'] : ['claude', 'eu'],
         eu_probleem: euToegestaan ? null : 'Op de server is geen Mistral-sleutel ingesteld.' }) });
     }
     if (url.endsWith('/letters/vraagstelling')) return r.fulfill({ contentType: 'application/json', body: JSON.stringify({
@@ -203,6 +203,14 @@ function check(name, cond, extra) {
     const q = chrome.tabs.query.bind(chrome.tabs);
     chrome.tabs.query = async (o) => (o && o.active ? q({ url: 'https://test.bfrcloud.com/*' }) : q(o));
   });
+
+  console.log('Modus bij een verse installatie');
+  check('verse installatie: EU-modus (2.27.1), zonder opgeslagen keuze',
+    (await panel.evaluate(() => SVModus.lees())) === 'eu' && !(await panel.evaluate(() => chrome.storage.local.get('svModus'))).svModus);
+  // The rest of this scenario is a doctor who chose the Claude mode (all features).
+  await panel.click('#modus [data-modus="claude"]');
+  await sleep(500);
+  check('de arts kiest Claude: keuze bewaard', (await panel.evaluate(() => chrome.storage.local.get('svModus'))).svModus === 'claude');
 
   console.log('Dicteren & SOEP');
   await panel.fill('#text', 'Bij onderzoek RR 152/94, pols 88, sat 96%, temp 38,4 graden. Gewicht 84,5 kg, lengte 1,78 m.');
@@ -820,7 +828,7 @@ function check(name, cond, extra) {
 
   console.log('Modus (Claude | EU)');
   const aan = () => pop.$eval('#modus .aan', (b) => b.getAttribute('data-modus')).catch(() => '');
-  check('modusknop in de popup, standaard Claude', await aan() === 'claude');
+  check('modusknop in de popup toont de keuze van de arts (Claude)', await aan() === 'claude');
   await pop.click('#modus [data-modus="eu"]');
   await sleep(600);
   check('één klik zet de EU-modus aan', await aan() === 'eu');

@@ -171,7 +171,11 @@ def test_policy_eu_stt_provider(monkeypatch):
         assert data_policy.summary()["stt_eu_provider"] is True
     finally:
         data_policy.herstel_modus(tok)
-    assert data_policy.stt_provider() == "deepgram"            # the claude mode is unchanged
+    tok = data_policy.zet_modus("claude")
+    try:
+        assert data_policy.stt_provider() == "deepgram"        # the claude mode is unchanged
+    finally:
+        data_policy.herstel_modus(tok)
 
 
 def test_interpreter_understands_all_languages_with_gladia(monkeypatch):
@@ -205,6 +209,10 @@ def test_spraaktest_against_gladia(monkeypatch):
     async def log(*a, **k):
         return None
     monkeypatch.setattr(register, "log", log)
+
+    async def aan():
+        return True
+    monkeypatch.setattr(beheer, "testgereedschap_aan", aan)    # the switch in Beheer, on for this test
     main.app.dependency_overrides[beheer.vereis_beheerder] = lambda: "test"
     try:
         api = TestClient(main.app)

@@ -19,11 +19,11 @@ gemaakt worden.
 | Modus | De EU-modus stuurt niets naar een Amerikaanse AI-dienst, ook niet met een eigen sleutel van de praktijk. Live dicteren is daar geweigerd. | ingericht |
 | Klinisch meedenken | Op de server uit (`CLINICAL_DECISION_SUPPORT`); in de EU-modus altijd uit, behalve met `ECONSULT_NHG_IN_EU` (NHG bij e-consult, per e-consult aan te vinken) | **te controleren** in Railway |
 | Telefoon of iPad | Koppeling met een geheim in de QR-code (192 bits), als header, vervalt na 2 uur stil en 12 uur altijd; in de modus van de arts; niets opgeslagen op server of telefoon | in gebruik |
-| Slot op de modus | `TOEGESTANE_MODI` op de server en "Alleen EU-modus" per praktijk; de server weigert een andere modus (ook WebSocket) | **zetten** zolang Claude niet is goedgekeurd |
+| Slot op de modus | `TOEGESTANE_MODI` op de server en "Alleen EU-modus" per praktijk; de server weigert een andere modus (ook WebSocket). Sinds 2.27.1 is de EU-modus de standaard: een aanvraag zonder modus, en een verse installatie van de extensie, werken in de EU-modus | standaard EU ingericht; `TOEGESTANE_MODI=eu` **zetten** in Railway zolang Claude niet is goedgekeurd |
 | Fase | `VITASCRIBE_FASE=intern`: openbare aanmelding dicht | ingericht |
 | Filter op identificatoren | Brieven, dossiervragen en post: naam, geboortedatum, BSN, adres en contact gefilterd in de browser, en op de server nog eens | ingericht |
 | Versiecontrole | De extensie meldt haar versie; de server meldt de minimumversie, en het zijpaneel waarschuwt bij een te oude versie | ingericht |
-| Testgereedschap | "Naar testset sturen" en de testset-rapporten schrijven tekst in het log | **te doen:** uitzetten in productie |
+| Testgereedschap | Spraaktest, SOEP-test en testset-inzendingen sturen naar alle aangesloten diensten en schrijven tekst in het log. Standaard uit: zolang de schakelaar in Beheer (Instellingen) uit staat, geven die routes 404, ook voor een beheerder. De beheerder zet hem zelf aan en uit; elke wijziging staat met naam en tijdstip in het beheerlog | ingericht (standaard uit); na gebruik uitzetten |
 | Leveranciers | Railway: SOC 2 Type II, server in NL. Mistral: EU. | zie stuk 05 |
 
 ## Logging (NEN 7513)

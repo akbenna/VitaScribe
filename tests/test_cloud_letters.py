@@ -22,7 +22,8 @@ def api():
     return TestClient(main.app)
 
 
-H = {"X-API-Key": "geheim"}
+# Since 07-10-2026 the default mode is eu; these tests run the claude mode (Anthropic).
+H = {"X-API-Key": "geheim", "X-VitaScribe-Modus": "claude"}
 DOSSIER = "PATIËNT: J.J.\n== JOURNAAL ==\nLage rugpijn sinds 3 mnd, fysiotherapie gestart."
 
 
