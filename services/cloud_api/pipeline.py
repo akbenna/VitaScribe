@@ -38,7 +38,7 @@ SOEP_MAX_TOKENS = 1600
 MAX_PROBLEMEN = 4
 SOEP_VELDEN = ("s", "o", "e", "p", "icpc_code", "icpc_titel")
 MIN_WOORDEN = 12   # fewer recognised words than this: no report (see verwerk_transcript)
-NAZORG_MAX_TOKENS = 700
+NAZORG_MAX_TOKENS = 1000
 
 
 @dataclass
@@ -101,6 +101,8 @@ class PipelineResult:
     markeringen: List[Dict] = field(default_factory=list)
     # Per report sentence the passage of the conversation it rests on (bronnen.py).
     bronnen: List[Dict] = field(default_factory=list)
+    # What the doctor agreed in P, so the work after the consult can be set up (afspraken_uit).
+    afspraken: List[Dict] = field(default_factory=list)
 
     def to_dict(self) -> dict:
         soep = asdict(self.soep)
@@ -108,6 +110,8 @@ class PipelineResult:
             soep["markeringen"] = self.markeringen
         if self.bronnen:
             soep["bronnen"] = self.bronnen
+        if self.afspraken:
+            soep["afspraken"] = self.afspraken
         return {
             "transcript": self.transcript,
             "transcript_raw": self.transcript_raw,
@@ -198,6 +202,40 @@ def markeringen_uit(soep: SOEPResult, controle: dict) -> List[Dict]:
         markeringen.append({"probleem": 0, "veld": "s", "tekst": "",
                             "reden": "hulpvraag ontbreekt mogelijk: " + hulpvraag})
     return markeringen
+
+
+AFSPRAAK_SOORTEN = ("verwijzing", "controle", "onderzoek", "recept", "voorlichting", "brief", "vangnet", "overig")
+MAX_AFSPRAKEN = 10
+
+
+def afspraken_uit(ruw, plan: str) -> List[Dict]:
+    """The agreements of the consult, only what the plan (P) says.
+
+    This is documentation, not advice: an agreement the language model adds
+    that is not in P (most of its words not found there) is dropped, so
+    VitaScribe never proposes something the doctor did not agree."""
+    from .bronnen import _gevonden, _woorden
+    plan_woorden = _woorden(plan)
+    plan_set = set(plan_woorden)
+    uit: List[Dict] = []
+    for item in ruw if isinstance(ruw, list) else []:
+        if not isinstance(item, dict):
+            continue
+        soort = str(item.get("soort") or "").strip().lower()
+        tekst = str(item.get("tekst") or "").strip()[:300]
+        woorden = _woorden(tekst)
+        if soort not in AFSPRAAK_SOORTEN or not woorden:
+            continue
+        gevonden = sum(_gevonden(w, plan_woorden, plan_set) > 0 for w in woorden) / len(woorden)
+        if gevonden < 0.7:
+            logger.info("pipeline.afspraak_niet_in_p", soort=soort)
+            continue
+        uit.append({"soort": soort, "tekst": tekst,
+                    "naar": str(item.get("naar") or "").strip()[:80] if soort == "verwijzing" else "",
+                    "wanneer": str(item.get("wanneer") or "").strip()[:40]})
+        if len(uit) >= MAX_AFSPRAKEN:
+            break
+    return uit
 
 
 async def controleer_soep(gesprek: str, soep: SOEPResult, llm_provider: Optional[str] = None,
@@ -381,6 +419,7 @@ async def verwerk_transcript(
                           if data_policy.clinical_decision_support() else []),
             ontbrekende_info=nazorg_data.get("ontbrekende_info", []),
         )
+        result.afspraken = afspraken_uit(nazorg_data.get("afspraken"), _nazorg_velden(result.soep)["p"])
     except Exception as e:
         logger.error("pipeline.nazorg_error", error=str(e))
         result.decisief = "Fout bij generatie decisief regel."

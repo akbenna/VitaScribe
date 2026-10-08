@@ -487,6 +487,7 @@ function renderSoep(soep) {
   deelIdx = 0;
   renderSoepDeel(soepDelen ? soepDelen[0] : soep);
   markeerDelen();
+  if (window.SVAfsprakenUI) window.SVAfsprakenUI.toon(soep.afspraken);
 }
 
 // Edits in the rows belong to the part on screen; keep them when switching.
@@ -897,6 +898,7 @@ async function nieuwConsult() {
   document.getElementById('mw').classList.add('hidden');
   if (window.SVTolkUI) window.SVTolkUI.wis();   // the interpreter conversation belongs to this consult
   if (window.SVEconsultUI) window.SVEconsultUI.wis();
+  if (window.SVLetters && window.SVLetters.wis) window.SVLetters.wis();   // the letter form belongs to this patient
   if (window.SVTelefoon) window.SVTelefoon.wisFotos();   // photos belong to this patient
   verversAfsluiten();
   setStatus('Klaar voor het volgende consult.');

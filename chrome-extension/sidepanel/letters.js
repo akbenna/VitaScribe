@@ -377,10 +377,25 @@
     if (seg) seg.click();
   }
   // A photo from the phone (telefoon-ui.js) lands here as a screenshot.
+  // An agreement from the consult (afspraken-ui.js): the referral form with receiver and reason.
+  function verwijzing(a) {
+    if (window.SVViews) window.SVViews.show('letters');
+    var tegel = document.querySelector('#lt-kind [data-kind="verwijzing"]');
+    if (tegel) tegel.click();
+    var spec = $('lt-spec');
+    var waarde = SVAfspraken.specialisme(a.naar, Array.prototype.map.call(spec.options, function (o) { return o.value; }));
+    if (waarde) spec.value = waarde;
+    if (!$('lt-reden').value.trim() && a.reden) $('lt-reden').value = a.reden;
+    status(waarde ? 'Verwijzing naar ' + spec.selectedOptions[0].textContent + ' klaargezet. Vul de vraagstelling aan en schrijf de brief.'
+      : 'Verwijzing klaargezet' + (a.naar ? ' (kies zelf "' + a.naar + '" bij Naar)' : '') + '. Vul de vraagstelling aan.');
+    $('lt-reden').focus();
+  }
   window.SVLetters = { zetAfbeelding: function (img) {
     zetAfbeelding(img);
     status('Foto van de telefoon staat klaar. Klik "Lees schermafdruk" om hem uit te lezen.');
-  } };
+  }, verwijzing: verwijzing,
+  // "Consult afsluiten": the letter belongs to this patient too.
+  wis: function () { $('lt-new').click(); } };
   $('lt-shot-drop').addEventListener('click', function () { this.focus(); });
   $('lt-shot-drop').addEventListener('paste', async function (e) {
     var f = readImageFromClipboardEvent(e);
