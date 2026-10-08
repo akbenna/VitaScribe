@@ -460,3 +460,21 @@ def test_voxtral_controle_fout_stoort_het_consult_niet(monkeypatch):
         events = _tot_gesloten(ws)
     assert "controle" not in [e["type"] for e in events]
     assert events[-1]["type"] == "closed"
+
+
+def test_eu_modus_met_gladia_stuurt_opname_naar_gladia(monkeypatch):
+    """Werkplan stap 6: in de EU-modus de spraakdienst van EU_STT_PROVIDER."""
+    verwerkt, ontvangen = [], []
+    app = _voxtral_app(monkeypatch, verwerkt, ontvangen)
+    monkeypatch.setenv("ALLOWED_STT_PROVIDERS", "deepgram")
+    monkeypatch.setenv("EU_STT_PROVIDER", "gladia")
+    monkeypatch.setenv("GLADIA_API_KEY", "gladia-test")
+    get_config.cache_clear()
+    with TestClient(app).websocket_connect("/ws") as ws:
+        ws.send_text(json.dumps(dict(AUTH, taal="tr", modus="eu")))
+        assert ws.receive_json() == {"type": "ready"}
+        ws.send_bytes(b"\x1aE\xdf\xa3kop")
+        ws.send_text(json.dumps({"type": "stop"}))
+        events = _tot_gesloten(ws)
+    assert [e["type"] for e in events] == ["verwerken", "result", "closed"]
+    assert ontvangen == [(b"\x1aE\xdf\xa3kop", "gladia", "tr")]

@@ -6,6 +6,8 @@ Pluggable STT with support for:
   - Deepgram Nova-3 (best Dutch accuracy, default)
   - OpenAI Whisper API
   - Mistral Voxtral Mini Transcribe (France, EU), with speaker labels
+  - Gladia (France, EU) and Speechmatics (UK, EU endpoint): batch, speaker
+    labels, all languages of the interpreter (werkplan stap 6)
 
 All providers return a unified TranscriptResult.
 Compatible with Python 3.9+.
@@ -136,6 +138,10 @@ async def transcribe(audio_path: Path, provider: str = None,
         return await _transcribe_openai(audio_path)
     elif provider == "voxtral":
         return await _transcribe_voxtral(audio_path, language)
+    elif provider == "gladia":
+        return await _transcribe_gladia(audio_path, language)
+    elif provider == "speechmatics":
+        return await _transcribe_speechmatics(audio_path, language)
     else:
         raise ValueError(f"Onbekende STT provider: {provider}")
 
@@ -369,10 +375,28 @@ def nederlandse_vulwoorden(tekst: str) -> str:
 async def transcribe_bytes(audio: bytes, provider: str, language: Optional[str] = None,
                            naam: str = "consult.webm") -> TranscriptResult:
     """Transcribe a recording held in memory (live consult); never on disk."""
-    if provider != "voxtral":
-        raise ValueError(f"Alleen Voxtral verwerkt een opname uit het geheugen, niet {provider}.")
+    if provider not in BATCH_EU:
+        raise ValueError(f"Alleen een Europese batchdienst verwerkt een opname uit het geheugen, niet {provider}.")
     logger.info("stt.start", provider=provider, bytes=len(audio))
-    return await _transcribe_voxtral(audio, language, naam=naam)
+    return await transcribe_eu(audio, language, naam=naam, provider=provider)
+
+
+# Batch speech services that are EU companies or process in the EU; one of
+# them does the speech in the eu mode (data_policy.eu_stt_provider).
+BATCH_EU = ("voxtral", "gladia", "speechmatics")
+
+
+async def transcribe_eu(audio: Union[Path, bytes], language: Optional[str] = None, naam: str = "consult.webm",
+                        diarize: bool = True, provider: Optional[str] = None) -> TranscriptResult:
+    """The eu mode's speech service (or the one named). language: a Deepgram
+    code ("nl", "multi", "ar-SY"); None or "multi" lets the service detect it."""
+    from . import data_policy
+    provider = provider or data_policy.eu_stt_provider()
+    if provider == "gladia":
+        return await _transcribe_gladia(audio, language, naam=naam, diarize=diarize)
+    if provider == "speechmatics":
+        return await _transcribe_speechmatics(audio, language, naam=naam, diarize=diarize)
+    return await _transcribe_voxtral(audio, language, naam=naam, diarize=diarize)
 
 
 async def _transcribe_voxtral(audio_path: Union[Path, bytes], language: Optional[str] = None,
@@ -453,3 +477,202 @@ async def _transcribe_voxtral(audio_path: Union[Path, bytes], language: Optional
                 sprekers=len({s.speaker for s in segments if s.speaker}), duration=duur)
     return TranscriptResult(raw_text=tekst, segments=segments, language=body.get("language") or taal or "nl",
                             duration_secs=duur, provider="voxtral")
+
+
+# ── Shared by the EU batch services ──
+
+def _taal_code(language: Optional[str]) -> Optional[str]:
+    """Two letters ("ar-SY" -> "ar"); None for "multi" or nothing (detect)."""
+    return _voxtral_taal(language) if language else None
+
+
+async def _woordenlijst(max_items: int = 1000) -> List[str]:
+    """The doctor's learned words first, then the standard vocabulary: the same
+    list Voxtral gets, so a comparison is fair."""
+    from . import leren
+    geleerd = [w for w in await leren.woordenlijst() if w and len(w) <= 40]
+    return list(dict.fromkeys(geleerd + voxtral_context_bias()))[:max_items]
+
+
+def _lees(audio: Union[Path, bytes], naam: str) -> "tuple[str, bytes]":
+    if isinstance(audio, (bytes, bytearray)):
+        return naam, bytes(audio)
+    return audio.name, Path(audio).read_bytes()
+
+
+async def _wacht(client: httpx.AsyncClient, url: str, headers: dict, klaar, fout, dienst: str,
+                 max_seconden: float = 600.0) -> dict:
+    """Poll a job until klaar(body) or fout(body); short intervals first."""
+    import asyncio
+    import time as _time
+    start, pauze = _time.monotonic(), 0.5
+    while True:
+        r = await client.get(url, headers=headers)
+        if r.status_code != 200:
+            logger.error(f"{dienst}.poll_error", status=r.status_code, body=r.text[:300])
+            raise ValueError(f"{dienst.capitalize()} gaf fout {r.status_code}.")
+        body = r.json()
+        if klaar(body):
+            return body
+        reden = fout(body)
+        if reden:
+            logger.error(f"{dienst}.job_error", reason=str(reden)[:300])
+            raise ValueError(f"{dienst.capitalize()} kon de opname niet verwerken: {str(reden)[:200]}")
+        if _time.monotonic() - start > max_seconden:
+            raise ValueError(f"{dienst.capitalize()} deed er te lang over.")
+        await asyncio.sleep(pauze)
+        pauze = min(pauze * 1.5, 3.0)
+
+
+# ── Gladia (France, EU) ──
+
+GLADIA_URL = "https://api.gladia.io"
+
+
+async def _transcribe_gladia(audio: Union[Path, bytes], language: Optional[str] = None,
+                             naam: str = "consult.webm", diarize: bool = True) -> TranscriptResult:
+    """Upload, start a pre-recorded job, poll, read, and delete the job at
+    Gladia, so nothing stays behind there."""
+    api_key = get_config().stt.gladia_api_key
+    if not api_key:
+        raise ValueError("GLADIA_API_KEY niet geconfigureerd.")
+    basis = os.getenv("GLADIA_URL", GLADIA_URL).rstrip("/")
+    kop = {"x-gladia-key": api_key}
+    taal = _taal_code(language)
+    bestand, inhoud = _lees(audio, naam)
+    async with httpx.AsyncClient(timeout=120.0) as client:
+        r = await client.post(f"{basis}/v2/upload", headers=kop,
+                              files={"audio": (bestand, inhoud, "application/octet-stream")})
+        if r.status_code not in (200, 201):
+            logger.error("gladia.upload_error", status=r.status_code, body=r.text[:300])
+            raise ValueError(f"Gladia gaf fout {r.status_code} bij het uploaden.")
+        verzoek: dict = {
+            "audio_url": r.json().get("audio_url"),
+            "diarization": bool(diarize),
+            "language_config": {"languages": [taal] if taal else [], "code_switching": not taal},
+        }
+        if diarize or taal == "nl":
+            verzoek["custom_vocabulary"] = True
+            verzoek["custom_vocabulary_config"] = {"vocabulary": await _woordenlijst(), "default_intensity": 0.5}
+        r = await client.post(f"{basis}/v2/pre-recorded", headers=kop, json=verzoek)
+        if r.status_code not in (200, 201):
+            logger.error("gladia.error", status=r.status_code, body=r.text[:500])
+            raise ValueError(f"Gladia gaf fout {r.status_code}.")
+        job = r.json()
+        job_url = job.get("result_url") or f"{basis}/v2/pre-recorded/{job.get('id')}"
+        try:
+            body = await _wacht(client, job_url, kop, lambda b: b.get("status") == "done",
+                                lambda b: (b.get("error_code") or "fout") if b.get("status") == "error" else None,
+                                "gladia")
+        finally:
+            if job.get("id"):
+                await client.delete(f"{basis}/v2/pre-recorded/{job['id']}", headers=kop)
+    resultaat = body.get("result") or {}
+    transcriptie = resultaat.get("transcription") or {}
+    talen = transcriptie.get("languages") or []
+    gekozen = taal or (talen[0] if talen else "")
+    netjes = nederlandse_vulwoorden if gekozen == "nl" else (lambda t: t)
+    segments = []
+    for u in transcriptie.get("utterances") or []:
+        tekst = netjes((u.get("text") or "").strip())
+        if not tekst:
+            continue
+        spreker = u.get("speaker")
+        segments.append(TranscriptSegment(
+            text=tekst, start=float(u.get("start") or 0.0), end=float(u.get("end") or 0.0),
+            speaker=f"spreker_{spreker}" if diarize and spreker not in (None, "") else "",
+            confidence=float(u.get("confidence") or 0.0)))
+    duur = float((resultaat.get("metadata") or {}).get("audio_duration") or (segments[-1].end if segments else 0.0))
+    tekst = netjes((transcriptie.get("full_transcript") or "").strip()) or " ".join(s.text for s in segments)
+    logger.info("gladia.result", chars=len(tekst), segments=len(segments),
+                sprekers=len({s.speaker for s in segments if s.speaker}), duration=duur)
+    return TranscriptResult(raw_text=tekst, segments=segments, language=gekozen or "nl",
+                            duration_secs=duur, provider="gladia")
+
+
+# ── Speechmatics (UK, EU endpoint) ──
+
+SPEECHMATICS_URL = "https://eu1.asr.api.speechmatics.com"
+
+
+def _speechmatics_tekst(resultaten: List[dict]) -> List[TranscriptSegment]:
+    """json-v2 words and punctuation to utterances per speaker."""
+    segments: List[TranscriptSegment] = []
+    for r in resultaten:
+        alt = (r.get("alternatives") or [{}])[0]
+        woord = str(alt.get("content") or "")
+        if not woord:
+            continue
+        spreker = alt.get("speaker") or ""
+        start, eind = float(r.get("start_time") or 0.0), float(r.get("end_time") or 0.0)
+        if r.get("type") == "punctuation" or r.get("attaches_to") == "previous":
+            if segments:
+                segments[-1].text += woord
+                segments[-1].end = max(segments[-1].end, eind)
+            continue
+        if segments and segments[-1].speaker == spreker and not segments[-1].text.endswith((".", "?", "!")):
+            segments[-1].text += " " + woord
+            segments[-1].end = eind
+        else:
+            segments.append(TranscriptSegment(text=woord, start=start, end=eind, speaker=spreker,
+                                              confidence=float(alt.get("confidence") or 0.0)))
+    return segments
+
+
+async def _transcribe_speechmatics(audio: Union[Path, bytes], language: Optional[str] = None,
+                                   naam: str = "consult.webm", diarize: bool = True) -> TranscriptResult:
+    """Submit a batch job at the EU endpoint, poll, read json-v2, and delete
+    the job, so nothing stays behind there."""
+    import json as _json
+    cfg = get_config().stt
+    if not cfg.speechmatics_api_key:
+        raise ValueError("SPEECHMATICS_API_KEY niet geconfigureerd.")
+    basis = os.getenv("SPEECHMATICS_URL", SPEECHMATICS_URL).rstrip("/")
+    kop = {"Authorization": f"Bearer {cfg.speechmatics_api_key}"}
+    taal = _taal_code(language)
+    instelling: dict = {"language": taal or "auto", "operating_point": cfg.speechmatics_operating_point}
+    if diarize:
+        instelling["diarization"] = "speaker"
+    if diarize or taal == "nl":
+        instelling["additional_vocab"] = [{"content": w} for w in await _woordenlijst()]
+    config = {"type": "transcription", "transcription_config": instelling}
+    if not taal:
+        config["language_identification_config"] = {}
+    bestand, inhoud = _lees(audio, naam)
+    async with httpx.AsyncClient(timeout=120.0) as client:
+        r = await client.post(f"{basis}/v2/jobs", headers=kop,
+                              files={"data_file": (bestand, inhoud, "application/octet-stream")},
+                              data={"config": _json.dumps(config)})
+        if r.status_code not in (200, 201):
+            logger.error("speechmatics.error", status=r.status_code, body=r.text[:500])
+            raise ValueError(f"Speechmatics gaf fout {r.status_code}.")
+        job_id = r.json().get("id")
+        if not job_id:
+            raise ValueError("Speechmatics gaf geen opdrachtnummer terug.")
+        try:
+            await _wacht(client, f"{basis}/v2/jobs/{job_id}", kop,
+                         lambda b: (b.get("job") or {}).get("status") == "done",
+                         lambda b: (b.get("job") or {}).get("status") if (b.get("job") or {}).get("status")
+                         in ("rejected", "deleted", "expired") else None, "speechmatics")
+            r = await client.get(f"{basis}/v2/jobs/{job_id}/transcript", headers=kop, params={"format": "json-v2"})
+            if r.status_code != 200:
+                raise ValueError(f"Speechmatics gaf fout {r.status_code} bij het ophalen.")
+            body = r.json()
+        finally:
+            if job_id:
+                await client.delete(f"{basis}/v2/jobs/{job_id}", headers=kop, params={"force": "true"})
+    gekozen = taal or str(((body.get("metadata") or {}).get("language_identification") or {}).get("most_likely_language")
+                          or (body.get("metadata") or {}).get("transcription_config", {}).get("language") or "")
+    if gekozen == "auto":
+        gekozen = ""
+    netjes = nederlandse_vulwoorden if gekozen == "nl" else (lambda t: t)
+    segments = _speechmatics_tekst(body.get("results") or [])
+    for s in segments:
+        s.text = netjes(s.text)
+        s.speaker = f"spreker_{s.speaker}" if diarize and s.speaker and s.speaker != "UU" else ""
+    duur = float((body.get("job") or {}).get("duration") or (segments[-1].end if segments else 0.0))
+    tekst = " ".join(s.text for s in segments)
+    logger.info("speechmatics.result", chars=len(tekst), segments=len(segments),
+                sprekers=len({s.speaker for s in segments if s.speaker}), duration=duur)
+    return TranscriptResult(raw_text=tekst, segments=segments, language=gekozen or "nl",
+                            duration_secs=duur, provider="speechmatics")

@@ -15,7 +15,8 @@ een audiobestand op de server. De extensie houdt zelf een kopie van de
 opname tot het verslag binnen is; valt de verbinding weg, dan stuurt zij
 die kopie alsnog op de gewone manier (/api/v1/consult/process).
 
-Met ALLOWED_STT_PROVIDERS=voxtral gaat het geluid niet naar Deepgram: de
+Met een Europese batchdienst (ALLOWED_STT_PROVIDERS=voxtral, of in de EU-modus
+EU_STT_PROVIDER: Voxtral, Gladia of Speechmatics) gaat het geluid niet naar Deepgram: de
 server houdt de stukjes in het geheugen (nooit op schijf) en stuurt na "stop"
 de hele opname in één keer naar Voxtral (Mistral, EU), dat de stemmen
 scheidt. Tussentijdse voortgang toont dan alleen de tijd; vraagsuggesties
@@ -88,10 +89,10 @@ CONTROLE_MIN_WOORDEN = {30.0: 3, 120.0: 15, 300.0: 30}
 
 
 async def _controleer_opname(ws: WebSocket, opname: bytes, seconden: float, taal_code: Optional[str],
-                             transcribeer: Callable[..., Any]) -> None:
-    """One check during a Voxtral consult: did Voxtral hear a conversation so far?"""
+                             transcribeer: Callable[..., Any], dienst: str = "voxtral") -> None:
+    """One check during a batch consult: did the speech service hear a conversation so far?"""
     try:
-        t = await transcribeer(opname, "voxtral", language=taal_code)
+        t = await transcribeer(opname, dienst, language=taal_code)
     except Exception as exc:  # a failing check must not disturb the consult
         logger.warning("consult_live.controle_fout", seconden=seconden, error=type(exc).__name__)
         return
@@ -222,7 +223,7 @@ async def volg_consult(
         await ws.close(code=4400)
         return
 
-    if data_policy.stt_provider() == "voxtral":
+    if data_policy.batch_stt():
         await _volg_met_voxtral(ws, auth, ident, verwerk, transcribeer)
         return
 
@@ -368,18 +369,19 @@ async def volg_consult(
 
 async def _volg_met_voxtral(ws: WebSocket, auth: Dict[str, Any], ident: Any,
                             verwerk: Callable[..., Any], transcribeer: Callable[..., Any]) -> None:
-    """Het consult in de Voxtral-stand: opname in het geheugen, na stop naar Voxtral."""
-    cfg = get_config()
-    if not cfg.llm.mistral_api_key:
+    """Het consult met een Europese batchdienst (Voxtral, Gladia of Speechmatics):
+    opname in het geheugen, na stop in één keer naar die dienst."""
+    dienst = data_policy.stt_provider()
+    if not data_policy.stt_sleutel(dienst):
         await _send_json(ws, {"type": "error", "terugval": False,
-                              "message": "Spraakherkenning (Voxtral) is niet ingesteld op de server."})
+                              "message": f"Spraakherkenning ({dienst.capitalize()}) is niet ingesteld op de server."})
         await ws.close(code=4500)
         return
     taal = talen.kies(auth.get("taal"))
     if vraagsuggesties.toegestaan(auth):
         logger.info("consult_live.vraagsuggesties_niet_met_voxtral")
     audit.log_event(ident.label, "consult.stream", consent=True)
-    logger.info("consult_live.start", stt="voxtral", taal=taal.code, versie=str(auth.get("versie") or "onbekend")[:20])
+    logger.info("consult_live.start", stt=dienst, taal=taal.code, versie=str(auth.get("versie") or "onbekend")[:20])
     await _send_json(ws, {"type": "ready"})
 
     opname = bytearray()
@@ -411,7 +413,7 @@ async def _volg_met_voxtral(ws: WebSocket, auth: Dict[str, Any], ident: Any,
                 if controles and nu - start >= controles[0] and nadictaat is None:
                     moment = controles.pop(0)
                     lopend.append(asyncio.create_task(
-                        _controleer_opname(ws, bytes(opname), moment, taal.deepgram, transcribeer)))
+                        _controleer_opname(ws, bytes(opname), moment, taal.deepgram, transcribeer, dienst)))
                 if nu - laatst_gemeld >= VOORTGANG_ELKE_SECS:
                     laatst_gemeld = nu
                     await _send_json(ws, {"type": "voortgang", "seconden": round(nu - start, 1), "sprekers": 0})
@@ -435,21 +437,21 @@ async def _volg_met_voxtral(ws: WebSocket, auth: Dict[str, Any], ident: Any,
             taak.cancel()
         await _send_json(ws, {"type": "verwerken"})
         if opname:
-            transcript = await transcribeer(bytes(opname), "voxtral", language=taal.deepgram)
+            transcript = await transcribeer(bytes(opname), dienst, language=taal.deepgram)
         else:
             transcript = TranscriptResult(raw_text="", segments=[], language=taal.code,
-                                          duration_secs=0.0, provider="voxtral")
+                                          duration_secs=0.0, provider=dienst)
         stt_service.markeer_nadictaat(transcript, nadictaat)
         result = await verwerk(transcript, llm_provider=auth.get("llm_provider"), taal=taal.code)
         data = result.to_dict()
         data["processing_time_secs"] = round(time.time() - start, 2)
         await _send_json(ws, {"type": "result", "data": data, "leeg": not transcript.raw_text.strip()})
-        logger.info("consult_live.complete", stt="voxtral", seconden=transcript.duration_secs,
+        logger.info("consult_live.complete", stt=dienst, seconden=transcript.duration_secs,
                     sprekers=len({x.speaker for x in transcript.segments if x.speaker}))
     except WebSocketDisconnect:
         return
     except Exception as exc:
-        logger.error("consult_live.error", stt="voxtral", error=type(exc).__name__)
+        logger.error("consult_live.error", stt=dienst, error=type(exc).__name__)
         # The extension still has its own copy and sends it the normal way.
         await _send_json(ws, {"type": "error", "terugval": True,
                               "message": "Het verslag kon niet worden gemaakt."})
