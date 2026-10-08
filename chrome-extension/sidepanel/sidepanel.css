@@ -343,6 +343,10 @@ body.consult-running .consult { border-color: var(--rec); }
 .dv-paneel { display: flex; flex-direction: column; gap: 8px; max-height: 55vh; overflow-y: auto; padding-right: 2px; }
 .dv-paneel .dv-kop { align-items: center; }
 .dv-paneel .dv-kop .lt-hint { margin: 0; flex: 1; }
+.dv-paneel > .dv-kop { position: sticky; top: 0; z-index: 1; background: var(--bg); padding-bottom: 4px; }
+.dv-weg { flex-shrink: 0; margin-left: 2px; }
+.dv-waar { margin: 0; font-size: 12px; }
+.dv-waar .link-btn { background: none; border: 0; padding: 0; font: inherit; color: var(--brand-dark); text-decoration: underline; cursor: pointer; }
 
 /* Interpreter */
 .tk-gesprek { display: flex; flex-direction: column; gap: 10px; }

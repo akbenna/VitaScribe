@@ -119,16 +119,25 @@ jouw verantwoordelijkheid (WGBO). Dat verandert niet door de software.
 5. **Telefoon kwijt?** Hij kan geen verslag lezen. Ontkoppel toch meteen:
    *telefoon koppelen › Ontkoppel alle telefoons*.
 
-## Meedenken over wat in beeld is
+## Meedenken over waar je klikt
 
-Open in Bricks het lab, een uitslag of een brief, klik in de balk onderaan
-op **Denk mee over wat in beeld is**. VitaScribe beoordeelt dat scherm zoals
-in het tabblad Post: waarden met richting, verloop als eerdere waarden in
-beeld staan, een samenvatting voor het journaal en uitleg voor de patiënt.
-Typ eerst een vraag om te richten (bijv. "is het Hb gedaald sinds de vorige
-keer?"). Duiding en beleidsvoorstel alleen als klinische ondersteuning aan
-staat; anders krijg je de feiten. Open alleen het onderdeel dat telt: wat
-in beeld staat, gaat (gefilterd op naam en BSN) mee.
+Klik in Bricks op wat je bedoelt: een labwaarde, een uitslag, een brief. Of
+selecteer het stuk tekst. Klik dan in de balk onderaan op **Denk mee over
+waar je klikte**. VitaScribe kijkt alleen naar het blok rond je klik (bij een
+labtabel de hele tabel, met de kopregel en eerdere waarden), of naar je
+selectie. Op de kaart staat waarnaar gekeken is; **Alles in beeld** doet
+het opnieuw over alles wat in Bricks in beeld staat. Heb je nergens
+geklikt, dan kijkt VitaScribe naar alles in beeld.
+
+De beoordeling is dezelfde als in het tabblad Post: waarden met richting,
+verloop als eerdere waarden meegaan, een samenvatting voor het journaal en
+uitleg voor de patiënt. Typ eerst een vraag om te richten (bijv. "is het Hb
+gedaald sinds de vorige keer?"). Duiding en beleidsvoorstel alleen als
+klinische ondersteuning aan staat; anders krijg je de feiten. Naam en BSN
+gaan er niet mee.
+
+Klaar met een antwoord? Klik het weg met **✕** op de kaart, of wis alles met
+**Wis** bovenaan de balk.
 
 ## Foto's in het dossier
 

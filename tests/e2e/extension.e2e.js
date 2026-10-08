@@ -509,6 +509,42 @@ function check(name, cond, extra) {
   check('antwoord met aanwijzingen gemarkeerd als "Alleen aanwijzingen"', (await panel.textContent('.dv-item:nth-child(2) .dv-zeker')) === 'Alleen aanwijzingen'
     && (await panel.getAttribute('.dv-item:nth-child(2)', 'class')).includes('indirect'));
 
+  // Pointing: a click in the lab table narrows "Denk mee" to that table.
+  await page.click('#lab-ggt td:nth-child(3)');
+  await panel.bringToFront();
+  await panel.click('#dv-meedenken');
+  await sleep(1500);
+  const mdk = sent.filter((x) => x.url.endsWith('/post/beoordeel')).pop();
+  check('meedenken na een klik: alleen het aangeklikte blok (lab met kopregel), niet het hele dossier',
+    mdk && mdk !== mdv && /Bepaling/.test(mdk.body.tekst) && /gammaGT\s+120\s+330/.test(mdk.body.tekst) && !/blaasspoeling|MIDDEL-17/.test(mdk.body.tekst),
+    mdk && mdk.body.tekst.slice(0, 300));
+  check('meedenken na een klik: kaart zegt waarnaar gekeken is', (await panel.textContent('.dv-item:first-child .dv-waar')).includes('het blok waar je klikte'),
+    await panel.textContent('.dv-item:first-child .dv-waar'));
+  await panel.click('.dv-item:first-child .dv-waar button');
+  await sleep(1500);
+  const mdb = sent.filter((x) => x.url.endsWith('/post/beoordeel')).pop();
+  check('"Alles in beeld": opnieuw, nu breed', mdb && mdb !== mdk && /blaasspoeling/.test(mdb.body.tekst) &&
+    (await panel.textContent('.dv-item:first-child .dv-waar')).includes('alles wat in beeld staat'));
+  // Selected text wins over the click.
+  await page.evaluate(() => {
+    const div = [...document.querySelectorAll('div')].find((d) => d.textContent.includes('Zoon wil stoppen'));
+    const r = document.createRange(); r.selectNodeContents(div);
+    getSelection().removeAllRanges(); getSelection().addRange(r);
+  });
+  await panel.bringToFront();
+  await panel.click('#dv-meedenken');
+  await sleep(1500);
+  const mds = sent.filter((x) => x.url.endsWith('/post/beoordeel')).pop();
+  check('meedenken met geselecteerde tekst: alleen de selectie', mds && /Zoon wil stoppen/.test(mds.body.tekst) && !/gammaGT|blaasspoeling/.test(mds.body.tekst),
+    mds && mds.body.tekst.slice(0, 200));
+  await page.evaluate(() => getSelection().removeAllRanges());
+  // Clicking answers away.
+  const voorWeg = (await panel.$$('.dv-item')).length;
+  await panel.click('.dv-item:first-child .dv-weg');
+  check('✕ klikt één antwoord weg', (await panel.$$('.dv-item')).length === voorWeg - 1);
+  await panel.click('#dv-wis');
+  check('Wis: alle antwoorden weg, balk dicht', (await panel.$$('.dv-item')).length === 0 && await panel.isHidden('#dv-paneel'));
+
   console.log('Advies bij een gevoelig dossier');
   check('gewoon dossier (dementie, incontinentie): geen advies', await panel.isHidden('#gevoelig-advies'));
   await page.goto('https://test.bfrcloud.com/gevoelig');
