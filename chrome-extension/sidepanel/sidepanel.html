@@ -517,6 +517,7 @@
           <button class="seg-btn active" data-src="bricks" type="button">Bricks</button>
           <button class="seg-btn" data-src="shot" type="button">Schermafdruk</button>
           <button class="seg-btn" data-src="pdf" type="button">PDF</button>
+          <button class="seg-btn" data-src="tekst" type="button" title="Tekst die je in Bricks kopieerde (bijv. Ctrl+A, Ctrl+C)">Tekst plakken</button>
         </div>
         <div class="lt-src-pane" data-pane="bricks">
           <p class="lt-hint">Open de patiënt en de onderdelen die mee moeten (journaal, medicatie, voorgeschiedenis, lab) en kies Ophalen.</p>
@@ -526,6 +527,11 @@
           <img id="lt-shot-img" class="lt-shot hidden" alt="">
           <button id="lt-shot-read" class="btn primary hidden" type="button">Lees schermafdruk</button>
           <p class="lt-hint">De schermafdruk gaat naar de server om te lezen; naam, BSN en adres worden daarbij weggelaten.</p>
+        </div>
+        <div class="lt-src-pane hidden" data-pane="tekst">
+          <textarea id="lt-tekst" rows="6" placeholder="Selecteer in Bricks wat mee moet (of alles: Ctrl+A), kopieer (Ctrl+C) en plak hier (Ctrl+V)."></textarea>
+          <button id="lt-tekst-ok" class="btn primary" type="button">Gebruik deze tekst</button>
+          <p class="lt-hint">Handig als Ophalen niet alles vindt. De tekst blijft in dit paneel; naam en BSN worden er net als bij Ophalen uit gefilterd voordat iets wordt verstuurd.</p>
         </div>
         <div class="lt-src-pane hidden" data-pane="pdf">
           <div class="lt-drop" id="lt-pdf-drop" tabindex="0">Sleep een PDF-export hierheen of klik om te kiezen</div>

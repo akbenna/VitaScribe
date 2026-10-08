@@ -19,7 +19,9 @@
   var $ = function (id) { return document.getElementById(id); };
   // Per section: enough for a long journal in view. Bricks lists the newest
   // first, so a cut keeps the recent part; the section shows that it was cut.
-  var MAX_SECTIE = 20000;
+  // Per section. The server takes 160,000 characters in all; 20,000 per section
+  // cut long journals and whole-page reads off before the part that mattered.
+  var MAX_SECTIE = 60000;
   var DEFAULT_ON = ['journaal', 'medicatie', 'voorgeschied', 'lab', 'problemen', 'allergie', 'dossier', 'metingen'];
 
   var lt = {
@@ -160,7 +162,18 @@
       name.append('Naam: ', s, ' → ', b);
     } else {
       var b2 = document.createElement('b'); b2.textContent = lt.initialen;
-      name.append('Geen naam gevonden; patiënt heet in de brief ', b2);
+      name.append('Geen naam gevonden; patiënt heet in de brief ', b2, ' ');
+      // Without the name, the name is not filtered out of the text: let the doctor give it.
+      var vul = document.createElement('button');
+      vul.type = 'button'; vul.className = 'lt-link'; vul.textContent = 'naam invullen';
+      vul.addEventListener('click', function () {
+        var n = (window.prompt('Naam van de patiënt zoals in het dossier. Die wordt uit de tekst gefilterd en niet verstuurd.') || '').trim();
+        if (!n) return;
+        lt.naamRauw = n;
+        lt.initialen = SVPrivacy.initialen(n);
+        renderDossier(lt.bron);
+      });
+      name.append(vul);
     }
     if (bron) name.append(' · bron: ' + bron);
 
@@ -234,6 +247,14 @@
     // leaves out hidden children; of a hidden element it would be glued text.
     function text(el) {
       var t = el.innerText || '';
+      // innerText leaves out what is typed in a field: an open, unsaved journal
+      // entry (today's consult) would be missing. Add those values.
+      var velden = [];
+      el.querySelectorAll('textarea, input[type="text"], input:not([type])').forEach(function (f) {
+        var v = String(f.value || '').trim();
+        if (v.length >= 10 && zichtbaar(f) && t.indexOf(v) === -1 && velden.indexOf(v) === -1) velden.push(v);
+      });
+      if (velden.length) t += '\n' + velden.join('\n');
       return t.split('\n')
         .filter(function (line) { return !/^(opslaan|annuleren|sluiten|bewerken|verwijderen|nieuw|zoeken|print|afdrukken|meer|×|✕)$/i.test(line.trim()); })
         .join('\n')
@@ -503,6 +524,26 @@
       var erbij = voegToe(parseSections(tekst), 'PDF ' + file.name);
       status('PDF gelezen (' + Math.round(tekst.length / 1000) + 'k tekens)' + (erbij ? ', toegevoegd aan het opgehaalde dossier.' : '.'));
     } catch (e) { status('PDF: ' + e.message, true); }
+  });
+
+  // ── Dossier: pasted text (when Ophalen does not find everything) ──
+  // "Naam (84) (03-06-1941)", as Bricks shows the patient at the top.
+  function patientUit(tekst) {
+    var kop = /([A-Z][A-Za-zÀ-ÿ'.\- ]{1,60}?)\s*\((\d{1,3})\)\s*\((\d{1,2}-\d{1,2}-\d{4})\)/.exec(tekst || '');
+    return kop ? { naam: kop[1].trim(), geboren: kop[3] } : { naam: '', geboren: '' };
+  }
+  $('lt-tekst-ok').addEventListener('click', function () {
+    var tekst = $('lt-tekst').value.trim();
+    if (tekst.replace(/\s/g, '').length < 30) { status('Plak eerst de tekst uit Bricks.', true); return; }
+    var p = patientUit(tekst);
+    var secties = parseSections(SVDossiervraag.ontdubbel(tekst));
+    var erbij = false;
+    if (Object.keys(lt.secties).length) erbij = voegToe(secties, 'geplakte tekst');
+    else setDossier(secties, p.naam, 'geplakte tekst', p.geboren);
+    $('lt-tekst').value = '';     // the text lives on in the dossier sections only
+    status('Tekst gebruikt (' + Math.round(tekst.length / 1000) + 'k tekens)' + (erbij ? ', toegevoegd aan het opgehaalde dossier.' : '.') +
+      (!erbij && !p.naam ? ' De naam werd niet herkend: klik hieronder op "naam invullen", anders wordt hij niet uit de tekst gefilterd.' : ''));
+    $('lt-dossier-meer').open = true;
   });
 
   // ── Request (vraag) ──
@@ -786,7 +827,7 @@
     lt.concept = null;
     $('lt-output').classList.add('hidden');
     $('lt-out').textContent = '';
-    ['lt-vraag', 'lt-reden', 'lt-extra', 'lt-onderwerp', 'lt-periode', 'lt-verkl-vraag', 'lt-bij-opdracht'].forEach(function (id) { $(id).value = ''; });
+    ['lt-vraag', 'lt-reden', 'lt-extra', 'lt-onderwerp', 'lt-periode', 'lt-verkl-vraag', 'lt-bij-opdracht', 'lt-tekst'].forEach(function (id) { $(id).value = ''; });
     $('lt-vraag-check').classList.add('hidden');
     $('lt-bijlagen').classList.add('hidden');
     $('lt-vragencheck').classList.add('hidden');

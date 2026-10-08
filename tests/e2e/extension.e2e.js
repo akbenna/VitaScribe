@@ -310,9 +310,21 @@ function check(name, cond, extra) {
     && (await panel.textContent('#lt-generate')) === 'Schrijf verwijsbrief' && await panel.isVisible('#lt-reden') && await panel.isHidden('#lt-vraag'));
   check('drie soorten: verwijzing, informatiebrief, verklaring', (await panel.$$eval('.lt-tegel', (t) => t.map((x) => x.dataset.kind))).join() === 'verwijzing,informatiebrief,verklaring');
   check('dossier in één regel: nog niet opgehaald', (await panel.textContent('#lt-dossier-kort')).includes('Nog niet opgehaald'));
+  // An open, unsaved journal entry (today's consult) is typed in a field: Ophalen must read it too.
+  for (const pg of ctx.pages()) {
+    await pg.evaluate(() => {
+      const s = [...document.querySelectorAll('section.panel')].find((x) => /Journaal/.test(x.textContent) && /rugpijn/.test(x.textContent));
+      if (!s || s.querySelector('#sv-open-regel')) return;
+      const t = document.createElement('textarea');
+      t.id = 'sv-open-regel';
+      t.value = 'Open journaalregel van vandaag: knieklachten rechts, beleid afwachten.';
+      s.appendChild(t);
+    }).catch(() => {});
+  }
   await panel.click('#lt-scrape');
   await sleep(1200);
   const secs = await panel.$$eval('.lt-sec span:nth-child(2)', (e) => e.map((x) => x.textContent));
+  check('ophalen leest ook een open, nog niet opgeslagen journaalregel', (await panel.textContent('#lt-preview')).includes('Open journaalregel van vandaag'));
   check('onderdelen uit Bricks, ook uit ingebed frame', ['Journaal', 'Medicatie', 'Correspondentie', 'Lab'].every((s) => secs.includes(s)), secs);
   const prev = await panel.textContent('#lt-preview');
   check('preview zonder naam/BSN/telefoon/postcode/geboortedatum', !/Pieter|123456789|12345678|6041 AB|12-03-1961/.test(prev), prev.slice(0, 200));
@@ -323,6 +335,16 @@ function check(name, cond, extra) {
   check('na ophalen staat het dossier in één regel', /Opgehaald \(P\.V\., Bricks.*\): .*Journaal/.test(await panel.textContent('#lt-dossier-kort')), await panel.textContent('#lt-dossier-kort'));
   check('PDF komt bij het Bricks-dossier, vervangt het niet', secs2.includes('Journaal') && secs2.some((x) => x.startsWith('PDF ')), secs2);
   check('naamfilter uit Bricks werkt ook op de PDF', !/Pieter|123456789/.test(await panel.textContent('#lt-preview')));
+  // "Tekst plakken": what the doctor copied in Bricks, when Ophalen does not find everything.
+  await panel.evaluate(() => { document.getElementById('lt-dossier-meer').open = true; });
+  await panel.click('#lt-src [data-src="tekst"]');
+  await panel.fill('#lt-tekst', 'Journaal\n02-10-2026 Pieter belt over de knie: zwelling rechts, beleid echo knie. BSN 123456789.');
+  await panel.click('#lt-tekst-ok');
+  await sleep(300);
+  const secs3 = await panel.$$eval('.lt-sec span:nth-child(2)', (e) => e.map((x) => x.textContent));
+  const prev3 = await panel.textContent('#lt-preview');
+  check('tekst plakken: erbij als onderdeel, gefilterd, vak weer leeg', secs3.some((x) => /geplakte tekst/.test(x)) &&
+    prev3.includes('echo knie') && !/Pieter|123456789/.test(prev3) && (await panel.inputValue('#lt-tekst')) === '', secs3);
   await panel.click('.lt-tegel[data-kind="informatiebrief"]');
   await panel.setInputFiles('#lt-vraag-file', vraagPdf);
   await sleep(1500);
