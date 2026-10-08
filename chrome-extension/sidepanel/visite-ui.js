@@ -136,6 +136,7 @@ window.SVVisiteUI = (function () {
     }
     if (!timer) plan();
     $('vis').classList.remove('hidden');
+    if (ronde.auto) await stuurRonde(true);
     var s = await mijnSleutel().catch(function () { return null; });
     for (var i = 0; i < lijst.length; i++) {
       var v = lijst[i];
@@ -251,6 +252,7 @@ window.SVVisiteUI = (function () {
       weg.type = 'button'; weg.className = 'icon-btn'; weg.textContent = '✕'; weg.title = 'Uit de ronde halen';
       weg.addEventListener('click', async function () {
         ronde.plekken = ronde.plekken.filter(function (x) { return x.plek !== p.plek; });
+        ronde.verstuurd = false;
         await bewaarRonde();
         toonRonde();
       });
@@ -258,7 +260,8 @@ window.SVVisiteUI = (function () {
       ol.appendChild(li);
     });
     var open = ronde.plekken.filter(function (p) { return !p.gedaan; }).length;
-    $('vis-ronde-sub').textContent = ronde.plekken.length ? open + ' van ' + ronde.plekken.length + ' te doen' + (ronde.verstuurd ? ' · op de telefoon' : '') : '';
+    $('vis-ronde-sub').textContent = ronde.plekken.length ? open + ' van ' + ronde.plekken.length + ' te doen'
+      + (ronde.verstuurd ? ' · op de telefoon' : ronde.auto ? ' · wacht op de telefoon' : '') : '';
     $('vis-ronde-acties').classList.toggle('hidden', !ronde.plekken.length);
   }
 
@@ -280,20 +283,36 @@ window.SVVisiteUI = (function () {
     setStatus(nu.naam + ' staat in de ronde. Open de volgende patiënt en klik opnieuw, of stuur de ronde naar de telefoon.');
   }
 
-  async function stuurRonde() {
+  /**
+   * Send the round to the phone(s). After the first "Naar telefoon" the panel keeps it
+   * there by itself (ververs, every 30 s): when no phone had a key yet, when a patient
+   * was added or removed, and when another phone was paired since.
+   */
+  async function stuurRonde(stil) {
     try {
+      var open = ronde.plekken.filter(function (p) { return !p.gedaan; });
+      if (!open.length) { if (!stil) setStatus('Er staat geen visite meer open in de ronde.'); return; }
+      ronde.auto = true;
       var tel = (await vraag('/api/v1/visite/toestellen')).data.toestellen || [];
-      if (!tel.length) throw new Error('Er is nog geen telefoon met een sleutel. Open eerst de visitepagina op de telefoon (na het koppelen).');
+      var kids = tel.map(function (t) { return t.kid; }).sort().join(',');
+      if (!tel.length) {
+        ronde.verstuurd = false;
+        await bewaarRonde();
+        toonRonde();
+        if (!stil) setStatus('Nog geen telefoon klaar. Open de visitepagina op de telefoon (of koppel hem opnieuw); de ronde gaat er dan vanzelf heen.', true);
+        return;
+      }
+      if (stil && ronde.verstuurd && ronde.kids === kids) return;
       // Only the short labels go to the phone; names stay in this browser.
-      var env = await SVVisite.versleutel({ plekken: ronde.plekken.filter(function (p) { return !p.gedaan; })
-        .map(function (p) { return { plek: p.plek, aanduiding: p.aanduiding }; }) }, tel);
+      var env = await SVVisite.versleutel({ plekken: open.map(function (p) { return { plek: p.plek, aanduiding: p.aanduiding }; }) }, tel);
       await vraag('/api/v1/visite/ronde', { method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ envelop: env }) });
       ronde.verstuurd = true;
+      ronde.kids = kids;
       await bewaarRonde();
       toonRonde();
-      setStatus('De ronde staat op de telefoon. Open daar de visitepagina of tik op "Ronde vernieuwen".');
-    } catch (e) { setStatus(e.message, true); }
+      setStatus('De ronde staat op de telefoon (' + open.length + (open.length === 1 ? ' visite' : ' visites') + '). De visitepagina toont hem binnen een halve minuut.');
+    } catch (e) { if (!stil) setStatus(e.message, true); }
   }
 
   async function wisRonde() {
@@ -349,7 +368,7 @@ window.SVVisiteUI = (function () {
   $('vis-ontkoppel').addEventListener('click', ontkoppel);
   $('vis-sluit').addEventListener('click', function () { $('vis-dialoog').classList.add('hidden'); ververs(); });
   $('vis-ronde-plus').addEventListener('click', plusPatient);
-  $('vis-ronde-stuur').addEventListener('click', stuurRonde);
+  $('vis-ronde-stuur').addEventListener('click', function () { ronde.kids = null; stuurRonde(false); });
   $('vis-ronde-wis').addEventListener('click', wisRonde);
   function plan() {
     clearInterval(timer);

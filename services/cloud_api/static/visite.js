@@ -421,6 +421,12 @@
   });
   $('wacht-nu').addEventListener('click', function () { verstuurWachtrij(false); });
   $('ronde-ververs').addEventListener('click', function () { haalRonde(); });
+  // The panel may send (or change) the round after this page opened: look again now and then.
+  function rondeNogEens() {
+    if (token && !document.hidden && !$('klaar').classList.contains('hidden')) haalRonde();
+  }
+  document.addEventListener('visibilitychange', rondeNogEens);
+  setInterval(rondeNogEens, 30000);
   $('ontkoppel').addEventListener('click', async function () {
     var n = (await wachtend().catch(function () { return []; })).length;
     if ((huidig || n) && !window.confirm('Er staat nog een visite die niet verstuurd is; die gaat verloren. Toch ontkoppelen?')) return;

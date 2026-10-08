@@ -743,8 +743,18 @@ async function listenPill(page, clickStop) {
   check('ronde: twee patiënten klaargezet met naam en geboortedatum (alleen in deze browser)',
     rondeLijst.length === 2 && rondeLijst[0].startsWith('Pieter de Vries (12-03-1961)') && rondeLijst[0].includes('wond') &&
     rondeLijst[1].startsWith('Grada Kerkhofs (01-02-1938)'), rondeLijst);
+  // What happened in practice: "Naar telefoon" before the phone had its key. The round
+  // waits, and goes by itself once the phone is there (the panel looks every 30 s).
+  const telKlaar = telefoon;
+  telefoon = null;
   await vp.click('#vis-ronde-stuur');
   await sleep(800);
+  check('ronde: nog geen telefoon = wacht, met uitleg', !rondeEnvelop &&
+    (await vp.textContent('#vis-ronde-sub')).includes('wacht op de telefoon') && (await vp.textContent('#status')).includes('vanzelf'));
+  telefoon = telKlaar;
+  await vp.evaluate(() => window.SVVisiteUI.ververs());
+  await sleep(1200);
+  check('ronde: telefoon er = vanzelf verstuurd', !!rondeEnvelop && (await vp.textContent('#vis-ronde-sub')).includes('op de telefoon'));
   let opTelefoon = null;
   if (rondeEnvelop) {
     const s = webcrypto.subtle;
