@@ -465,7 +465,8 @@ function renderSoep(soep) {
     return { s: d.s || '', o: d.o || '', e: d.e || '', p: d.p || '', geleerd: false };
   });
   soepAlgemeen = { aandachtspunten: soep.aandachtspunten,
-                   markeringen: Array.isArray(soep.markeringen) ? soep.markeringen : [] };
+                   markeringen: Array.isArray(soep.markeringen) ? soep.markeringen : [],
+                   bronnen: Array.isArray(soep.bronnen) ? soep.bronnen : [] };
   var bar = document.getElementById('soep-delen');
   bar.textContent = '';
   if (delen.length > 1) {
@@ -530,31 +531,67 @@ function markeringenVoor(soep, key) {
   });
 }
 
-// Text with the marked fragments in <mark>; innerText (what is inserted) stays the same.
-function toonMetMarkeringen(node, tekst, markeringen) {
+function bronnenVoor(soep, key) {
+  return SVBronnen.voor(soep.bronnen, soepDelen ? deelIdx : 0, key);
+}
+
+// Text with the marked fragments in <mark> and the words nobody said dotted
+// underlined; innerText (what is inserted) stays the same.
+function toonMetMarkeringen(node, tekst, markeringen, bronnen) {
   node.textContent = '';
-  var stukken = [{ t: tekst, m: false }];
-  markeringen.forEach(function (mk) {
-    var zoek = mk.tekst.toLowerCase();
-    for (var i = 0; i < stukken.length; i++) {
-      if (stukken[i].m) continue;
-      var pos = stukken[i].t.toLowerCase().indexOf(zoek);
-      if (pos < 0) continue;
-      var t = stukken[i].t;
-      stukken.splice(i, 1, { t: t.slice(0, pos), m: false }, { t: t.slice(pos, pos + zoek.length), m: true, r: mk.reden },
-                     { t: t.slice(pos + zoek.length), m: false });
-      break;
+  var pos = 0;
+  SVBronnen.bereiken(tekst, markeringen, bronnen || []).forEach(function (r) {
+    if (r.start > pos) node.appendChild(document.createTextNode(tekst.slice(pos, r.start)));
+    var el = document.createElement(r.soort === 'mark' ? 'mark' : 'span');
+    el.className = r.soort === 'mark' ? 'sv-mark' : 'sv-onbekend';
+    el.textContent = tekst.slice(r.start, r.end);
+    if (r.titel) el.title = r.titel;
+    node.appendChild(el);
+    pos = r.end;
+  });
+  if (pos < tekst.length) node.appendChild(document.createTextNode(tekst.slice(pos)));
+}
+
+// Caret position in a contentEditable field, in characters of its textContent.
+function caretIn(node) {
+  var sel = window.getSelection();
+  if (!sel || !sel.rangeCount || !node.contains(sel.anchorNode)) return -1;
+  var r = sel.getRangeAt(0).cloneRange();
+  r.selectNodeContents(node);
+  r.setEnd(sel.anchorNode, sel.anchorOffset);
+  return r.toString().length;
+}
+
+// Under the row: where in the conversation the sentence at the caret was said.
+function toonBron(bronDiv, text, items) {
+  var it = items.length ? SVBronnen.zinOp(text.textContent, items, caretIn(text)) : null;
+  bronDiv.textContent = '';
+  bronDiv.classList.toggle('hidden', !it);
+  if (!it) return;
+  bronDiv.classList.toggle('zwak', it.status !== 'bron');
+  var kop = document.createElement('div');
+  kop.className = 'bron-kop';
+  kop.textContent = it.bronnen && it.bronnen.length
+    ? (it.status === 'bron' ? 'Uit het gesprek' : 'Deels uit het gesprek')
+    : 'Niet letterlijk teruggevonden in het gesprek; kan een samenvatting zijn. Lees na.';
+  bronDiv.appendChild(kop);
+  (it.bronnen || []).forEach(function (b) {
+    var q = document.createElement('q');
+    if (b.spreker) {
+      var wie = document.createElement('span');
+      wie.className = 'bron-wie';
+      wie.textContent = b.spreker + ':';
+      q.appendChild(wie);
     }
+    q.appendChild(document.createTextNode(b.tekst));
+    bronDiv.appendChild(q);
   });
-  stukken.forEach(function (s) {
-    if (!s.t) return;
-    if (!s.m) { node.appendChild(document.createTextNode(s.t)); return; }
-    var m = document.createElement('mark');
-    m.className = 'sv-mark';
-    m.textContent = s.t;
-    if (s.r) m.title = s.r;
-    node.appendChild(m);
-  });
+  if (it.ontbreekt && it.ontbreekt.length) {
+    var mist = document.createElement('div');
+    mist.className = 'bron-mist';
+    mist.textContent = 'Nergens gezegd: ' + it.ontbreekt.join(', ');
+    bronDiv.appendChild(mist);
+  }
 }
 
 function renderSoepDeel(part) {
@@ -573,7 +610,14 @@ function renderSoepDeel(part) {
     text.className = 'soep-text';
     text.contentEditable = 'true';
     text.dataset.key = pair[0];
-    toonMetMarkeringen(text, soep[pair[0]] || '', markeringenVoor(soep, pair[0]));
+    var items = bronnenVoor(soep, pair[0]);
+    toonMetMarkeringen(text, soep[pair[0]] || '', markeringenVoor(soep, pair[0]), items);
+    var bronDiv = document.createElement('div');
+    bronDiv.className = 'soep-bron hidden';
+    bronDiv.setAttribute('aria-live', 'polite');
+    var bijwerken = function () { toonBron(bronDiv, text, items); };
+    text.addEventListener('click', bijwerken);
+    text.addEventListener('keyup', bijwerken);
 
     var btn = document.createElement('button');
     btn.className = 'btn small';
@@ -584,7 +628,12 @@ function renderSoepDeel(part) {
     row.appendChild(text);
     row.appendChild(btn);
     els.soepRows.appendChild(row);
+    els.soepRows.appendChild(bronDiv);
   });
+  var overzicht = document.getElementById('soep-bronnen');
+  var regel = SVBronnen.samenvatting(SVBronnen.voor(soep.bronnen, soepDelen ? deelIdx : 0));
+  overzicht.textContent = regel;
+  overzicht.classList.toggle('hidden', !regel);
   // The code is shown separately and is editable: the Thuisarts lookup hangs
   // on it, so the doctor must have the last word on which code is there.
   document.getElementById('icpc-code').textContent = soep.icpc_code || '';

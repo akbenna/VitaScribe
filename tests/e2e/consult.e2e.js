@@ -47,7 +47,14 @@ let twoProblems = false;
 let noSpeech = false;
 const REPORT = {
   soep: { s: 'Sinds 3 dagen keelpijn, geen koorts.', o: 'Keel rood, geen beslag.', e: 'Virale faryngitis.',
-          p: 'Paracetamol zo nodig. Terug bij koorts > 3 dagen.', icpc_code: 'R74', icpc_titel: 'Acute infectie bovenste luchtwegen' },
+          p: 'Paracetamol zo nodig. Terug bij koorts > 3 dagen.', icpc_code: 'R74', icpc_titel: 'Acute infectie bovenste luchtwegen',
+          // Sources per sentence, as the server sends them (bronnen.py)
+          bronnen: [
+            { probleem: 0, veld: 'p', zin: 'Paracetamol zo nodig.', status: 'bron', score: 1,
+              bronnen: [{ spreker: 'Spreker 1', tekst: 'Neem paracetamol als het nodig is.' }], ontbreekt: [] },
+            { probleem: 0, veld: 'p', zin: 'Terug bij koorts > 3 dagen.', status: 'deels', score: 0.5,
+              bronnen: [{ spreker: 'Spreker 2', tekst: 'Nee, geen koorts.' }], ontbreekt: ['Terug'] },
+          ] },
   decisief: 'Keelpijn 3d, viraal (R74), expectatief',
   transcript_raw: 'Ik heb sinds drie dagen keelpijn, geen koorts.',
 };
@@ -356,6 +363,18 @@ async function listenPill(page, clickStop) {
   check('zijpaneel toont hetzelfde verslag met decisief',
     (await side.$eval('.soep-text[data-key="s"]', (e) => e.textContent)) === REPORT.soep.s &&
     (await side.textContent('#soep-decisief')).includes('R74'));
+  // Sources: a word nobody said is underlined; clicking a sentence shows where it was said.
+  check('bronnen: woord dat niemand zei is onderstreept',
+    (await side.$$eval('.soep-text[data-key="p"] .sv-onbekend', (n) => n.map((x) => x.textContent))).join() === 'Terug');
+  check('bronnen: overzicht onder het verslag', (await side.textContent('#soep-bronnen')).includes('1 van de 2 zinnen'));
+  const bronVak = '.soep-row:has(.soep-text[data-key="p"]) + .soep-bron';
+  check('bronnen: dicht tot je op een zin klikt', await side.$eval(bronVak, (e) => e.classList.contains('hidden')));
+  await side.click('.soep-text[data-key="p"]', { position: { x: 4, y: 8 } });
+  await sleep(200);
+  const bronTekst = await side.$eval(bronVak, (e) => (e.classList.contains('hidden') ? '' : e.textContent));
+  check('bronnen: klik op de zin toont de plek in het gesprek', /Uit het gesprek/.test(bronTekst) && bronTekst.includes('Neem paracetamol'), bronTekst);
+  check('bronnen: het verslag zelf blijft gelijk (invoegen)',
+    (await side.$eval('.soep-text[data-key="p"]', (e) => e.innerText.trim())) === REPORT.soep.p);
   await side.evaluate(() => {
     const s = document.querySelector('.soep-text[data-key="s"]');
     s.textContent = 'Sinds 3 dagen keelpijn, aangepast in het zijpaneel.';
