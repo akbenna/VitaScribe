@@ -693,7 +693,15 @@ async function listenPill(page, clickStop) {
   const vp = await ctx.newPage();
   vp.on('pageerror', (e) => errs.push('visite: ' + e.message));
   await vp.goto(`chrome-extension://${id}/sidepanel/sidepanel.html`);
+  // Folded away at the bottom by default; the header says a visit is ready.
+  await vp.waitForFunction(() => /klaar/.test(document.getElementById('vis-aantal').textContent), null, { timeout: 8000 }).catch(() => {});
+  check('visites: onderaan, ingeklapt, kop meldt "1 klaar"', await vp.isHidden('#vis-inhoud') &&
+    (await vp.textContent('#vis-aantal')).includes('1 klaar') && (await vp.getAttribute('#vis', 'class')).includes('nieuw') &&
+    await vp.evaluate(() => !!(document.getElementById('leer-kaart').compareDocumentPosition(document.getElementById('vis')) & Node.DOCUMENT_POSITION_FOLLOWING)),
+    await vp.textContent('#vis-aantal'));
+  await vp.click('#vis-toggle');
   await vp.waitForSelector('#vis:not(.hidden) .vis-item', { timeout: 8000 }).catch(() => {});
+  check('visites: klik op de kop klapt uit', await vp.isVisible('#vis-inhoud') && !(await vp.getAttribute('#vis', 'class')).includes('nieuw'));
   const visItems = await vp.$$eval('#vis .vis-item', (li) => li.map((x) => x.querySelector('.vis-wat').textContent + '|' +
     (x.querySelector('button').disabled ? 'dicht' : 'open')));
   check('visites: aanduiding ontsleuteld in deze browser, nog niet klaar = dicht',

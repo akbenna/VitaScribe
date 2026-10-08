@@ -187,8 +187,34 @@ window.SVVisiteUI = (function () {
       li.append(tijd, wat, open, weg);
       ul.appendChild(li);
     });
-    $('vis-aantal').textContent = lijst.length ? '(' + lijst.length + ')' : '';
     $('vis-leeg').classList.toggle('hidden', lijst.length > 0);
+    klaarAantal = lijst.filter(function (v) { return v.status === 'klaar'; }).length;
+    if (klaarAantal > gezien && !uitgeklapt) $('vis').classList.add('nieuw');
+    gezien = Math.min(gezien, klaarAantal);
+    if (uitgeklapt) gezien = klaarAantal;
+    kopTekst(lijst.length);
+  }
+
+  // ── Folded away by default: a consult happens thirty times a day, a visit once or twice ──
+  var uitgeklapt = false, klaarAantal = 0, gezien = 0, laatsteAantal = 0;
+  try { uitgeklapt = localStorage.getItem('svVisitesOpen') === '1'; } catch (e) { /* ignore */ }
+  function kopTekst(aantal) {
+    if (aantal !== undefined) laatsteAantal = aantal;
+    var delen = [];
+    if (klaarAantal) delen.push(klaarAantal + ' klaar');
+    else if (laatsteAantal) delen.push(laatsteAantal + ' bezig');
+    var open = ronde.plekken.filter(function (p) { return !p.gedaan; }).length;
+    if (open && !uitgeklapt) delen.push('ronde ' + open);
+    $('vis-aantal').textContent = delen.length ? '· ' + delen.join(' · ') : '';
+  }
+  function klap(open) {
+    uitgeklapt = open;
+    try { localStorage.setItem('svVisitesOpen', open ? '1' : '0'); } catch (e) { /* ignore */ }
+    $('vis-inhoud').classList.toggle('hidden', !open);
+    $('vis-toggle').setAttribute('aria-expanded', String(open));
+    $('vis-toggle').querySelector('.vis-pijl').textContent = open ? '▾' : '▸';
+    if (open) { $('vis').classList.remove('nieuw'); gezien = klaarAantal; }
+    kopTekst();
   }
 
   // The patient open in Bricks now (name and date of birth from the header).
@@ -263,6 +289,7 @@ window.SVVisiteUI = (function () {
     $('vis-ronde-sub').textContent = ronde.plekken.length ? open + ' van ' + ronde.plekken.length + ' te doen'
       + (ronde.verstuurd ? ' · op de telefoon' : ronde.auto ? ' · wacht op de telefoon' : '') : '';
     $('vis-ronde-acties').classList.toggle('hidden', !ronde.plekken.length);
+    if ($('vis-toggle')) kopTekst();
   }
 
   async function plusPatient() {
@@ -364,6 +391,8 @@ window.SVVisiteUI = (function () {
 
   // ── Wiring ──
   if (!$('vis')) return { ververs: function () {}, afgerond: function () {} };
+  $('vis-toggle').addEventListener('click', function () { klap(!uitgeklapt); });
+  klap(uitgeklapt);
   $('vis-koppel').addEventListener('click', koppel);
   $('vis-ontkoppel').addEventListener('click', ontkoppel);
   $('vis-sluit').addEventListener('click', function () { $('vis-dialoog').classList.add('hidden'); ververs(); });
