@@ -10,6 +10,14 @@
  * De geheime sleutel staat in IndexedDB van de extensie, niet exporteerbaar.
  * Komt een visite voor een andere pc, dan zegt het paneel dat.
  *
+ * Visiteronde: met "+ patiënt in beeld" zet de arts de patiënten van de ronde
+ * klaar (naam en geboortedatum zoals Bricks ze toont; dat blijft in deze
+ * browser). "Naar telefoon" stuurt alleen een korte aanduiding per plek,
+ * versleuteld voor de telefoon. Komt een visite terug met een plek, dan staat
+ * erbij voor wie hij is, en bij openen controleert het paneel of die patiënt
+ * in Bricks open staat. Zo niet: een duidelijke waarschuwing vóór iets
+ * in het verkeerde dossier komt.
+ *
  * Uses: SVVisite (lib/visite.js), getConfig(), SVPraktijk, renderSoep(),
  * setStatus(), SVConsultUI, SVViews, qrcode()
  */
@@ -22,12 +30,18 @@ window.SVVisiteUI = (function () {
   var geopend = null;          // id of the visit shown in the panel
   var timer = null;
   var labels = {};             // id -> decrypted label (memory only)
+  var plekVan = {};            // visit id -> place in the round
+  var ronde = { plekken: [] }; // [{plek, aanduiding, naam, geboren, gedaan}] (this browser only)
+  var RONDE_DAGEN = 2;
 
   // ── The key of this browser ──
   function db() {
     return new Promise(function (ok, fout) {
-      var r = indexedDB.open('vitascribe-visite', 1);
-      r.onupgradeneeded = function () { r.result.createObjectStore('sleutel'); };
+      var r = indexedDB.open('vitascribe-visite', 2);
+      r.onupgradeneeded = function () {
+        if (!r.result.objectStoreNames.contains('sleutel')) r.result.createObjectStore('sleutel');
+        if (!r.result.objectStoreNames.contains('ronde')) r.result.createObjectStore('ronde');
+      };
       r.onsuccess = function () { ok(r.result); };
       r.onerror = function () { fout(r.error); };
     });
@@ -49,6 +63,27 @@ window.SVVisiteUI = (function () {
       tx.onerror = function () { fout(tx.error); };
     });
   }
+  async function leesRonde() {
+    var d = await db();
+    var r = await new Promise(function (ok) {
+      var q = d.transaction('ronde').objectStore('ronde').get('ronde');
+      q.onsuccess = function () { ok(q.result || null); };
+      q.onerror = function () { ok(null); };
+    });
+    // Older than two days: gone (the server keeps a visit 48 hours at most).
+    if (!r || Date.now() - (r.gemaakt || 0) > RONDE_DAGEN * 86400000) return { plekken: [], gemaakt: Date.now() };
+    return r;
+  }
+  async function bewaarRonde() {
+    var d = await db();
+    return new Promise(function (ok) {
+      var tx = d.transaction('ronde', 'readwrite');
+      tx.objectStore('ronde').put(ronde, 'ronde');
+      tx.oncomplete = function () { ok(); };
+      tx.onerror = function () { ok(); };
+    });
+  }
+
   async function mijnSleutel() {
     if (sleutel) return sleutel;
     sleutel = await leesSleutel();
@@ -107,7 +142,10 @@ window.SVVisiteUI = (function () {
       if (labels[v.id] === undefined && v.kop && s) {
         try {
           var kop = await SVVisite.open(v.kop, s);
-          labels[v.id] = (kop.aanduiding || '') + (kop.fotos ? ' · ' + kop.fotos + (kop.fotos === 1 ? ' foto' : " foto's") : '');
+          var p = kop.plek ? rondePlek(kop.plek) : null;
+          if (p) plekVan[v.id] = p.plek;
+          labels[v.id] = (p ? 'voor ' + p.naam + (p.geboren ? ' (' + p.geboren + ')' : '') : (kop.aanduiding || ''))
+            + (kop.fotos ? ' · ' + kop.fotos + (kop.fotos === 1 ? ' foto' : " foto's") : '');
         }
         catch (e) { labels[v.id] = null; }   // for another pc
       }
@@ -125,7 +163,7 @@ window.SVVisiteUI = (function () {
       tijd.className = 'vis-tijd';
       tijd.textContent = SVVisite.tijd(v.gemaakt);
       var wat = document.createElement('span');
-      wat.className = 'vis-wat';
+      wat.className = 'vis-wat' + (plekVan[v.id] ? ' vis-voor' : '');
       var label = labels[v.id];
       wat.textContent = label === null ? '(andere pc)' : (label || 'visite');
       if (v.status === 'verwerken') wat.textContent += ' · verslag wordt gemaakt…';
@@ -152,8 +190,27 @@ window.SVVisiteUI = (function () {
     $('vis-leeg').classList.toggle('hidden', lijst.length > 0);
   }
 
+  // The patient open in Bricks now (name and date of birth from the header).
+  async function inBricks() {
+    try {
+      var d = await SVBricksDossier.lees(5000, true);
+      return { naam: d.naam || '', geboren: d.geboren || '' };
+    } catch (e) { return { naam: '', geboren: '' }; }
+  }
+
   async function openVisite(id) {
     try {
+      var p = plekVan[id] ? rondePlek(plekVan[id]) : null;
+      if (p) {
+        var nu = await inBricks();
+        var zelfde = SVVisite.vergelijk(p, nu);
+        if (zelfde === 'anders' && !window.confirm('LET OP: deze visite is voor ' + p.naam + (p.geboren ? ' (' + p.geboren + ')' : '') +
+            '.\nIn Bricks staat nu ' + (nu.naam || 'iemand anders') + (nu.geboren ? ' (' + nu.geboren + ')' : '') + ' open.\n\n' +
+            'Open eerst de juiste patiënt in Bricks. Toch openen?')) {
+          setStatus('Niet geopend: open eerst ' + p.naam + ' in Bricks.', true);
+          return;
+        }
+      }
       var s = await mijnSleutel();
       var env = (await vraag('/api/v1/visite/postbus/' + encodeURIComponent(id))).data.envelop;
       var data = await SVVisite.open(env, s);
@@ -169,18 +226,93 @@ window.SVVisiteUI = (function () {
         data.fotos.forEach(function (f) { window.SVTelefoon.toonFoto(f); });
       }
       geopend = id;
-      setStatus('Visiteverslag' + (labels[id] ? ' (' + labels[id] + ')' : '') +
-        ' staat klaar. Open de patiënt in Bricks, controleer en voeg in. "Consult afsluiten" haalt de visite daarna van de server.');
+      setStatus(p ? 'Visiteverslag voor ' + p.naam + (zelfde === 'zelfde' ? ' — deze patiënt staat open in Bricks ✓' :
+          zelfde === 'anders' ? ' — LET OP: in Bricks staat een andere patiënt open' : ' — controleer of deze patiënt open staat in Bricks') +
+          '. Controleer en voeg in; "Consult afsluiten" haalt de visite daarna van de server.'
+        : 'Visiteverslag' + (labels[id] ? ' (' + labels[id] + ')' : '') +
+          ' staat klaar. Open de patiënt in Bricks, controleer en voeg in. "Consult afsluiten" haalt de visite daarna van de server.', zelfde === 'anders');
       ververs();
     } catch (e) {
       setStatus(e.message, true);
     }
   }
 
+  // ── The round ──
+  function rondePlek(plek) { return ronde.plekken.filter(function (p) { return p.plek === plek; })[0] || null; }
+
+  function toonRonde() {
+    var ol = $('vis-ronde-lijst');
+    ol.textContent = '';
+    ronde.plekken.forEach(function (p) {
+      var li = document.createElement('li');
+      li.className = p.gedaan ? 'gedaan' : '';
+      li.textContent = p.naam + (p.geboren ? ' (' + p.geboren + ')' : '') + ' — telefoon: ' + p.aanduiding + ' ';
+      var weg = document.createElement('button');
+      weg.type = 'button'; weg.className = 'icon-btn'; weg.textContent = '✕'; weg.title = 'Uit de ronde halen';
+      weg.addEventListener('click', async function () {
+        ronde.plekken = ronde.plekken.filter(function (x) { return x.plek !== p.plek; });
+        await bewaarRonde();
+        toonRonde();
+      });
+      li.appendChild(weg);
+      ol.appendChild(li);
+    });
+    var open = ronde.plekken.filter(function (p) { return !p.gedaan; }).length;
+    $('vis-ronde-sub').textContent = ronde.plekken.length ? open + ' van ' + ronde.plekken.length + ' te doen' + (ronde.verstuurd ? ' · op de telefoon' : '') : '';
+    $('vis-ronde-acties').classList.toggle('hidden', !ronde.plekken.length);
+  }
+
+  async function plusPatient() {
+    var nu = await inBricks();
+    if (!nu.naam) { setStatus('Open eerst de patiënt in Bricks (met de naam bovenaan) en klik dan op "+ patiënt in beeld".', true); return; }
+    if (ronde.plekken.some(function (p) { return SVVisite.vergelijk(p, nu) === 'zelfde'; })) {
+      setStatus(nu.naam + ' staat al in de ronde.'); return;
+    }
+    if (ronde.plekken.length >= 8) { setStatus('Een ronde heeft hooguit 8 visites.', true); return; }
+    var reden = (window.prompt('Korte reden voor op de telefoon (optioneel, geen naam): bijv. "wond" of "COPD"') || '').trim().slice(0, 30);
+    var n = ronde.plekken.length + 1;
+    var plek = 'plek-' + SVVisite.b64(crypto.getRandomValues(new Uint8Array(9))).replace(/[^A-Za-z0-9]/g, 'x');
+    ronde.plekken.push({ plek: plek, naam: nu.naam, geboren: nu.geboren,
+      aanduiding: n + ' · ' + SVPrivacy.initialen(nu.naam) + (reden ? ' · ' + reden : ''), gedaan: false });
+    ronde.verstuurd = false;
+    await bewaarRonde();
+    toonRonde();
+    setStatus(nu.naam + ' staat in de ronde. Open de volgende patiënt en klik opnieuw, of stuur de ronde naar de telefoon.');
+  }
+
+  async function stuurRonde() {
+    try {
+      var tel = (await vraag('/api/v1/visite/toestellen')).data.toestellen || [];
+      if (!tel.length) throw new Error('Er is nog geen telefoon met een sleutel. Open eerst de visitepagina op de telefoon (na het koppelen).');
+      // Only the short labels go to the phone; names stay in this browser.
+      var env = await SVVisite.versleutel({ plekken: ronde.plekken.filter(function (p) { return !p.gedaan; })
+        .map(function (p) { return { plek: p.plek, aanduiding: p.aanduiding }; }) }, tel);
+      await vraag('/api/v1/visite/ronde', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ envelop: env }) });
+      ronde.verstuurd = true;
+      await bewaarRonde();
+      toonRonde();
+      setStatus('De ronde staat op de telefoon. Open daar de visitepagina of tik op "Ronde vernieuwen".');
+    } catch (e) { setStatus(e.message, true); }
+  }
+
+  async function wisRonde() {
+    if (!window.confirm('De ronde wissen, hier en op de telefoon? Visites die al zijn ingestuurd blijven staan.')) return;
+    ronde = { plekken: [], gemaakt: Date.now() };
+    await bewaarRonde();
+    vraag('/api/v1/visite/ronde', { method: 'DELETE' }).catch(function () {});
+    toonRonde();
+  }
+
   async function haalWeg(id) {
     try { await vraag('/api/v1/visite/postbus/' + encodeURIComponent(id), { method: 'DELETE' }); }
     catch (e) { setStatus(e.message, true); }
     delete labels[id];
+    if (plekVan[id]) {
+      var p = rondePlek(plekVan[id]);
+      if (p) { p.gedaan = true; await bewaarRonde(); toonRonde(); }
+      delete plekVan[id];
+    }
     if (geopend === id) geopend = null;
     ververs();
   }
@@ -216,13 +348,16 @@ window.SVVisiteUI = (function () {
   $('vis-koppel').addEventListener('click', koppel);
   $('vis-ontkoppel').addEventListener('click', ontkoppel);
   $('vis-sluit').addEventListener('click', function () { $('vis-dialoog').classList.add('hidden'); ververs(); });
+  $('vis-ronde-plus').addEventListener('click', plusPatient);
+  $('vis-ronde-stuur').addEventListener('click', stuurRonde);
+  $('vis-ronde-wis').addEventListener('click', wisRonde);
   function plan() {
     clearInterval(timer);
     timer = setInterval(function () { if (!document.hidden) ververs(); }, 30000);
   }
   document.addEventListener('visibilitychange', function () { if (!document.hidden) ververs(); });
   if (typeof SVModus !== 'undefined' && SVModus.bijWijziging) SVModus.bijWijziging(function () { labels = {}; ververs(); });
-  ververs();
+  leesRonde().then(function (r) { ronde = r; ronde.plekken = ronde.plekken || []; toonRonde(); }).catch(function () {}).then(ververs);
   plan();
 
   return {

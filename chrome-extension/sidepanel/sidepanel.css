@@ -482,3 +482,10 @@ body.consult-running .dv-balk { border-color: var(--rec); background: #fff5f5; }
 .dv-meedenken { margin: 4px 0; }
 .dv-md-waarden { margin: 4px 0 4px 16px; padding: 0; font-size: 12px; }
 .dv-md-regel { margin: 3px 0; font-size: 12px; }
+
+.vis-ronde { margin-top: 8px; border-top: 1px dashed var(--border); padding-top: 6px; }
+.vis-ronde-lijst { margin: 4px 0 4px 18px; padding: 0; }
+.vis-ronde-lijst li { margin: 2px 0; }
+.vis-ronde-lijst li.gedaan { opacity: .55; text-decoration: line-through; }
+.vis-ronde-acties { display: flex; gap: 8px; align-items: center; }
+.vis-voor { font-weight: 600; }

@@ -52,6 +52,41 @@ var SVVisite = (function () {
     return JSON.parse(new TextDecoder().decode(data));
   }
 
+  /** An envelope for other devices (the phone's own key), in the server's format. */
+  async function versleutel(inhoud, ontvangers) {
+    if (!ontvangers || !ontvangers.length) throw new Error('Geen telefoon met een sleutel.');
+    var aes = crypto.getRandomValues(new Uint8Array(32));
+    var iv = crypto.getRandomValues(new Uint8Array(12));
+    var k = await subtle.importKey('raw', aes, 'AES-GCM', false, ['encrypt']);
+    var data = await subtle.encrypt({ name: 'AES-GCM', iv: iv }, k, new TextEncoder().encode(JSON.stringify(inhoud)));
+    var sleutels = {};
+    for (var i = 0; i < ontvangers.length; i++) {
+      var pub = await subtle.importKey('spki', unb64(ontvangers[i].spki), { name: 'RSA-OAEP', hash: 'SHA-256' }, false, ['encrypt']);
+      sleutels[ontvangers[i].kid] = b64(await subtle.encrypt({ name: 'RSA-OAEP' }, pub, aes));
+    }
+    return { v: 1, alg: 'RSA-OAEP-256+A256GCM', iv: b64(iv), data: b64(data), sleutels: sleutels };
+  }
+
+  function normNaam(n) {
+    return String(n || '').toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/\b(dhr|mw|mevr|mevrouw|meneer|de heer)\b\.?/g, ' ')
+      .replace(/[^a-z\s-]/g, ' ').replace(/\s+/g, ' ').trim();
+  }
+
+  /**
+   * Is the patient open in Bricks the one this visit is for?
+   * 'zelfde', 'anders', or 'onbekend' (Bricks shows no name). A different
+   * date of birth is always 'anders'.
+   */
+  function vergelijk(verwacht, inBeeld) {
+    var a = normNaam(verwacht && verwacht.naam), b = normNaam(inBeeld && inBeeld.naam);
+    var ga = String((verwacht && verwacht.geboren) || '').trim(), gb = String((inBeeld && inBeeld.geboren) || '').trim();
+    if (!b) return 'onbekend';
+    if (ga && gb && ga !== gb) return 'anders';
+    return a && a === b ? 'zelfde' : 'anders';
+  }
+
   /** "10:40" today, "gisteren 16:05", or a date. */
   function tijd(sec, nu) {
     var d = new Date(sec * 1000), n = nu ? new Date(nu) : new Date();
@@ -61,6 +96,7 @@ var SVVisite = (function () {
     return verschil === 0 ? hm : verschil === 1 ? 'gisteren ' + hm : d.getDate() + '-' + (d.getMonth() + 1) + ' ' + hm;
   }
 
-  return { nieuwSleutelpaar: nieuwSleutelpaar, kidVan: kidVan, open: open, tijd: tijd, b64: b64, unb64: unb64 };
+  return { nieuwSleutelpaar: nieuwSleutelpaar, kidVan: kidVan, open: open, versleutel: versleutel, vergelijk: vergelijk,
+           tijd: tijd, b64: b64, unb64: unb64 };
 })();
 if (typeof module !== 'undefined') module.exports = SVVisite;

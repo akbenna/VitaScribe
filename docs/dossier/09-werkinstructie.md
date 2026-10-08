@@ -107,7 +107,14 @@ jouw verantwoordelijkheid (WGBO). Dat verandert niet door de software.
    dossier. *Consult
    afsluiten* haalt de visite daarna van de server; anders gebeurt dat na
    48 uur vanzelf.
-4. **Telefoon kwijt?** Hij kan geen verslag lezen. Ontkoppel toch meteen:
+4. **Meerdere visites: de ronde.** Open in de praktijk de eerste patiënt in
+   Bricks en klik in de kaart Visites op *+ patiënt in beeld* (met een korte
+   reden, bijv. "wond"). Doe dat voor elke visite en klik op *Naar telefoon*.
+   Open op de telefoon de visitepagina vóór vertrek: de ronde staat er, met
+   alleen korte aanduidingen. Tik bij elke patiënt de juiste aan en neem op.
+   Terug in de praktijk staat bij elke visite voor wie hij is; staat in
+   Bricks een andere patiënt open, dan waarschuwt VitaScribe vóór het openen.
+5. **Telefoon kwijt?** Hij kan geen verslag lezen. Ontkoppel toch meteen:
    *telefoon koppelen › Ontkoppel alle telefoons*.
 
 ## Meedenken over wat in beeld is

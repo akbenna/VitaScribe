@@ -42,6 +42,16 @@ Deel 2: de telefoon bewaart een opname zonder bereik versleuteld en stuurt hem
 later (opgenomen = het moment van opnemen); nadicteren markeert het moment
 waarop de arts na het gesprek dicteert; foto's (wond, huid, medicijnlijst)
 gaan mee in dezelfde envelop en verschijnen in het zijpaneel bij de visite.
+Visiteronde (meerdere visites achter elkaar):
+  het paneel zet per patiënt in beeld een plek klaar; de korte aanduidingen
+  gaan versleuteld voor de telefoon (zijn eigen sleutelpaar) via de server;
+  de telefoon stuurt bij elke opname de plek mee, en het paneel weet dan voor
+  welke patiënt de visite is (die koppeling staat alleen in de browser).
+  POST /api/v1/visite/toestel-sleutel  (telefoon) {kid, spki}
+  GET  /api/v1/visite/toestellen       (paneel)   -> openbare sleutels van de telefoons
+  POST /api/v1/visite/ronde            (paneel)   {envelop}   vervangt de vorige; 24 uur
+  DELETE /api/v1/visite/ronde          (paneel)
+  GET  /api/v1/visite/ronde            (telefoon) -> {envelop | null}
 Pagina: GET /v (en /v/visite.js)
 """
 
@@ -79,6 +89,8 @@ MAX_ONTVANGERS = 5                 # browsers (pc's) van dezelfde arts
 MAX_OPEN = 30                      # visites tegelijk in de postbus van een arts
 MAX_AANDUIDING = 60
 MAX_MB = 60
+RONDE_BEWAAR = 24 * 3600         # een klaargezette ronde geldt een dag
+MAX_RONDE_BYTES = 64 * 1024
 MAX_FOTOS = 6
 MAX_FOTO_MB = 8
 FOTO_TYPES = {"image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"}
@@ -134,6 +146,28 @@ class _Geheugen:
     ontvangers: Dict[str, Dict[str, Dict]] = field(default_factory=dict)    # label -> kid -> rij
     toestellen: Dict[str, Dict] = field(default_factory=dict)               # hash -> rij
     post: Dict[str, Dict] = field(default_factory=dict)                     # id -> rij
+    rondes: Dict[str, Dict] = field(default_factory=dict)                   # label -> {envelop, verloopt}
+
+    async def zet_toestel_sleutel(self, h: str, kid: str, spki: str) -> None:
+        if h in self.toestellen:
+            self.toestellen[h].update(kid=kid, spki=spki)
+
+    async def toestel_sleutels(self, wie: str) -> List[Dict]:
+        return [{"kid": r["kid"], "spki": r["spki"]} for r in self.toestellen.values()
+                if r["wie"] == wie and r.get("spki")]
+
+    async def zet_ronde(self, wie: str, envelop: Optional[Dict]) -> None:
+        if envelop is None:
+            self.rondes.pop(wie, None)
+        else:
+            self.rondes[wie] = {"envelop": envelop, "verloopt": time.time() + RONDE_BEWAAR}
+
+    async def ronde(self, wie: str) -> Optional[Dict]:
+        r = self.rondes.get(wie)
+        if r and r["verloopt"] <= time.time():
+            self.rondes.pop(wie, None)
+            return None
+        return r["envelop"] if r else None
 
     async def zet_ontvanger(self, wie: str, kid: str, spki: str) -> None:
         eigen = self.ontvangers.setdefault(wie, {})
@@ -198,6 +232,29 @@ class _Geheugen:
 
 
 class _Register:
+    async def zet_toestel_sleutel(self, h: str, kid: str, spki: str) -> None:
+        await register.execute("UPDATE vs_visite_toestel SET kid = $2, spki = $3 WHERE hash = $1", h, kid, spki)
+
+    async def toestel_sleutels(self, wie: str) -> List[Dict]:
+        return [dict(r) for r in await register.fetch(
+            "SELECT kid, spki FROM vs_visite_toestel WHERE wie = $1 AND spki IS NOT NULL", wie)]
+
+    async def zet_ronde(self, wie: str, envelop: Optional[Dict]) -> None:
+        if envelop is None:
+            await register.execute("DELETE FROM vs_visite_ronde WHERE wie = $1", wie)
+            return
+        await register.execute(
+            """INSERT INTO vs_visite_ronde (wie, envelop, verloopt) VALUES ($1, $2::jsonb, now() + make_interval(secs => $3))
+               ON CONFLICT (wie) DO UPDATE SET envelop = EXCLUDED.envelop, verloopt = EXCLUDED.verloopt""",
+            wie, json.dumps(envelop), float(RONDE_BEWAAR))
+
+    async def ronde(self, wie: str) -> Optional[Dict]:
+        await register.execute("DELETE FROM vs_visite_ronde WHERE verloopt <= now()")
+        r = await register.fetchrow("SELECT envelop FROM vs_visite_ronde WHERE wie = $1", wie)
+        if not r:
+            return None
+        return json.loads(r["envelop"]) if isinstance(r["envelop"], str) else r["envelop"]
+
     async def zet_ontvanger(self, wie: str, kid: str, spki: str) -> None:
         await register.execute(
             """INSERT INTO vs_visite_ontvanger (wie, kid, spki) VALUES ($1, $2, $3)
@@ -368,6 +425,61 @@ async def _toestel(token: Optional[str]) -> Dict:
     return r
 
 
+class SleutelRequest(BaseModel):
+    kid: str = Field(..., min_length=8, max_length=64, pattern=r"^[A-Za-z0-9_-]+$")
+    spki: str = Field(..., min_length=200, max_length=2000)
+
+
+@router.post("/api/v1/visite/toestel-sleutel")
+async def toestel_sleutel(body: SleutelRequest, token: Optional[str] = Header(default=None, alias=KOP)):
+    """The phone's own public key: a prepared round is encrypted for it."""
+    t = await _toestel(token)
+    try:
+        _laad_spki(body.spki)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Ongeldige openbare sleutel.")
+    await opslag().zet_toestel_sleutel(_hash((token or "").strip()), body.kid, body.spki)
+    return {"ok": True}
+
+
+@router.get("/api/v1/visite/ronde")
+async def ronde_telefoon(token: Optional[str] = Header(default=None, alias=KOP)):
+    """The prepared round, encrypted for this phone (the server cannot read it)."""
+    t = await _toestel(token)
+    return {"envelop": await opslag().ronde(t["wie"])}
+
+
+@router.get("/api/v1/visite/toestellen")
+async def toestellen(ident=Depends(huidige_identiteit)):
+    _vereis_aan()
+    return {"toestellen": await opslag().toestel_sleutels(ident.label)}
+
+
+class RondeRequest(BaseModel):
+    envelop: Dict[str, Any]
+
+
+@router.post("/api/v1/visite/ronde")
+async def ronde_zet(body: RondeRequest, ident=Depends(huidige_identiteit)):
+    """A round prepared in the panel, already encrypted there for the phones."""
+    _vereis_aan()
+    e = body.envelop
+    if e.get("v") != 1 or not isinstance(e.get("sleutels"), dict) or not e.get("data") or not e.get("iv"):
+        raise HTTPException(status_code=400, detail="Ongeldige envelop.")
+    if len(json.dumps(e)) > MAX_RONDE_BYTES:
+        raise HTTPException(status_code=413, detail="De ronde is te groot.")
+    await opslag().zet_ronde(ident.label, e)
+    audit.log_event(ident.label, "visite.ronde", status=str(len(e["sleutels"])))
+    return {"ok": True}
+
+
+@router.delete("/api/v1/visite/ronde")
+async def ronde_weg(ident=Depends(huidige_identiteit)):
+    _vereis_aan()
+    await opslag().zet_ronde(ident.label, None)
+    return {"ok": True}
+
+
 @router.post("/api/v1/visite/hallo")
 async def hallo(token: Optional[str] = Header(default=None, alias=KOP)):
     t = await _toestel(token)
@@ -420,6 +532,7 @@ async def opname(
     nadictaat_vanaf: Optional[float] = Form(default=None),
     opgenomen: Optional[float] = Form(default=None),
     fotos: List[UploadFile] = File(default=[]),
+    plek: Optional[str] = Form(default=None, pattern=r"^[A-Za-z0-9_-]{6,40}$"),
     token: Optional[str] = Header(default=None, alias=KOP),
 ):
     """The recording of a visit. Answers at once; the report follows in the postbus."""
@@ -457,7 +570,7 @@ async def opname(
     moment = min(nu, max(nu - BEWAAR, float(opgenomen))) if opgenomen else nu
     # The label is encrypted at once as well: nothing readable stays here.
     kop = versleutel({"aanduiding": aanduiding.strip()[:MAX_AANDUIDING], "gemaakt": moment,
-                      "fotos": len(beelden)}, ontvangers)
+                      "fotos": len(beelden), "plek": plek or ""}, ontvangers)
     await opslag().zet_post({"id": pid, "wie": t["wie"], "gemaakt": moment, "verloopt": moment + BEWAAR,
                              "status": "verwerken", "kop": kop, "envelop": None, "fout": ""})
     ext = (Path(audio.filename or "").suffix.lstrip(".").lower() or "webm")[:5]

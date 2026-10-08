@@ -193,3 +193,13 @@ CREATE TABLE IF NOT EXISTS vs_visite_post (
     fout      TEXT NOT NULL DEFAULT ''
 );
 CREATE INDEX IF NOT EXISTS vs_visite_post_wie ON vs_visite_post (wie, verloopt);
+
+-- Visiteronde: de openbare sleutel van de telefoon (een ronde wordt voor hem
+-- versleuteld), en per arts één klaargezette ronde, versleuteld, een dag geldig.
+ALTER TABLE vs_visite_toestel ADD COLUMN IF NOT EXISTS kid TEXT;
+ALTER TABLE vs_visite_toestel ADD COLUMN IF NOT EXISTS spki TEXT;
+CREATE TABLE IF NOT EXISTS vs_visite_ronde (
+    wie       TEXT PRIMARY KEY,
+    envelop   JSONB NOT NULL,
+    verloopt  TIMESTAMPTZ NOT NULL
+);

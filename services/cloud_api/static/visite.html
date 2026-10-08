@@ -60,6 +60,11 @@
     .fotos img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 10px; border: 1px solid var(--rand); }
     .wacht { background: var(--merk-licht); color: var(--merk); border-radius: 12px; padding: 10px 12px; font-size: 14px;
       display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .ronde-lijst { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+    .plek { text-align: left; border: 1px solid var(--rand); background: var(--panel); color: var(--tekst);
+      border-radius: 12px; padding: 12px; font: inherit; font-size: 16px; }
+    .plek.gekozen { border-color: var(--merk); background: var(--merk-licht); font-weight: 600; }
+    .plek.gedaan { opacity: .5; text-decoration: line-through; }
     .label-nad { text-align: center; color: var(--merk); font-weight: 600; min-height: 1.4em; }
   </style>
 </head>
@@ -76,6 +81,11 @@
     </section>
 
     <section id="klaar" class="hidden" style="display:flex;flex-direction:column;gap:14px">
+      <div id="ronde" class="kaart hidden">
+        <b>Ronde</b> <span id="ronde-sub" class="noot"></span>
+        <div id="ronde-lijst" class="ronde-lijst"></div>
+        <button id="ronde-ververs" class="link" type="button">Ronde vernieuwen</button>
+      </div>
       <label class="veld">Korte aanduiding (geen naam of BSN)
         <input type="text" id="aanduiding" maxlength="60" autocomplete="off" placeholder="bijv. mw. J., wondcontrole">
       </label>

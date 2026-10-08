@@ -13,6 +13,17 @@
  * kan exporteren) en wordt verstuurd zodra er weer verbinding is: bij het
  * openen van de pagina, als het toestel weer online komt, en elke minuut.
  * Verstuurd = weg van dit toestel. Wat na 48 uur nog wacht, wordt gewist.
+ *
+ * Visiteronde: in de praktijk zet het zijpaneel de visites van vandaag klaar.
+ * De korte aanduidingen komen versleuteld voor dít toestel (eigen sleutelpaar,
+ * geheime sleutel niet exporteerbaar); de server kan ze niet lezen. De arts
+ * tikt een plek aan en neemt op; de plek gaat mee, zodat het paneel weet voor
+ * welke patiënt de visite is. Haal de ronde op vóór vertrek: onderweg is er
+ * soms geen bereik.
+ *
+ * De koppeling blijft na '#' in het adres staan (dat gaat nooit naar een
+ * server): een pagina op het beginscherm van een iPhone heeft eigen opslag en
+ * neemt de koppeling zo mee.
  */
 (function () {
   'use strict';
@@ -25,6 +36,8 @@
   var rec = null, stukken = [], start = 0, klok = null, wekslot = null, nadVanaf = null;
   var huidig = null;        // {audio: Blob, naam, aanduiding, nadictaat_vanaf, opgenomen, fotos: [Blob]}
   var bezig = false;
+  var plekken = [];         // the prepared round: [{plek, aanduiding}]
+  var gekozen = null;       // the place chosen for this recording
 
   function lees() { try { return localStorage.getItem(SLEUTEL); } catch (e) { return null; } }
   function bewaar(t) { try { if (t) localStorage.setItem(SLEUTEL, t); else localStorage.removeItem(SLEUTEL); } catch (e) { /* ignore */ } }
@@ -77,7 +90,7 @@
   }
 
   async function inWachtrij(v) {
-    var meta = { aanduiding: v.aanduiding, nadictaat_vanaf: v.nadictaat_vanaf, opgenomen: v.opgenomen, naam: v.naam,
+    var meta = { plek: v.plek || '', aanduiding: v.aanduiding, nadictaat_vanaf: v.nadictaat_vanaf, opgenomen: v.opgenomen, naam: v.naam,
                  audio_type: v.audio.type, fotos: v.fotos.map(function (f) { return f.type; }) };
     var item = {
       id: 'v' + Date.now() + Math.random().toString(36).slice(2, 8),
@@ -122,6 +135,7 @@
     fd.append('audio', new Blob([await open(item.audio)], { type: meta.audio_type }), meta.naam);
     fd.append('toestemming', 'true');
     fd.append('aanduiding', meta.aanduiding || '');
+    if (meta.plek) fd.append('plek', meta.plek);
     fd.append('opgenomen', String(meta.opgenomen / 1000));
     if (meta.nadictaat_vanaf != null) fd.append('nadictaat_vanaf', String(meta.nadictaat_vanaf));
     for (var i = 0; i < item.fotos.length; i++) {
@@ -174,10 +188,7 @@
   // ── Recording ──
   async function begin() {
     var uitHash = (location.hash || '').replace(/^#/, '');
-    if (uitHash) {
-      bewaar(uitHash);
-      history.replaceState(null, '', location.pathname);   // the key out of the address bar
-    }
+    if (uitHash) bewaar(uitHash);   // stays in the address: the home-screen page takes it along
     token = lees();
     if (!token) { $('pil').textContent = 'niet gekoppeld'; scherm('geen'); await toonWachtrij(); return; }
     scherm('klaar');
@@ -190,6 +201,85 @@
     }
     await toonWachtrij();
     verstuurWachtrij(true);
+    meldSleutel().then(haalRonde).catch(function () { toonRonde(); });
+  }
+
+  // ── The prepared round (encrypted for this phone) ──
+  var RSA = { name: 'RSA-OAEP', modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]), hash: 'SHA-256' };
+  function b64(bytes) { var t = ''; new Uint8Array(bytes).forEach(function (b) { t += String.fromCharCode(b); }); return btoa(t); }
+  function unb64(t) { var x = atob(t), u = new Uint8Array(x.length); for (var i = 0; i < x.length; i++) u[i] = x.charCodeAt(i); return u; }
+
+  async function telefoonSleutel() {
+    var k = await tx('sleutel', 'readonly', function (st) { return st.get('rsa'); });
+    if (k) return k;
+    var paar = await crypto.subtle.generateKey(RSA, false, ['decrypt', 'unwrapKey']);
+    var spki = await crypto.subtle.exportKey('spki', paar.publicKey);
+    var h = new Uint8Array(await crypto.subtle.digest('SHA-256', spki)).slice(0, 16);
+    k = { privateKey: paar.privateKey, spki: b64(spki), kid: b64(h).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '') };
+    await tx('sleutel', 'readwrite', function (st) { st.put(k, 'rsa'); });
+    return k;
+  }
+
+  async function meldSleutel() {
+    var k = await telefoonSleutel();
+    var r = await fetch('/api/v1/visite/toestel-sleutel', { method: 'POST',
+      headers: { 'X-VitaScribe-Visite': token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ kid: k.kid, spki: k.spki }) });
+    if (!r.ok) throw new Error('sleutel');
+  }
+
+  async function openEnvelop(env) {
+    var k = await telefoonSleutel();
+    var ingepakt = env && env.sleutels && env.sleutels[k.kid];
+    if (!ingepakt) return null;      // prepared before this phone was paired
+    var aes = await crypto.subtle.unwrapKey('raw', unb64(ingepakt), k.privateKey, { name: 'RSA-OAEP' },
+      { name: 'AES-GCM' }, false, ['decrypt']);
+    var data = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: unb64(env.iv) }, aes, unb64(env.data));
+    return JSON.parse(new TextDecoder().decode(data));
+  }
+
+  function gedaan() { try { return JSON.parse(localStorage.getItem('vsRondeGedaan') || '[]'); } catch (e) { return []; } }
+  function zetGedaan(p) {
+    var g = gedaan();
+    if (g.indexOf(p) === -1) g.push(p);
+    try { localStorage.setItem('vsRondeGedaan', JSON.stringify(g.slice(-50))); } catch (e) { /* ignore */ }
+  }
+
+  async function haalRonde() {
+    try {
+      var r = await fetch('/api/v1/visite/ronde', { headers: { 'X-VitaScribe-Visite': token } });
+      if (r.ok) {
+        var env = (await r.json()).envelop;
+        // Kept encrypted on this phone, for when there is no signal on the way.
+        try { if (env) localStorage.setItem('vsRonde', JSON.stringify(env)); else localStorage.removeItem('vsRonde'); } catch (e) { /* ignore */ }
+      }
+    } catch (e) { /* no signal: use what this phone already has */ }
+    await toonRonde();
+  }
+
+  async function toonRonde() {
+    var env = null;
+    try { env = JSON.parse(localStorage.getItem('vsRonde') || 'null'); } catch (e) { env = null; }
+    var inhoud = env ? await openEnvelop(env).catch(function () { return null; }) : null;
+    plekken = (inhoud && inhoud.plekken) || [];
+    var lijst = $('ronde-lijst');
+    lijst.textContent = '';
+    var klaar = gedaan();
+    plekken.forEach(function (p) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'plek' + (klaar.indexOf(p.plek) !== -1 ? ' gedaan' : '') + (gekozen === p.plek ? ' gekozen' : '');
+      b.textContent = p.aanduiding;
+      b.addEventListener('click', function () {
+        gekozen = gekozen === p.plek ? null : p.plek;
+        $('aanduiding').value = gekozen ? p.aanduiding : '';
+        toonRonde();
+      });
+      lijst.appendChild(b);
+    });
+    var open = plekken.filter(function (p) { return klaar.indexOf(p.plek) === -1; }).length;
+    $('ronde-sub').textContent = plekken.length ? open + ' van ' + plekken.length + ' te doen · tik de patiënt aan' : '';
+    $('ronde').classList.toggle('hidden', !plekken.length);
   }
 
   function mime() {
@@ -224,7 +314,7 @@
     rec.onstop = function () {
       stream.getTracks().forEach(function (t) { t.stop(); });
       var soort = rec.mimeType || type || 'audio/webm';
-      huidig = { audio: new Blob(stukken, { type: soort }), naam: 'visite.' + (/mp4|aac/.test(soort) ? 'm4a' : 'webm'),
+      huidig = { plek: gekozen, audio: new Blob(stukken, { type: soort }), naam: 'visite.' + (/mp4|aac/.test(soort) ? 'm4a' : 'webm'),
                  aanduiding: $('aanduiding').value.trim(), nadictaat_vanaf: nadVanaf, opgenomen: start,
                  duur: Date.now() - start, fotos: [] };
       stukken = [];
@@ -295,7 +385,10 @@
       melding('Kon de visite niet veilig op de telefoon zetten: ' + e.message, 'fout');
       return;
     }
+    if (huidig.plek) zetGedaan(huidig.plek);     // ticked off in the round
     huidig = null;
+    gekozen = null;
+    toonRonde();
     $('fotos').textContent = '';
     $('aanduiding').value = '';
     $('toestemming').checked = false;
@@ -327,6 +420,7 @@
     melding('Opname weggegooid.');
   });
   $('wacht-nu').addEventListener('click', function () { verstuurWachtrij(false); });
+  $('ronde-ververs').addEventListener('click', function () { haalRonde(); });
   $('ontkoppel').addEventListener('click', async function () {
     var n = (await wachtend().catch(function () { return []; })).length;
     if ((huidig || n) && !window.confirm('Er staat nog een visite die niet verstuurd is; die gaat verloren. Toch ontkoppelen?')) return;
@@ -334,8 +428,11 @@
     var lijst = await wachtend().catch(function () { return []; });
     for (var i = 0; i < lijst.length; i++) await uitWachtrij(lijst[i].id);
     bewaar(null);
+    try { localStorage.removeItem('vsRonde'); localStorage.removeItem('vsRondeGedaan'); } catch (e) { /* ignore */ }
     token = null;
     huidig = null;
+    gekozen = null;
+    toonRonde();
     $('pil').textContent = 'niet gekoppeld';
     scherm('geen');
     melding('');
