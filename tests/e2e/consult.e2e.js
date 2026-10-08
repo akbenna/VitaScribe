@@ -306,15 +306,19 @@ async function listenPill(page, clickStop) {
   check('vraagsuggesties als chips onder het opnamebalkje, alarm apart', chips.join(',') === 'koorts?,stridor?!', chips);
   await panel.click('#cv-chips .cv-chip');
   check('chip aantikken = gevraagd (doorgestreept)', await panel.$eval('#cv-chips .cv-chip', (b) => b.classList.contains('gedaan')));
-  const pillNu = await pill(tab);
+  let pillNu;
+  for (let i = 0; i < 20; i++) { pillNu = await pill(tab); if (pillNu && !pillNu.visible) break; await sleep(150); }
   check('bolletje op de pagina toont geen suggesties (geen patiënttekst)', !/koorts|stridor/.test(pillNu.text), pillNu.text);
+  // The panel is open in this window: the pill steps aside (it shows the same).
+  check('zijpaneel open: bolletje op de pagina weg', !pillNu.visible, pillNu.style);
   const popV = await openPopup();
   check('popup toont dezelfde suggesties', (await popV.textContent('#rec-vragen')).includes('stridor?'));
   await popV.close();
   await panel.close();
 
   console.log('F. Nadicteren en Stop via het bolletje');
-  p = await pill(tab);
+  for (let i = 0; i < 20; i++) { p = await pill(tab); if (p && p.visible) break; await sleep(150); }
+  check('zijpaneel dicht (geminimaliseerd): bolletje weer terug', p && p.visible, p && p.style);
   check('knop "Paneel" in het bolletje tijdens de opname (terug na minimaliseren)', p.buttons.paneel && !p.buttons.paneel.hidden);
   await clickPill(tab, 'nadictaat');
   await sleep(500);
@@ -337,6 +341,9 @@ async function listenPill(page, clickStop) {
   console.log('G. Zijpaneel en bolletje tonen hetzelfde verslag');
   const side = await ctx.newPage();
   side.on('pageerror', (e) => errs.push('panel: ' + e.message));
+  // Here the pill and the panel are compared side by side: let the panel say it
+  // is open in another window, so the pill on the consult tab stays.
+  await side.addInitScript(() => { chrome.windows.getCurrent = async () => ({ id: -99 }); });
   await side.goto(`chrome-extension://${id}/sidepanel/sidepanel.html`);
   await sleep(700);
   // In this test the panel is itself a tab; let "active tab" mean the consult tab.

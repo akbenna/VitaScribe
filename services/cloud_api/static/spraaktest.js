@@ -598,8 +598,9 @@
       uit.appendChild(el('p', 'klein', 'Valkuilen in dit consult (waar een goed verslag op let):'));
       uit.appendChild(v);
     }
-    var paren = [['Claude', d.claude], ['Mistral (' + d.eu_model + ')', d.eu]];
-    if (d.eu_gecontroleerd) paren.push(['Mistral (' + d.eu_model + ') + controleronde', d.eu_gecontroleerd]);
+    var eu = d.eu_label || ('Mistral (' + d.eu_model + ')');
+    var paren = [['Claude', d.claude], [eu, d.eu]];
+    if (d.eu_gecontroleerd) paren.push([eu + ' + controleronde', d.eu_gecontroleerd]);
     toonSoep(uit, paren, $('soepblind').checked);
   }
 
@@ -611,7 +612,7 @@
       return;
     }
     knop.disabled = true; uit.textContent = ''; st.className = 'status klein';
-    st.textContent = 'Bezig: Claude en Mistral schrijven elk een verslag (ongeveer een halve minuut)…';
+    st.textContent = 'Bezig: Claude en het EU-model schrijven elk een verslag (ongeveer een halve minuut)…';
     try {
       var d = await soepTest($('soepbron').value);
       toonSoepTest(uit, d, $('soepbron').selectedOptions[0].textContent);
@@ -631,11 +632,12 @@
     var t = el('table', 'lijst');
     var kop = el('tr');
     var metControle = $('soepcontrole').checked;
-    var koppen = ['Consult', 'Valkuilen Claude', 'Valkuilen Mistral'];
-    if (metControle) koppen.push('Valkuilen Mistral + controle');
-    koppen = koppen.concat(['Verdacht Claude', 'Verdacht Mistral']);
-    if (metControle) koppen.push('Verdacht Mistral + controle');
-    koppen = koppen.concat(['Tijd Claude / Mistral', '']);
+    var euKop = $('soepmodel').value === 'bedrock' ? 'Bedrock EU' : 'Mistral';
+    var koppen = ['Consult', 'Valkuilen Claude', 'Valkuilen ' + euKop];
+    if (metControle) koppen.push('Valkuilen ' + euKop + ' + controle');
+    koppen = koppen.concat(['Verdacht Claude', 'Verdacht ' + euKop]);
+    if (metControle) koppen.push('Verdacht ' + euKop + ' + controle');
+    koppen = koppen.concat(['Tijd Claude / ' + euKop, '']);
     koppen.forEach(function (x) { kop.appendChild(el('td', '', x)); });
     t.appendChild(kop);
     uit.appendChild(t);

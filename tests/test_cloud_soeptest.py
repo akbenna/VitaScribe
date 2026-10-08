@@ -76,6 +76,22 @@ def test_soeptest_endpoint(monkeypatch):
         gezien.clear()
         d = api.post("/api/v1/beheer/soeptest", json={"id": "01-lage-rugpijn", "eu_model": "medium"}).json()
         assert ("mistral", "mistral-medium-latest") in gezien and d["eu_model"] == "mistral-medium-latest"
+        # Stap 5: the EU column through Claude in Bedrock (Frankfurt), only when set up for the EU
+        monkeypatch.delenv("AWS_ACCESS_KEY_ID", raising=False)
+        r = api.post("/api/v1/beheer/soeptest", json={"id": "01-lage-rugpijn", "eu_model": "bedrock"})
+        assert r.status_code == 400 and "AWS_ACCESS_KEY_ID" in r.json()["detail"]
+        monkeypatch.setenv("AWS_ACCESS_KEY_ID", "test")
+        monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "test")
+        gezien.clear()
+        d = api.post("/api/v1/beheer/soeptest", json={"id": "01-lage-rugpijn", "eu_model": "bedrock"}).json()
+        assert ("bedrock", None) in gezien and "Bedrock" in d["eu_label"]
+        from services.cloud_api import llm_service
+        echt = llm_service.bedrock_eu_problem
+        monkeypatch.setattr(llm_service, "bedrock_eu_problem",
+                            lambda regio, *m: echt(regio, "global.anthropic.claude-sonnet-5"))
+        gezien.clear()
+        r = api.post("/api/v1/beheer/soeptest", json={"id": "01-lage-rugpijn", "eu_model": "bedrock"})
+        assert r.status_code == 400 and "buiten de EU" in r.json()["detail"] and not gezien
         assert logs and "Paracetamol" not in json.dumps(logs)   # no report text in the log
         assert api.post("/api/v1/beheer/soeptest", json={"id": "bestaat-niet"}).status_code == 404
         assert api.post("/api/v1/beheer/soeptest", json={"gesprek": " "}).status_code == 400

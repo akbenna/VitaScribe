@@ -189,11 +189,23 @@ def toets_valkuilen(problemen: List[dict], toets: dict) -> dict:
 EU_MODELLEN = {"medium": "mistral-medium-latest", "large": "mistral-large-latest"}
 
 
+def bedrock_niet_gereed() -> Optional[str]:
+    """Why the EU column cannot run through Bedrock (stap 5), or None. Nothing
+    is sent when the settings could route outside the EU."""
+    import os
+    from . import llm_service
+    if not (os.getenv("AWS_ACCESS_KEY_ID") and os.getenv("AWS_SECRET_ACCESS_KEY")):
+        return "Bedrock is nog niet ingesteld: zet AWS_ACCESS_KEY_ID en AWS_SECRET_ACCESS_KEY op de server."
+    llm = get_config().llm
+    probleem = llm_service.bedrock_eu_problem(llm.bedrock_region, llm.bedrock_model, llm.bedrock_soep_model)
+    return f"Bedrock staat niet op de EU: {probleem}. Er is niets verstuurd." if probleem else None
+
+
 class SoepTestVraag(BaseModel):
     id: Optional[str] = None
     gesprek: str = Field("", max_length=MAX_GESPREK)
     taal: Optional[str] = "nl"
-    eu_model: Optional[str] = None          # "medium" | "large"; empty = the server setting
+    eu_model: Optional[str] = None          # "medium" | "large" | "bedrock"; empty = the server setting
     controle: bool = False                  # also run the EU report through the control pass
     run: Optional[str] = Field(None, max_length=60, pattern=r"^[\w:.-]*$")   # groups the rows of one testset run
 
@@ -268,6 +280,12 @@ async def soeptest(vraag: SoepTestVraag, door: str = Depends(vereis_beheerder)):
     if not gesprek.strip():
         raise HTTPException(status_code=400, detail="Kies een consult uit de testset of maak eerst een vergelijking.")
     eu = data_policy.eu_llm_provider()
+    if (vraag.eu_model or "").lower() == "bedrock":
+        # Try Claude in Bedrock (Frankfurt) before switching EU_LLM_PROVIDER.
+        reden = bedrock_niet_gereed()
+        if reden:
+            raise HTTPException(status_code=400, detail=reden)
+        eu = "bedrock"
     model = EU_MODELLEN.get((vraag.eu_model or "").lower()) if eu == "mistral" else None
     consult = next((c for c in index() if c["id"] == vraag.id), {}) if vraag.id else {}
     toets = consult.get("toets")
@@ -277,8 +295,11 @@ async def soeptest(vraag: SoepTestVraag, door: str = Depends(vereis_beheerder)):
     await register.log(door, "beheer.soeptest", consult=vraag.id or "eigen", claude_ok="problemen" in claude,
                        eu_ok="problemen" in mistral, verdacht_claude=len(claude.get("verdacht", [])),
                        verdacht_eu=len(mistral.get("verdacht", [])))
-    eu_naam = model or (get_config().llm.mistral_quality_model if eu == "mistral" else eu)
-    uit = {"claude": claude, "eu": mistral, "eu_model": eu_naam, "valkuilen": consult.get("valkuilen", [])}
+    eu_naam = model or (get_config().llm.mistral_quality_model if eu == "mistral" else
+                        get_config().llm.bedrock_soep_model if eu == "bedrock" else eu)
+    eu_label = f"Mistral ({eu_naam})" if eu == "mistral" else f"Claude via Bedrock EU ({eu_naam})"
+    uit = {"claude": claude, "eu": mistral, "eu_model": eu_naam, "eu_label": eu_label,
+           "valkuilen": consult.get("valkuilen", [])}
     if gecontroleerd is not None:
         uit["eu_gecontroleerd"] = gecontroleerd
     if vraag.id:   # only the fixed testset: acted consults
