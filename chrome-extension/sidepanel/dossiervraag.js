@@ -12,8 +12,9 @@
  * Vragen en antwoorden staan alleen in het geheugen van dit paneel; bij een
  * andere patiënt of het sluiten van het paneel zijn ze weg.
  *
- * "Denk mee over wat in beeld is": wat in Bricks in beeld staat (het lab met
- * eerdere waarden, een uitslag, een brief) gaat naar dezelfde beoordeling als
+ * "Denk mee": het stuk dat de arts aanwijst (geselecteerde tekst, of het blok
+ * rond de laatste klik in Bricks: het lab met eerdere waarden, een uitslag,
+ * een brief; anders alles in beeld) gaat naar dezelfde beoordeling als
  * in het tabblad Post (/api/v1/post/beoordeel, bron "scherm"), met een
  * getypte vraag als focus. Duiding en beleid alleen met klinische
  * ondersteuning aan (server én de keuze van de arts), net als bij Post.
@@ -58,6 +59,7 @@
     // medication, letters, notes), not only recognised sections.
     var d = await SVBricksDossier.lees(SVDossiervraag.MAX_TOTAAL, true);
     dv.leeftijd = leeftijdUit(d.geboren);
+    dv.geboren = d.geboren || '';
     if (!SVDossiervraag.zelfdePatient(dv.naam, d.naam)) {
       dv.eerder = [];
       $('dv-antwoorden').textContent = '';
@@ -151,6 +153,7 @@
     var kop = el('div', 'dv-kop-item');
     kop.appendChild(el('p', 'dv-vraag', tekst));
     kop.appendChild(el('span', 'dv-zeker ' + zeker, { expliciet: 'Staat erin', indirect: 'Alleen aanwijzingen', niet_gevonden: 'Niet gevonden' }[zeker]));
+    kop.appendChild(sluitKnop(kaart, tekst));
     kaart.appendChild(kop);
     kaart.appendChild(el('p', 'dv-antwoord', a.antwoord || '—'));
     if (a.let_op) kaart.appendChild(el('p', 'dv-letop', a.let_op));
@@ -213,6 +216,27 @@
   var PIJL = { hoog: '↑', laag: '↓', normaal: '', afwijkend: '!' };
   var OORDEEL = { normaal: 'Normaal', afwijkend: 'Afwijkend', niet_beoordeelbaar: 'Via aanvrager' };
 
+  /** ✕ on an answer: gone from the panel (and from the follow-up context). */
+  function sluitKnop(kaart, vraagTekst) {
+    var b = el('button', 'icon-btn dv-weg', '✕');
+    b.type = 'button';
+    b.title = 'Dit antwoord wegklikken';
+    b.setAttribute('aria-label', 'Dit antwoord wegklikken');
+    b.addEventListener('click', function () {
+      if (vraagTekst) dv.eerder = dv.eerder.filter(function (x) { return x.vraag !== vraagTekst; });
+      kaart.remove();
+      if (!$('dv-antwoorden').children.length) open(false);
+    });
+    return b;
+  }
+
+  function wisAlles() {
+    dv.eerder = [];
+    $('dv-antwoorden').textContent = '';
+    status('');
+    open(false);
+  }
+
   function kopieerKnop(label, tekst) {
     var b = el('button', 'btn small', label);
     b.type = 'button';
@@ -230,9 +254,10 @@
     kaart.classList.add('dv-md');
     kaart.textContent = '';
     var kop = el('div', 'dv-kop-item');
-    kop.appendChild(el('p', 'dv-vraag', focus ? 'Meedenken: ' + focus : 'Meedenken over wat in beeld is'));
+    kop.appendChild(el('p', 'dv-vraag', focus ? 'Meedenken: ' + focus : 'Meedenken'));
     var lab = a.lab || {};
     if (OORDEEL[lab.oordeel]) kop.appendChild(el('span', 'dv-zeker ' + (lab.oordeel === 'normaal' ? 'expliciet' : 'indirect'), OORDEEL[lab.oordeel]));
+    kop.appendChild(sluitKnop(kaart));
     kaart.appendChild(kop);
     if (a.let_op) kaart.appendChild(el('p', 'dv-letop', a.let_op));
     if (a.antwoord) kaart.appendChild(el('p', 'dv-antwoord', a.antwoord));
@@ -259,23 +284,55 @@
     kaart.appendChild(acties);
   }
 
-  async function meedenken() {
+  var MAX_FOCUS = 8000;
+
+  /**
+   * What "Denk mee" looks at: the text the doctor selected, or the block around
+   * the last click in Bricks (a lab table, a letter, a result). Nothing pointed
+   * at, or "alles in beeld" asked: everything on screen, as before. The same
+   * privacy filter as every dossier question (SVDossiervraag.bouw).
+   */
+  async function leesVoorMeedenken(breed) {
+    var b = await leesDossier();
+    if (breed) return { b: b, waar: 'alles wat in beeld staat' };
+    var f = await SVBricksDossier.focus(MAX_FOCUS).catch(function () { return null; });
+    if (!f) return { b: b, waar: 'alles wat in beeld staat (nergens aangeklikt)' };
+    var naam = f.soort === 'selectie' ? 'Geselecteerd in het dossier' : 'In beeld, waar de arts klikte';
+    var secties = {};
+    secties[naam] = f.tekst;
+    var g = SVDossiervraag.bouw(secties, dv.naam, SVPrivacy, SVPrivacy.datum(dv.geboren));
+    if (g.tekst.trim().length < 20) return { b: b, waar: 'alles wat in beeld staat' };
+    $('dv-preview').textContent = g.tekst;
+    return { b: g, waar: (f.soort === 'selectie' ? 'je selectie' : 'het blok waar je klikte') + ' (' + SVDossiervraag.tekens(g.tekst.length) + ')', gericht: true };
+  }
+
+  async function meedenken(breed) {
     if (dv.bezig) return;
     var focus = $('dv-input').value.trim();
     dv.bezig = true;
     $('dv-meedenken').disabled = true;
     var kaart = null;
     try {
-      status('Inlezen wat in beeld is…');
-      var b = await leesDossier();
+      status('Inlezen wat je aanwijst…');
+      var l = await leesVoorMeedenken(breed === true);
       open(true);
       kaart = el('div', 'dv-item bezig');
-      kaart.appendChild(el('p', 'dv-vraag', focus ? 'Meedenken: ' + focus : 'Meedenken over wat in beeld is'));
-      kaart.appendChild(el('p', 'dv-antwoord muted', 'VitaScribe beoordeelt wat in beeld is…'));
+      kaart.appendChild(el('p', 'dv-vraag', focus ? 'Meedenken: ' + focus : 'Meedenken'));
+      kaart.appendChild(el('p', 'dv-antwoord muted', 'VitaScribe beoordeelt ' + l.waar + '…'));
       $('dv-antwoorden').prepend(kaart);
       status('');
-      var a = await beoordeelScherm(b.tekst, focus);
-      toonMeedenken(kaart, focus, a, b.tekst.length > MAX_SCHERM);
+      var a = await beoordeelScherm(l.b.tekst, focus);
+      toonMeedenken(kaart, focus, a, l.b.tekst.length > MAX_SCHERM);
+      var waar = el('p', 'dv-waar muted', 'Gekeken naar: ' + l.waar + '.');
+      if (l.gericht) {
+        var breder = el('button', 'link-btn', 'Alles in beeld');
+        breder.type = 'button';
+        breder.title = 'Opnieuw, over alles wat in Bricks in beeld staat';
+        breder.addEventListener('click', function () { if (focus) $('dv-input').value = focus; meedenken(true); });
+        waar.appendChild(document.createTextNode(' '));
+        waar.appendChild(breder);
+      }
+      kaart.insertBefore(waar, kaart.children[1] || null);
       $('dv-input').value = '';
     } catch (e) {
       if (kaart) kaart.remove();
@@ -341,7 +398,8 @@
     this.style.height = Math.min(this.scrollHeight + 2, 120) + 'px';
   });
   $('dv-dicht').addEventListener('click', function () { open(false); });
-  $('dv-meedenken').addEventListener('click', meedenken);
+  $('dv-meedenken').addEventListener('click', function () { meedenken(false); });
+  $('dv-wis').addEventListener('click', wisAlles);
   $('dv-econsult').addEventListener('click', function () {
     open(false);
     if (window.SVEconsultUI) window.SVEconsultUI.start('');

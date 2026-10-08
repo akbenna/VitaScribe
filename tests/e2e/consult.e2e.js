@@ -447,7 +447,8 @@ async function listenPill(page, clickStop) {
   await sleep(900);
   const pNa = await sw.evaluate(() => chrome.storage.session.get('svConsult').then((r) => r.svConsult.result.soep.p));
   check('medicatievoorstel "Vervang" gaat ook mee naar het verslag', pNa.includes('Paracetamol 1000 mg zo nodig'), pNa);
-  // Agreements from P, with one button each.
+  // Agreements from P, with one button each (the report is drawn again after "Vervang": wait for it).
+  await side.waitForSelector('#afs:not(.hidden) .afs-item button', { timeout: 5000 }).catch(() => {});
   const afs = await side.$$eval('#afs:not(.hidden) .afs-item', (li) => li.map((x) => x.querySelector('.afs-soort').textContent + ':' + x.querySelector('button').textContent));
   check('afspraken uit dit consult onder het verslag', afs.join() === 'Verwijzing:Verwijsbrief,Vangnet:Kopieer', afs);
   await side.click('#afs .afs-item button');

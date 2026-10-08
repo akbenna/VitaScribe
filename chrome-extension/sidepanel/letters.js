@@ -337,7 +337,78 @@
     if (!Object.keys(merged).length) throw new Error('Weinig tekst gevonden. Is het dossier volledig geladen?');
     return { secties: merged, naam: naam, geboren: geboren };
   }
-  window.SVBricksDossier = { lees: leesBricks };
+  // "Denk mee": the part of the page the doctor points at. Selected text first;
+  // otherwise the block around the last click (content/klikfocus.js): walking up
+  // from the clicked element to the first table, panel or dialog with enough
+  // text, never more than maxTekens. A row of a long table gets the header row.
+  function focusFrame(maxTekens, binnenMs) {
+    var MIN = 120;
+    if (!document.body || window.innerWidth === 0) return null;
+    function zichtbaar(el) {
+      if (!el.getClientRects().length) return false;
+      var st = (el.ownerDocument.defaultView || window).getComputedStyle(el);
+      return st.visibility !== 'hidden' && st.display !== 'none';
+    }
+    function text(el) {
+      return String(el.innerText || '').replace(/\t+/g, ' ').replace(/ {3,}/g, '  ').replace(/\n{3,}/g, '\n\n').trim();
+    }
+    var docs = [document];
+    document.querySelectorAll('iframe,frame').forEach(function (f) {
+      var src = f.getAttribute('src') || '';
+      if (src && !/^about:/.test(src)) return;
+      try { if (f.contentDocument && f.contentDocument.body && zichtbaar(f)) docs.push(f.contentDocument); } catch (e) { /* cross-origin */ }
+    });
+    for (var i = 0; i < docs.length; i++) {
+      var sel = String((docs[i].getSelection && docs[i].getSelection()) || '').trim();
+      if (sel.length >= 15) return { soort: 'selectie', tekst: sel.slice(0, maxTekens), t: Date.now() };
+    }
+    var klik = null;
+    docs.forEach(function (d) {
+      var k = null;
+      try { k = d.defaultView && d.defaultView.__svKlik; } catch (e) { k = null; }
+      if (k && (!klik || k.t > klik.t)) klik = k;
+    });
+    if (!klik || Date.now() - klik.t > binnenMs || !klik.el.isConnected || !zichtbaar(klik.el)) return null;
+    var BLOK = /^(TABLE|SECTION|ARTICLE|DIALOG|FIELDSET)$/;
+    var BLOK_KLASSE = /panel|card|widget|modal|dialog|detail|tab-?pane|tabpanel|popup|window/i;
+    var beste = null;
+    for (var c = klik.el; c && c.nodeType === 1 && c.tagName !== 'BODY' && c.tagName !== 'HTML'; c = c.parentElement) {
+      if (!zichtbaar(c)) continue;
+      var t = text(c);
+      if (t.length > maxTekens) break;
+      beste = { el: c, tekst: t };
+      var soort = (typeof c.className === 'string' ? c.className : '') + ' ' + (c.getAttribute('role') || '');
+      // A table or dialog is a unit of its own; other blocks need some substance.
+      if (t.length >= 40 && /^(TABLE|DIALOG)$/.test(c.tagName)) break;
+      if (t.length >= MIN && (BLOK.test(c.tagName) || BLOK_KLASSE.test(soort))) break;
+    }
+    if (!beste || beste.tekst.length < 20) return null;
+    // Part of a table that is too long as a whole: keep the header row with it.
+    var tabel = beste.el.closest && beste.el.closest('table');
+    if (tabel && tabel !== beste.el) {
+      var kop = tabel.querySelector('thead') || tabel.querySelector('tr');
+      var kopTekst = kop && !kop.contains(beste.el) ? text(kop) : '';
+      if (kopTekst && beste.tekst.indexOf(kopTekst) === -1) beste.tekst = (kopTekst + '\n' + beste.tekst).slice(0, maxTekens);
+    }
+    return { soort: 'klik', tekst: beste.tekst, t: klik.t };
+  }
+
+  /** What the doctor points at in the Bricks tab: {soort, tekst} or null. */
+  async function focusBricks(maxTekens, binnenMs) {
+    var tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+    var tab = tabs[0];
+    if (!tab || !/^https?:/.test(tab.url || '')) return null;
+    var results = await chrome.scripting.executeScript({ target: { tabId: tab.id, allFrames: true }, func: focusFrame,
+      args: [maxTekens || 8000, binnenMs || 15 * 60000] }).catch(function () { return []; });
+    var beste = null;
+    (results || []).forEach(function (r) {
+      var v = r && r.result;
+      if (!v) return;
+      if (!beste || (v.soort === 'selectie') > (beste.soort === 'selectie') || (v.soort === beste.soort && v.t > beste.t)) beste = v;
+    });
+    return beste;
+  }
+  window.SVBricksDossier = { lees: leesBricks, focus: focusBricks };
 
   // For a letter: the recognised sections, and when the journal is missing or
   // thin, also everything in view (like Dossiervraag), so history, findings and
