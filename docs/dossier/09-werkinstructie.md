@@ -94,11 +94,17 @@ jouw verantwoordelijkheid (WGBO). Dat verandert niet door de software.
 1. **Koppelen, eenmalig.** Zijpaneel, kaart *Visites*: *telefoon koppelen*
    en de QR-code scannen. Zet de pagina op het beginscherm van de telefoon.
 2. **Bij de patiënt.** Typ een korte aanduiding, nooit naam of BSN (bijv.
-   "mw. J., wondcontrole"). Vraag toestemming en vink die aan. *Start visite*,
-   laat het scherm aan, en *Stop*. Nadicteren kan door gewoon door te praten
-   voor je op Stop drukt.
+   "mw. J., wondcontrole"). Vraag toestemming en vink die aan. *Start visite*
+   en laat het scherm aan. Is de patiënt klaar, tik dan op *Nadicteren* en
+   dicteer onderzoek en beleid; dat stuk geldt als het woord van de arts.
+   Daarna *Stop*. Voeg eventueel foto's toe (wond, huid, medicijnlijst; ze
+   komen niet in je fotorol) en tik op *Versturen*.
+   Geen bereik? De visite wacht versleuteld op de telefoon en gaat vanzelf
+   zodra er weer bereik is. Wat na 48 uur nog wacht, wordt gewist.
 3. **In de praktijk.** Open de patiënt in Bricks, klik in het zijpaneel bij
-   de visite op *Open*, lees het verslag na en voeg het in. *Consult
+   de visite op *Open*, lees het verslag na en voeg het in. Foto's van de
+   visite staan in de fotolijst bovenaan; zet ze met *In Bricks* in het
+   dossier. *Consult
    afsluiten* haalt de visite daarna van de server; anders gebeurt dat na
    48 uur vanzelf.
 4. **Telefoon kwijt?** Hij kan geen verslag lezen. Ontkoppel toch meteen:

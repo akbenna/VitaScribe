@@ -107,7 +107,8 @@ async function envelop(inhoud) {
            sleutels: { [visiteOntvanger.kid]: b64(new Uint8Array(await s.encrypt({ name: 'RSA-OAEP' }, pub, aes))) } };
 }
 const VISITE_VERSLAG = { soep: { s: 'Wond onderbeen li sinds 2 weken.', o: 'Wond 3 cm, schoon.', e: 'Ulcus cruris.', p: 'Wondcontrole POH.' },
-                         decisief: 'Visite: ulcus cruris li' };
+                         decisief: 'Visite: ulcus cruris li',
+                         fotos: [{ media_type: 'image/png', data: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==' }] };
 
 async function visiteRoute(req, res, url) {
   const json = (code, d) => { res.writeHead(code, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(d)); };
@@ -123,7 +124,7 @@ async function visiteRoute(req, res, url) {
   if (url.pathname === '/api/v1/visite/postbus') {
     const nu = Date.now() / 1000;
     return json(200, { visites: visiteWeg.includes('v1') ? [] : [
-      { id: 'v1', gemaakt: nu - 600, verloopt: nu + 3600, status: 'klaar', kop: await envelop({ aanduiding: 'mw. J., wond' }) },
+      { id: 'v1', gemaakt: nu - 600, verloopt: nu + 3600, status: 'klaar', kop: await envelop({ aanduiding: 'mw. J., wond', fotos: 1 }) },
       { id: 'v2', gemaakt: nu - 60, verloopt: nu + 3600, status: 'verwerken', kop: await envelop({ aanduiding: 'dhr. K.' }) }] });
   }
   const m = url.pathname.match(/^\/api\/v1\/visite\/postbus\/(\w+)$/);
@@ -376,8 +377,7 @@ async function listenPill(page, clickStop) {
   check('zijpaneel dicht (geminimaliseerd): bolletje weer terug', p && p.visible, p && p.style);
   check('knop "Paneel" in het bolletje tijdens de opname (terug na minimaliseren)', p.buttons.paneel && !p.buttons.paneel.hidden);
   await clickPill(tab, 'nadictaat');
-  await sleep(500);
-  p = await pill(tab);
+  for (let i = 0; i < 20; i++) { await sleep(150); p = await pill(tab); if (p && p.buttons.nadictaat.hidden) break; }
   check('nadicteren zichtbaar, knop weg', p.text.includes('nadicteren') && p.buttons.nadictaat.hidden, p.text);
   // Stop on the pill opens the side panel. Record the call instead of opening a
   // real panel: a second panel next to the test's own would race with it.
@@ -684,13 +684,15 @@ async function listenPill(page, clickStop) {
   const visItems = await vp.$$eval('#vis .vis-item', (li) => li.map((x) => x.querySelector('.vis-wat').textContent + '|' +
     (x.querySelector('button').disabled ? 'dicht' : 'open')));
   check('visites: aanduiding ontsleuteld in deze browser, nog niet klaar = dicht',
-    visItems.join() === 'mw. J., wond|open,dhr. K. · verslag wordt gemaakt…|dicht', visItems);
+    visItems.join() === 'mw. J., wond · 1 foto|open,dhr. K. · verslag wordt gemaakt…|dicht', visItems);
   check('visites: alleen de openbare sleutel ging naar de server', !!(visiteOntvanger && visiteOntvanger.spki && visiteOntvanger.kid));
   await vp.click('#vis .vis-item button');
   await sleep(600);
   check('visites: verslag geopend in het paneel',
     (await vp.$eval('.soep-text[data-key="s"]', (e) => e.textContent)) === VISITE_VERSLAG.soep.s &&
     (await vp.textContent('#soep-decisief')).includes('ulcus cruris'));
+  check('visites: foto van de visite in de fotolijst, met "In Bricks"', (await vp.$$('#tel-fotos:not(.hidden) .tel-foto')).length === 1 &&
+    !!(await vp.$('.tel-foto button:has-text("In Bricks")')));
   await vp.click('#vis-koppel');
   await sleep(400);
   check('visites: QR om de telefoon te koppelen', await vp.$eval('#vis-dialoog', (e) => !e.classList.contains('hidden')) &&

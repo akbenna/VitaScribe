@@ -105,7 +105,10 @@ window.SVVisiteUI = (function () {
     for (var i = 0; i < lijst.length; i++) {
       var v = lijst[i];
       if (labels[v.id] === undefined && v.kop && s) {
-        try { labels[v.id] = (await SVVisite.open(v.kop, s)).aanduiding || ''; }
+        try {
+          var kop = await SVVisite.open(v.kop, s);
+          labels[v.id] = (kop.aanduiding || '') + (kop.fotos ? ' · ' + kop.fotos + (kop.fotos === 1 ? ' foto' : " foto's") : '');
+        }
         catch (e) { labels[v.id] = null; }   // for another pc
       }
     }
@@ -160,6 +163,11 @@ window.SVVisiteUI = (function () {
       dec.textContent = data.decisief || '';
       dec.classList.toggle('hidden', !data.decisief);
       if (window.SVConsultUI) window.SVConsultUI.losgekoppeld();   // not the consult recording's report
+      // Photos of the visit: in the photo list, with "In Bricks"; gone with "Consult afsluiten".
+      if (window.SVTelefoon && Array.isArray(data.fotos)) {
+        window.SVTelefoon.wisFotos();
+        data.fotos.forEach(function (f) { window.SVTelefoon.toonFoto(f); });
+      }
       geopend = id;
       setStatus('Visiteverslag' + (labels[id] ? ' (' + labels[id] + ')' : '') +
         ' staat klaar. Open de patiënt in Bricks, controleer en voeg in. "Consult afsluiten" haalt de visite daarna van de server.');

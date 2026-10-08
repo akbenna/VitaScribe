@@ -260,7 +260,7 @@ window.SVTelefoon = (function () {
     var uit = function () { return false; };
     return { koppel: function () { return Promise.reject(new Error('Werk de extensie volledig bij om de telefoon te koppelen.')); },
       ontkoppel: function () {}, stuur: function () { return Promise.resolve(false); }, on: function () {},
-      actief: uit, voorTolk: uit, wisFotos: function () {} };
+      actief: uit, voorTolk: uit, wisFotos: function () {}, toonFoto: function () {} };
   }
   $('btn-telefoon').addEventListener('click', function () {
     if (k) { toonQr(); return; }
@@ -281,5 +281,7 @@ window.SVTelefoon = (function () {
     });
   }
 
-  return { koppel: koppel, ontkoppel: ontkoppel, stuur: stuur, on: on, actief: actief, voorTolk: voorTolk, wisFotos: wisFotos };
+  // toonFoto: also for the photos of a visit (visite-ui.js), with the same buttons.
+  return { koppel: koppel, ontkoppel: ontkoppel, stuur: stuur, on: on, actief: actief, voorTolk: voorTolk, wisFotos: wisFotos,
+           toonFoto: toonFoto };
 })();

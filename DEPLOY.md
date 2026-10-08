@@ -522,6 +522,11 @@ zonder register staan ze in het geheugen.
   kan hij ze zelf niet meer lezen.
 - Een envelop wordt gewist bij "Consult afsluiten" of met ✕, en anders
   na 48 uur.
+- Deel 2: nadicteren (het moment gaat mee, zoals bij het consult), tot zes
+  foto's per visite in dezelfde envelop, en zonder bereik een versleutelde
+  wachtrij op de telefoon (AES-256-GCM, sleutel niet exporteerbaar in de
+  browser van de telefoon). Verstuurd = weg van de telefoon; na 48 uur wist
+  de telefoon wat nog wacht.
 
 Dit is een nieuwe, kortdurende opslag (versleuteld, ≤ 48 uur): neem hem op
 in de DPIA voordat je hem voor echte patiënten aanzet.

@@ -51,5 +51,7 @@ jobs:
         run: node tests/e2e/extension.e2e.js
       - name: Consultopname van A tot Z (nep-microfoon, gesimuleerde server)
         run: node tests/e2e/consult.e2e.js
+      - name: Visite op de telefoon (nep-microfoon, zonder bereik, gesimuleerde server)
+        run: node tests/e2e/visite.e2e.js
       - name: Koppeltabel ProVita Care (node --test)
         run: node --test tests/js/beslistools.test.js
