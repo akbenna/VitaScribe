@@ -42,6 +42,9 @@ Settings (environment):
   BEDROCK_REGION, BEDROCK_MODEL, BEDROCK_SOEP_MODEL and the AWS credentials
                           for route A (config.py)
   EU_LLM_PROVIDER         default "mistral" (mistral | bedrock), for the eu mode
+  EU_STT_PROVIDER         default "voxtral" (voxtral | gladia | speechmatics): the
+                          speech service of the eu mode (werkplan stap 6). Gladia
+                          and Speechmatics understand all interpreter languages.
   ALLOWED_STT_PROVIDERS   default "deepgram". "voxtral": consults (live and
                           uploaded) go to Mistral Voxtral (EU) after the consult;
                           dictation stays on Deepgram (needs live text).
@@ -65,6 +68,8 @@ import structlog
 logger = structlog.get_logger()
 
 EU_PROVIDERS = {"mistral", "bedrock"}
+EU_STT_PROVIDERS = ("voxtral", "gladia", "speechmatics")
+STT_SLEUTEL = {"voxtral": "MISTRAL_API_KEY", "gladia": "GLADIA_API_KEY", "speechmatics": "SPEECHMATICS_API_KEY"}
 MODI = ("claude", "eu")
 
 # The mode of the request being handled (set per HTTP request by middleware,
@@ -126,10 +131,31 @@ def eu_gereed() -> Optional[str]:
         probleem = llm_service.bedrock_eu_problem(llm.bedrock_region, llm.bedrock_model, llm.bedrock_soep_model)
         if probleem:
             return f"Bedrock staat niet op de EU ({probleem}); de server verstuurt niets tot dat klopt."
-    # Voxtral (speech in the eu mode) always needs the Mistral key, also with Bedrock for text.
-    if not get_config().llm.mistral_api_key:
-        return "Op de server is geen Mistral-sleutel ingesteld; de spraakherkenning in de EU-modus (Voxtral) mislukt tot die er is."
+    spraak = eu_stt_provider()
+    if not stt_sleutel(spraak):
+        naam = {"voxtral": "Voxtral", "gladia": "Gladia", "speechmatics": "Speechmatics"}[spraak]
+        return (f"Op de server is geen {STT_SLEUTEL[spraak]} ingesteld; de spraakherkenning in de EU-modus "
+                f"({naam}) mislukt tot die er is.")
     return None
+
+
+def stt_sleutel(provider: str) -> bool:
+    """Is the key of this EU speech service set on the server?"""
+    from .config import get_config
+    cfg = get_config()
+    return bool({"voxtral": cfg.llm.mistral_api_key, "gladia": cfg.stt.gladia_api_key,
+                 "speechmatics": cfg.stt.speechmatics_api_key}.get(provider))
+
+
+def eu_stt_provider() -> str:
+    """Speech service of the eu mode; an unknown value means Voxtral."""
+    gekozen = _env("EU_STT_PROVIDER", "voxtral")
+    return gekozen if gekozen in EU_STT_PROVIDERS else "voxtral"
+
+
+def batch_stt(provider: Optional[str] = None) -> bool:
+    """A batch service (the recording after the consult), not live Deepgram."""
+    return (provider or stt_provider()) in EU_STT_PROVIDERS
 
 
 def zet_modus(requested: Optional[str] = None) -> Token:
@@ -170,9 +196,9 @@ def letters_llm_provider() -> str:
 
 def stt_provider(requested: Optional[str] = None) -> str:
     """Speech-to-text provider; only the allowed ones (default: Deepgram EU).
-    In the eu mode always Voxtral (Mistral, EU)."""
+    In the eu mode always the EU service (EU_STT_PROVIDER, Voxtral by default)."""
     if eu_modus():
-        return "voxtral"
+        return eu_stt_provider()
     allowed = [p.strip() for p in _env("ALLOWED_STT_PROVIDERS", "deepgram").split(",") if p.strip()]
     if requested and requested.lower() in allowed:
         return requested.lower()
@@ -213,8 +239,8 @@ def summary() -> dict:
         "patient_data_llm_in_eu": phi_llm_provider() in EU_PROVIDERS,
         "letters_llm": letters_llm_provider(),
         "stt": stt_provider(),
-        # Voxtral: an EU company in the EU; Deepgram: a US company, EU endpoint.
-        "stt_eu_provider": stt_provider() == "voxtral",
+        # Voxtral, Gladia: EU companies; Speechmatics: UK (adequacy); Deepgram: a US company, EU endpoint.
+        "stt_eu_provider": stt_provider() in EU_STT_PROVIDERS,
         "stt_eu_endpoint": True,
         "stt_training_opt_out": True,
         "clinical_decision_support": clinical_decision_support(),

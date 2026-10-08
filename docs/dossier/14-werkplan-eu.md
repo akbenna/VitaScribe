@@ -226,14 +226,29 @@ iPhone-tolk merk je het verschil direct.
 - Speechmatics (Cambridge, VK). Het VK heeft een adequaatheidsbesluit, dus
   juridisch gelijk aan de EU. Goed in accenten.
 
+**Gebouwd (server, oktober 2026).** Beide zitten erin als aanbieder achter
+één instelling, `EU_STT_PROVIDER` (`voxtral`, `gladia` of `speechmatics`),
+met dezelfde woordenlijst als Voxtral. Ze werken achteraf, net als Voxtral:
+consult, tolk en telefoon-tolk. De server wist de opdracht bij de dienst
+zodra de tekst binnen is. Met Gladia of Speechmatics biedt de tolk in de
+EU-modus alle negen talen aan. De spraaktest heeft een keuze *EU-dienst*,
+zodat je elk van de drie naast Deepgram legt. Zonder sleutel geeft de test
+een melding en verstuurt hij niets.
+
+Nog niet gebouwd: live dicteren via een van beide (realtime). Dat is de
+laatste plek waar Deepgram nodig is, en komt als stap 6b zodra de keuze
+gemaakt is: dan hoeft maar één realtime-koppeling gebouwd te worden.
+
 **Wat je doet.**
 
-1. Vraag bij beide een proefsleutel en hun verwerkersovereenkomst aan.
-2. Claude voegt beide toe als aanbieder achter een instelling, met dezelfde
-   woordenlijst als nu.
-3. Draai de spraaktest met tien gespeelde consulten, en de tolk met een
-   collega die Turks of Arabisch spreekt.
-4. Kies er een, teken de overeenkomst, zet hem in stuk 05.
+1. Vraag bij beide een proefsleutel en hun verwerkersovereenkomst aan. Zet
+   de sleutels in Railway: `GLADIA_API_KEY` en `SPEECHMATICS_API_KEY`. Voor
+   de artsen verandert er dan nog niets.
+2. Draai de spraaktest met tien gespeelde consulten, en de tolk met een
+   collega die Turks of Arabisch spreekt. Voor de tolk: zet tijdelijk
+   `EU_STT_PROVIDER` op de dienst die je test, en de tolk in de EU-modus.
+3. Kies er een (`EU_STT_PROVIDER`), teken de overeenkomst, en laat Claude
+   stuk 05 bijwerken. Daarna bouwt Claude het live dicteren (6b).
 
 **Wie.** Jij voor de proefsleutels, de keuze en het tekenen. Claude voor de
 aanbieders en de test.

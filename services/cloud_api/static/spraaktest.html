@@ -51,7 +51,7 @@
 <header><img src="/vitascribe-logo.svg" alt=""><b>VitaScribe spraaktest</b><span class="ruimte"></span><a href="/beheer">Terug naar beheer</a></header>
 <main>
   <div class="kaart">
-    <h2>Voxtral (Mistral, Frankrijk) tegen Deepgram</h2>
+    <h2>Europese spraakherkenning tegen Deepgram</h2>
     <div class="let-op">Gebruik een rollenspel of een opname zonder echte patiënt, tot er een verwerkersovereenkomst met Mistral is. Er wordt niets bewaard; het log noteert alleen dat er een test was.</div>
     <div class="rij">
       <button id="opnemen" class="opnemen">● Microfoon</button>
@@ -60,7 +60,8 @@
       <span id="klok" class="tijd klein"></span>
       <span class="klein">of</span>
       <input type="file" id="bestand" accept=".webm,.wav,.mp3,.m4a,.ogg,.flac,.mp4,audio/*">
-      <label class="klein">Taal <select id="taal"><option value="nl">Nederlands</option><option value="multi">Meertalig</option><option value="en">Engels</option></select></label>
+      <label class="klein">Taal <select id="taal"><option value="nl">Nederlands</option><option value="multi">Meertalig</option><option value="en">Engels</option><option value="tr">Turks</option><option value="pl">Pools</option><option value="uk">Oekraïens</option><option value="ar">Arabisch</option></select></label>
+      <label class="klein" title="De Europese dienst naast Deepgram (werkplan stap 6)">EU-dienst <select id="tegen"><option value="voxtral">Voxtral (Mistral)</option><option value="gladia">Gladia</option><option value="speechmatics">Speechmatics</option></select></label>
       <button id="vergelijk" class="hoofd" disabled>Vergelijk</button>
       <button id="bewaar" disabled title="Download alle vergelijkingen van deze pagina als testset (alleen gespeelde consulten)">Bewaar als testset</button>
       <button id="insturen" disabled title="Stuur de vergelijkingen van deze pagina naar het serverlog, zodat de ontwikkelaar ze aan de testset toevoegt (alleen gespeelde consulten)">Naar testset sturen</button>

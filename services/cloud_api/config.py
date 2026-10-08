@@ -33,6 +33,12 @@ class STTConfig:
     # Mistral Voxtral (France): batch transcription with speaker labels. Uses
     # the Mistral key of the language model (MISTRAL_API_KEY).
     voxtral_model: str = "voxtral-mini-latest"
+    # Werkplan stap 6: European speech recognition for all languages, batch
+    # (after the consult, and per interpreter turn). Gladia (France) and
+    # Speechmatics (UK, adequacy decision), EU endpoints.
+    gladia_api_key: str = ""
+    speechmatics_api_key: str = ""
+    speechmatics_operating_point: str = "enhanced"
 
 
 @dataclass(frozen=True)
@@ -118,6 +124,9 @@ def get_config() -> AppConfig:
             openai_api_key=os.getenv("OPENAI_API_KEY", ""),
             openai_model=os.getenv("OPENAI_STT_MODEL", "whisper-1"),
             voxtral_model=os.getenv("VOXTRAL_MODEL", "voxtral-mini-latest"),
+            gladia_api_key=os.getenv("GLADIA_API_KEY", ""),
+            speechmatics_api_key=os.getenv("SPEECHMATICS_API_KEY", ""),
+            speechmatics_operating_point=os.getenv("SPEECHMATICS_OPERATING_POINT", "enhanced"),
         ),
         llm=LLMConfig(
             default_provider=os.getenv("LLM_PROVIDER", "anthropic"),
