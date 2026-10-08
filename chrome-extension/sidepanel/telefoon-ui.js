@@ -171,6 +171,9 @@ window.SVTelefoon = (function () {
       } catch (e) { btn.textContent = 'Lukte niet'; }
       setTimeout(function () { btn.textContent = 'Kopieer'; }, 1500);
     });
+    knop('In Bricks', 'In het uploadveld van Bricks zetten (open daar eerst "document of foto toevoegen"); opslaan doe je in Bricks', function () {
+      inBricks(this, url, d.media_type);
+    });
     knop('Naar brief', 'In Brieven als schermafdruk, om een medicijnlijst of brief uit te lezen', function () {
       if (window.SVViews) window.SVViews.show('letters');
       if (window.SVLetters) window.SVLetters.zetAfbeelding({ url: url, media_type: d.media_type, data: d.data });
@@ -179,6 +182,49 @@ window.SVTelefoon = (function () {
     kaart.append(img, acties);
     $('tel-fotos-lijst').prepend(kaart);
     bijwerkFotos();
+  }
+
+  // A photo into the dossier: the extension puts it in Bricks' open upload
+  // field (content/foto-upload.js); the doctor saves it there. JPEG, because
+  // an HIS rarely takes HEIC from an iPhone.
+  async function inBricks(btn, url, soort) {
+    var oud = btn.textContent;
+    try {
+      var bron = /^image\/(jpeg|png)$/.test(soort) ? url : await naarJpeg(url);
+      var type = /^image\/(jpeg|png)$/.test(soort) ? soort : 'image/jpeg';
+      var nu = new Date();
+      var naam = 'foto-' + nu.getFullYear() + String(nu.getMonth() + 1).padStart(2, '0') + String(nu.getDate()).padStart(2, '0') +
+        '-' + String(nu.getHours()).padStart(2, '0') + String(nu.getMinutes()).padStart(2, '0') + (type === 'image/png' ? '.png' : '.jpg');
+      var tabId = await currentTabId();
+      var res = tabId ? await chrome.tabs.sendMessage(tabId, { action: 'SV_FOTO_UPLOAD', naam: naam, type: type,
+        data: bron.split(',')[1] }).catch(function () { return null; }) : null;
+      if (res && res.ok) {
+        btn.textContent = 'Geplaatst';
+        setTimeout(function () { btn.textContent = oud; }, 1500);
+        setStatus('Foto in het uploadveld van Bricks gezet (' + naam + '). Controleer de omschrijving en sla op in Bricks.');
+      } else {
+        try { await navigator.clipboard.write([new ClipboardItem({ 'image/png': await naarPng(url) })]); } catch (e) { /* ignore */ }
+        btn.textContent = oud;
+        setStatus('Geen uploadveld gevonden. Open in Bricks bij de patiënt het venster om een document of foto toe te ' +
+          'voegen en klik nog eens op "In Bricks". De foto staat ook op het klembord.', true);
+      }
+    } catch (e) {
+      setStatus('De foto kon niet naar Bricks: ' + e.message, true);
+    }
+  }
+
+  function naarJpeg(dataUrl) {
+    return new Promise(function (klaar, fout) {
+      var img = new Image();
+      img.onload = function () {
+        var c = document.createElement('canvas');
+        c.width = img.naturalWidth; c.height = img.naturalHeight;
+        c.getContext('2d').drawImage(img, 0, 0);
+        klaar(c.toDataURL('image/jpeg', 0.9));
+      };
+      img.onerror = function () { fout(new Error('dit fotoformaat kan de browser niet lezen')); };
+      img.src = dataUrl;
+    });
   }
 
   function bijwerkFotos() {

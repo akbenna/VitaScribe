@@ -763,7 +763,29 @@ function check(name, cond, extra) {
     data: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==' } });
   await sleep(900);
   check('foto van de telefoon in het paneel', await panel.isVisible('#tel-fotos') && (await panel.$$('.tel-foto')).length === 1);
-  await panel.click('.tel-foto .tel-foto-acties button:nth-child(2)');
+  // "In Bricks": into the upload field of the open dialog on the page; saving stays with the doctor.
+  await page.evaluate(() => {
+    const d = document.createElement('div');
+    d.setAttribute('role', 'dialog');
+    d.innerHTML = '<input type="file" id="sv-test-upload" accept="image/*">';
+    document.body.appendChild(d);
+    document.getElementById('sv-test-upload').addEventListener('change', (e) => {
+      const f = e.target.files[0];
+      window.__upload = f ? { naam: f.name, type: f.type, grootte: f.size } : null;
+    });
+  });
+  await panel.click('.tel-foto .tel-foto-acties button:has-text("In Bricks")');
+  await sleep(600);
+  const upload = await page.evaluate(() => window.__upload || null);
+  check('"In Bricks": foto in het uploadveld van de pagina', upload && /^foto-\d{8}-\d{4}\.png$/.test(upload.naam) &&
+    upload.type === 'image/png' && upload.grootte > 50, upload);
+  check('"In Bricks": melding in het paneel', (await panel.textContent('#status')).includes('uploadveld van Bricks'));
+  await page.evaluate(() => document.getElementById('sv-test-upload').parentNode.remove());
+  await sleep(1700);
+  await panel.click('.tel-foto .tel-foto-acties button:has-text("In Bricks")');
+  await sleep(600);
+  check('"In Bricks" zonder uploadveld: uitleg wat te doen', (await panel.textContent('#status')).includes('Geen uploadveld gevonden'));
+  await panel.click('.tel-foto .tel-foto-acties button:has-text("Naar brief")');
   await sleep(300);
   check('"Naar brief": foto als schermafdruk in Brieven', await panel.isVisible('#view-letters') && await panel.isVisible('#lt-shot-img')
     && await panel.isVisible('#lt-shot-read'));

@@ -104,6 +104,14 @@ jouw verantwoordelijkheid (WGBO). Dat verandert niet door de software.
 4. **Telefoon kwijt?** Hij kan geen verslag lezen. Ontkoppel toch meteen:
    *telefoon koppelen › Ontkoppel alle telefoons*.
 
+## Foto's in het dossier
+
+Een foto van de telefoon (wond, huid, medicijnlijst) verschijnt in het
+zijpaneel. Open in Bricks bij de patiënt het venster om een document of foto
+toe te voegen en klik in het paneel op **In Bricks**: de foto staat dan in het
+uploadveld. Geef een omschrijving en sla op in Bricks. Vind VitaScribe geen
+uploadveld, dan staat de foto op het klembord.
+
 ## Wat VitaScribe van je leert
 
 VitaScribe stelt na invoegen regels voor uit wat je aanpaste. Keur alleen een
