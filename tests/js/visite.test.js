@@ -46,3 +46,22 @@ test('tijd: vandaag, gisteren of een datum', () => {
   assert.strictEqual(V.tijd(new Date(2026, 9, 7, 16, 5).getTime() / 1000, nu), 'gisteren 16:05');
   assert.strictEqual(V.tijd(new Date(2026, 9, 5, 9, 0).getTime() / 1000, nu), '5-10 09:00');
 });
+
+test('versleutel: een ronde voor de telefoon, alleen die kan hem openen', async () => {
+  const tel = await V.nieuwSleutelpaar();
+  const pc = await V.nieuwSleutelpaar();
+  const e = await V.versleutel({ plekken: [{ plek: 'plek-1', aanduiding: '1 · P.d.V.' }] }, [{ kid: tel.kid, spki: tel.spki }]);
+  assert.strictEqual((await V.open(e, tel)).plekken[0].aanduiding, '1 · P.d.V.');
+  await assert.rejects(V.open(e, pc), /andere browser/);
+  await assert.rejects(V.versleutel({}, []), /Geen telefoon/);
+});
+
+test('vergelijk: juiste patiënt open in Bricks?', () => {
+  const p = { naam: 'Dhr. Pieter de Vries', geboren: '12-03-1961' };
+  assert.strictEqual(V.vergelijk(p, { naam: 'Pieter de Vries', geboren: '12-03-1961' }), 'zelfde');
+  assert.strictEqual(V.vergelijk(p, { naam: 'dhr. pieter de vries', geboren: '' }), 'zelfde');
+  assert.strictEqual(V.vergelijk(p, { naam: 'Pieter de Vries', geboren: '01-01-1950' }), 'anders');   // namesake
+  assert.strictEqual(V.vergelijk(p, { naam: 'Mw. G. Kerkhofs', geboren: '12-03-1961' }), 'anders');
+  assert.strictEqual(V.vergelijk(p, { naam: '', geboren: '' }), 'onbekend');
+  assert.strictEqual(V.vergelijk({ naam: 'José Müller' }, { naam: 'Jose Muller' }), 'zelfde');
+});

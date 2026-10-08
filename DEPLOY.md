@@ -527,6 +527,13 @@ zonder register staan ze in het geheugen.
   wachtrij op de telefoon (AES-256-GCM, sleutel niet exporteerbaar in de
   browser van de telefoon). Verstuurd = weg van de telefoon; na 48 uur wist
   de telefoon wat nog wacht.
+- Visiteronde: de telefoon heeft een eigen sleutelpaar (geheime sleutel niet
+  exporteerbaar) en meldt de openbare sleutel aan. Het paneel versleutelt de
+  ronde (alleen korte aanduidingen per plek) voor de telefoon; de server
+  bewaart die envelop één dag en kan hem niet lezen. Naam en geboortedatum
+  per plek staan alleen in de browser van de praktijk (IndexedDB, twee dagen).
+  Bij een teruggekomen visite controleert het paneel of die patiënt in Bricks
+  open staat.
 
 Dit is een nieuwe, kortdurende opslag (versleuteld, ≤ 48 uur): neem hem op
 in de DPIA voordat je hem voor echte patiënten aanzet.

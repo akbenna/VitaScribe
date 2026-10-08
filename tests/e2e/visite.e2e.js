@@ -3,7 +3,8 @@
  *
  * De echte pagina (services/cloud_api/static/visite.html en visite.js), een
  * nep-microfoon en een gesimuleerde server:
- *   A. gekoppeld via de QR (sleutel na '#'), sleutel uit de adresbalk
+ *   A. gekoppeld via de QR (sleutel na '#', blijft staan voor het beginscherm);
+ *      ronde: eigen sleutel aangemeld, klaargezette visites ontsleuteld
  *   B. toestemming, start, nadicteren, stop
  *   C. foto toevoegen
  *   D. versturen zonder bereik: versleuteld in de wachtrij, niets leesbaars
@@ -25,6 +26,21 @@ function check(name, cond, extra) {
 }
 
 const ontvangen = [];
+const { webcrypto } = require('crypto');
+let telefoonSleutel = null;
+// The round as the side panel prepares it, encrypted for the phone's own key.
+async function rondeEnvelop() {
+  const s = webcrypto.subtle;
+  const b64 = (u) => Buffer.from(u).toString('base64');
+  const aes = webcrypto.getRandomValues(new Uint8Array(32));
+  const iv = webcrypto.getRandomValues(new Uint8Array(12));
+  const k = await s.importKey('raw', aes, 'AES-GCM', false, ['encrypt']);
+  const inhoud = { plekken: [{ plek: 'plek-aaa111', aanduiding: '1 · mw. J. · wond' }, { plek: 'plek-bbb222', aanduiding: '2 · dhr. K. · COPD' }] };
+  const data = await s.encrypt({ name: 'AES-GCM', iv }, k, new TextEncoder().encode(JSON.stringify(inhoud)));
+  const pub = await s.importKey('spki', Buffer.from(telefoonSleutel.spki, 'base64'), { name: 'RSA-OAEP', hash: 'SHA-256' }, false, ['encrypt']);
+  return { v: 1, iv: b64(iv), data: b64(new Uint8Array(data)),
+           sleutels: { [telefoonSleutel.kid]: b64(new Uint8Array(await s.encrypt({ name: 'RSA-OAEP' }, pub, aes))) } };
+}
 const server = http.createServer((req, res) => {
   const url = new URL(req.url, 'http://x');
   const json = (code, d) => { res.writeHead(code, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(d)); };
@@ -32,6 +48,17 @@ const server = http.createServer((req, res) => {
   if (url.pathname === '/v/visite.js') { res.writeHead(200, { 'Content-Type': 'application/javascript' }); res.end(fs.readFileSync(path.join(STATIC, 'visite.js'))); return; }
   if (req.headers['x-vitascribe-visite'] !== 'toestel-123') return json(401, { detail: 'Deze telefoon is niet (meer) gekoppeld.' });
   if (url.pathname === '/api/v1/visite/hallo') return json(200, { modus: 'eu', naam: '' });
+  if (url.pathname === '/api/v1/visite/toestel-sleutel') {
+    let b = '';
+    req.on('data', (d) => { b += d; });
+    req.on('end', () => { telefoonSleutel = JSON.parse(b); json(200, { ok: true }); });
+    return;
+  }
+  if (url.pathname === '/api/v1/visite/ronde') {
+    if (!telefoonSleutel) return json(200, { envelop: null });
+    rondeEnvelop().then((e) => json(200, { envelop: e }));
+    return;
+  }
   if (url.pathname === '/api/v1/visite/opname') {
     const delen = [];
     req.on('data', (d) => delen.push(d));
@@ -39,7 +66,7 @@ const server = http.createServer((req, res) => {
       const body = Buffer.concat(delen).toString('latin1');
       const veld = (n) => (new RegExp('name="' + n + '"\\r\\n\\r\\n([^\\r]*)').exec(body) || [])[1];
       ontvangen.push({ fotos: (body.match(/name="fotos"/g) || []).length, audio: /name="audio"; filename="visite\.\w+"/.test(body),
-        toestemming: veld('toestemming'), aanduiding: veld('aanduiding'), nadictaat: veld('nadictaat_vanaf'),
+        toestemming: veld('toestemming'), aanduiding: Buffer.from(veld('aanduiding') || '', 'latin1').toString('utf8'), nadictaat: veld('nadictaat_vanaf'), plek: veld('plek'),
         opgenomen: Number(veld('opgenomen')) });
       json(200, { id: 'v1', status: 'verwerken' });
     });
@@ -63,12 +90,22 @@ const server = http.createServer((req, res) => {
   await page.goto(base + '/v#toestel-123');
   await page.waitForSelector('#klaar:not(.hidden)', { timeout: 5000 }).catch(() => {});
   check('pagina klaar, modus zichtbaar', (await page.textContent('#pil')).includes('EU-modus'));
-  check('sleutel uit de adresbalk', !page.url().includes('toestel-123'));
+  check('koppeling blijft na # staan (beginscherm-app neemt hem mee)', page.url().endsWith('#toestel-123'));
   check('sleutel bewaard op het toestel', await page.evaluate(() => localStorage.getItem('vsVisiteToestel')) === 'toestel-123');
   check('start pas na toestemming', await page.$eval('#start', (b) => b.disabled));
 
+  await page.waitForSelector('#ronde:not(.hidden) .plek', { timeout: 6000 }).catch(() => {});
+  check('ronde: eigen sleutel aangemeld, niet exporteerbaar', !!(telefoonSleutel && telefoonSleutel.kid && telefoonSleutel.spki));
+  check('ronde: klaargezette visites ontsleuteld op de telefoon',
+    (await page.$$eval('#ronde .plek', (b) => b.map((x) => x.textContent))).join('|') === '1 · mw. J. · wond|2 · dhr. K. · COPD');
+  check('ronde: versleuteld bewaard voor onderweg', await page.evaluate(() => !(localStorage.getItem('vsRonde') || '').includes('mw. J.')
+    && (localStorage.getItem('vsRonde') || '').includes('sleutels')));
+  await page.click('#ronde .plek');
+  await page.waitForSelector('#ronde .plek.gekozen', { timeout: 3000 }).catch(() => {});
+  check('ronde: patiënt aangetikt, aanduiding ingevuld', (await page.inputValue('#aanduiding')) === '1 · mw. J. · wond' &&
+    (await page.getAttribute('#ronde .plek', 'class')).includes('gekozen'));
+
   console.log('B. Opnemen en nadicteren');
-  await page.fill('#aanduiding', 'mw. J., wond');
   await page.check('#toestemming');
   await page.click('#start');
   await page.waitForSelector('#opname:not(.hidden)', { timeout: 5000 });
@@ -79,7 +116,7 @@ const server = http.createServer((req, res) => {
   await sleep(1200);
   await page.click('#stop');
   await page.waitForSelector('#na:not(.hidden)', { timeout: 5000 });
-  check('na stop: overzicht met duur en aanduiding', (await page.textContent('#na-titel')).includes('mw. J., wond') &&
+  check('na stop: overzicht met duur en aanduiding', (await page.textContent('#na-titel')).includes('1 · mw. J. · wond') &&
     (await page.textContent('#na-sub')).includes('nadictaat'));
 
   console.log('C. Foto toevoegen');
@@ -116,7 +153,10 @@ const server = http.createServer((req, res) => {
   for (let i = 0; i < 30 && !ontvangen.length; i++) await sleep(200);
   await sleep(500);
   const o = ontvangen[0] || {};
-  check('vanzelf verstuurd: opname, toestemming, aanduiding', o.audio && o.toestemming === 'true' && o.aanduiding === 'mw. J., wond', o);
+  check('vanzelf verstuurd: opname, toestemming, aanduiding en plek', o.audio && o.toestemming === 'true' &&
+    o.aanduiding === '1 · mw. J. · wond' && o.plek === 'plek-aaa111', o);
+  check('ronde: visite afgevinkt', (await page.getAttribute('#ronde .plek', 'class')).includes('gedaan') &&
+    (await page.textContent('#ronde-sub')).startsWith('1 van 2 te doen'));
   check('met nadictaat-moment en foto', Number(o.nadictaat) >= 2 && Number(o.nadictaat) < 4 && o.fotos === 1, o);
   check('tijdstip van opnemen, niet van versturen', o.opgenomen > 0 && Date.now() / 1000 - o.opgenomen < 60, o);
   check('wachtrij leeg en melding verstuurd', await page.$eval('#wacht', (e) => e.classList.contains('hidden')) &&

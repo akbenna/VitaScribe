@@ -247,3 +247,43 @@ def test_photo_limits(monkeypatch):
     assert r.status_code == 200
     [v] = api.get("/api/v1/visite/postbus", headers=API).json()["visites"]
     assert v["gemaakt"] <= _t.time() + 1
+
+
+# ── Visiteronde: klaarzetten in de praktijk, versleuteld voor de telefoon ──
+
+def test_round_encrypted_for_the_phone_and_plek_back_in_the_header(monkeypatch):
+    api = TestClient(main.app)
+    prive_pc, token = _koppel(api, monkeypatch)
+    tel = {"X-VitaScribe-Visite": token}
+    prive_tel, spki_tel = _sleutelpaar()
+    assert api.post("/api/v1/visite/toestel-sleutel", headers=tel, json={"kid": "telefoon-123", "spki": spki_tel}).status_code == 200
+    assert api.post("/api/v1/visite/toestel-sleutel", headers=tel, json={"kid": "telefoon-123", "spki": "A" * 300}).status_code == 400
+    [t] = api.get("/api/v1/visite/toestellen", headers=API).json()["toestellen"]
+    assert t["kid"] == "telefoon-123"
+    # the panel encrypts the round for the phone (here: the same envelope format, made in Python)
+    ronde = {"plekken": [{"plek": "plek-aaa111", "aanduiding": "1 · mw. J. · wond"},
+                         {"plek": "plek-bbb222", "aanduiding": "2 · dhr. K. · COPD"}]}
+    env = visite.versleutel(ronde, [t])
+    assert api.post("/api/v1/visite/ronde", headers=API, json={"envelop": env}).json() == {"ok": True}
+    assert "mw. J." not in json.dumps(visite._geheugen.rondes)           # unreadable on the server
+    terug = api.get("/api/v1/visite/ronde", headers=tel).json()["envelop"]
+    assert _open(terug, "telefoon-123", prive_tel)["plekken"][1]["aanduiding"] == "2 · dhr. K. · COPD"
+    # the phone sends the place along; the panel finds it in the encrypted header
+    api.post("/api/v1/visite/opname", headers=tel, files={"audio": ("v.webm", b"0" * 4000, "audio/webm")},
+             data={"toestemming": "true", "aanduiding": "1 · mw. J. · wond", "plek": "plek-aaa111"})
+    [v] = api.get("/api/v1/visite/postbus", headers=API).json()["visites"]
+    assert _open(v["kop"], "pc-praktijk-1", prive_pc)["plek"] == "plek-aaa111"
+    # rights: the phone cannot set a round, the panel cannot read the phone's round endpoint without a phone key
+    assert api.post("/api/v1/visite/ronde", headers=tel, json={"envelop": env}).status_code in (401, 403)
+    assert api.get("/api/v1/visite/ronde", headers=API).status_code == 401
+    assert api.post("/api/v1/visite/ronde", headers=API, json={"envelop": {"v": 2}}).status_code == 400
+    # removing the round, and a day later it is gone by itself
+    assert api.delete("/api/v1/visite/ronde", headers=API).json() == {"ok": True}
+    assert api.get("/api/v1/visite/ronde", headers=tel).json() == {"envelop": None}
+    api.post("/api/v1/visite/ronde", headers=API, json={"envelop": env})
+    for r in visite._geheugen.rondes.values():
+        r["verloopt"] = 0
+    assert api.get("/api/v1/visite/ronde", headers=tel).json() == {"envelop": None}
+    bad = api.post("/api/v1/visite/opname", headers=tel, files={"audio": ("v.webm", b"0" * 4000, "audio/webm")},
+                   data={"toestemming": "true", "plek": "x y"})
+    assert bad.status_code == 422

@@ -95,6 +95,9 @@ const { webcrypto } = require('crypto');
 let visiteAan = false;
 let visiteOntvanger = null;
 const visiteWeg = [];
+let telefoon = null;          // a phone with its own key pair (the round is encrypted for it)
+let rondeEnvelop = null;      // the round as the panel sent it
+let rondePlek = null;         // the first place of that round, for a visit that comes back
 const b64 = (u) => Buffer.from(u).toString('base64');
 async function envelop(inhoud) {
   const s = webcrypto.subtle;
@@ -120,12 +123,21 @@ async function visiteRoute(req, res, url) {
     return json(200, { ok: true });
   }
   if (url.pathname === '/api/v1/visite/koppel') return json(200, { pad: '/v#toestel', modus: 'claude' });
+  if (url.pathname === '/api/v1/visite/toestellen') return json(200, { toestellen: telefoon ? [{ kid: telefoon.kid, spki: telefoon.spki }] : [] });
+  if (url.pathname === '/api/v1/visite/ronde' && req.method === 'POST') {
+    let body = '';
+    for await (const c of req) body += c;
+    rondeEnvelop = JSON.parse(body).envelop;
+    return json(200, { ok: true });
+  }
   if (!visiteOntvanger) return json(200, { visites: [] });
   if (url.pathname === '/api/v1/visite/postbus') {
     const nu = Date.now() / 1000;
-    return json(200, { visites: visiteWeg.includes('v1') ? [] : [
+    return json(200, { visites: (visiteWeg.includes('v1') ? [] : [
       { id: 'v1', gemaakt: nu - 600, verloopt: nu + 3600, status: 'klaar', kop: await envelop({ aanduiding: 'mw. J., wond', fotos: 1 }) },
-      { id: 'v2', gemaakt: nu - 60, verloopt: nu + 3600, status: 'verwerken', kop: await envelop({ aanduiding: 'dhr. K.' }) }] });
+      { id: 'v2', gemaakt: nu - 60, verloopt: nu + 3600, status: 'verwerken', kop: await envelop({ aanduiding: 'dhr. K.' }) }])
+      .concat(rondePlek && !visiteWeg.includes('v3') ? [{ id: 'v3', gemaakt: nu - 30, verloopt: nu + 3600, status: 'klaar',
+        kop: await envelop({ aanduiding: '1 · ronde', plek: rondePlek }) }] : []) });
   }
   const m = url.pathname.match(/^\/api\/v1\/visite\/postbus\/(\w+)$/);
   if (m && req.method === 'DELETE') { visiteWeg.push(m[1]); return json(200, { ok: true }); }
@@ -701,6 +713,68 @@ async function listenPill(page, clickStop) {
   await vp.click('#btn-consult-afsluiten');
   await sleep(800);
   check('visites: consult afsluiten haalt de geopende visite van de server', visiteWeg.join() === 'v1', visiteWeg);
+
+  console.log('V2. Visiteronde: klaarzetten, naar de telefoon, juiste patiënt bij openen');
+  const telPaar = await webcrypto.subtle.generateKey({ name: 'RSA-OAEP', modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]), hash: 'SHA-256' }, true, ['encrypt', 'decrypt']);
+  telefoon = { kid: 'telefoon-e2e-1', spki: b64(new Uint8Array(await webcrypto.subtle.exportKey('spki', telPaar.publicKey))) };
+  // "Active tab" for the panel: the Bricks tab with a patient.
+  await vp.evaluate(() => {
+    const q = chrome.tabs.query.bind(chrome.tabs);
+    chrome.tabs.query = async (o) => (o && o.active ? (await q({})).filter((t) => /\/patient\//.test(t.url || '')) : q(o));
+  });
+  const antwoorden = [];
+  const dialoog = (d) => { const a = antwoorden.shift(); if (a === false) d.dismiss(); else d.accept(a || ''); };
+  vp.on('dialog', dialoog);
+  // The two patients on a Bricks address (the extension may read Bricks pages).
+  const BRICKS_PATIENT = { a: '<!doctype html><title>Bricks</title><div class="kop">Pieter de Vries (65) (12-03-1961)</div><section><h3>Journaal</h3><p>wond</p></section>',
+                           b: '<!doctype html><title>Bricks</title><div class="kop">Grada Kerkhofs (88) (01-02-1938)</div><section><h3>Journaal</h3><p>COPD</p></section>' };
+  await ctx.route('https://test.bfrcloud.com/patient/*', (r) => r.fulfill({ contentType: 'text/html; charset=utf-8',
+    body: BRICKS_PATIENT[r.request().url().slice(-1)] }));
+  const BR = 'https://test.bfrcloud.com';
+  await tab.goto(BR + '/patient/a');
+  antwoorden.push('wond');
+  await vp.click('#vis-ronde-plus');
+  await sleep(600);
+  await tab.goto(BR + '/patient/b');
+  antwoorden.push('COPD');
+  await vp.click('#vis-ronde-plus');
+  await sleep(600);
+  const rondeLijst = await vp.$$eval('#vis-ronde-lijst li', (li) => li.map((x) => x.textContent));
+  check('ronde: twee patiënten klaargezet met naam en geboortedatum (alleen in deze browser)',
+    rondeLijst.length === 2 && rondeLijst[0].startsWith('Pieter de Vries (12-03-1961)') && rondeLijst[0].includes('wond') &&
+    rondeLijst[1].startsWith('Grada Kerkhofs (01-02-1938)'), rondeLijst);
+  await vp.click('#vis-ronde-stuur');
+  await sleep(800);
+  let opTelefoon = null;
+  if (rondeEnvelop) {
+    const s = webcrypto.subtle;
+    const aes = await s.decrypt({ name: 'RSA-OAEP' }, telPaar.privateKey, Buffer.from(rondeEnvelop.sleutels[telefoon.kid], 'base64'));
+    const k = await s.importKey('raw', aes, 'AES-GCM', false, ['decrypt']);
+    opTelefoon = JSON.parse(new TextDecoder().decode(await s.decrypt({ name: 'AES-GCM', iv: Buffer.from(rondeEnvelop.iv, 'base64') }, k,
+      Buffer.from(rondeEnvelop.data, 'base64'))));
+  }
+  check('ronde: versleuteld voor de telefoon, alleen korte aanduidingen (geen naam, geen geboortedatum)',
+    opTelefoon && opTelefoon.plekken.length === 2 && !/Pieter|Vries|Kerkhofs|1961|1938/.test(JSON.stringify(opTelefoon)) &&
+    /^1 · .+ · wond$/.test(opTelefoon.plekken[0].aanduiding) && !JSON.stringify(rondeEnvelop).includes('wond'), opTelefoon);
+  rondePlek = opTelefoon && opTelefoon.plekken[0].plek;
+  await vp.evaluate(() => window.SVVisiteUI.ververs());
+  await vp.waitForSelector('#vis .vis-item.vis-voor, #vis .vis-voor', { timeout: 5000 }).catch(() => {});
+  check('ronde: teruggekomen visite staat bij de juiste patiënt', (await vp.textContent('#vis-lijst')).includes('voor Pieter de Vries (12-03-1961)'));
+  // Bricks shows Kerkhofs: opening Pieter's visit warns first; "Annuleren" keeps it closed.
+  antwoorden.push(false);
+  await vp.click('#vis .vis-item:has(.vis-voor) button');
+  await sleep(800);
+  check('ronde: andere patiënt open in Bricks = waarschuwing, niet geopend', (await vp.textContent('#status')).includes('Niet geopend: open eerst Pieter de Vries'));
+  await tab.goto(BR + '/patient/a');
+  await vp.click('#vis .vis-item:has(.vis-voor) button');
+  await sleep(800);
+  check('ronde: juiste patiënt open = geopend zonder waarschuwing, met vinkje', (await vp.textContent('#status')).includes('deze patiënt staat open in Bricks ✓') &&
+    (await vp.$eval('.soep-text[data-key="s"]', (e) => e.textContent)) === VISITE_VERSLAG.soep.s);
+  await vp.click('#btn-consult-afsluiten');
+  await sleep(800);
+  check('ronde: na afsluiten afgevinkt in de ronde', visiteWeg.includes('v3') &&
+    (await vp.getAttribute('#vis-ronde-lijst li:first-child', 'class')) === 'gedaan' && (await vp.textContent('#vis-ronde-sub')).startsWith('1 van 2'));
+  vp.off('dialog', dialoog);
   await vp.close();
 
   console.log('O. Microfoon hoort niets');
