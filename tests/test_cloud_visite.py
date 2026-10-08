@@ -195,3 +195,55 @@ const V = require(process.argv[1]);
     envelop = visite.versleutel({"soep": {"s": "Ulcus cruris li, 2 wk"}}, [ontvanger])
     uit, _ = proc.communicate(json.dumps(envelop), timeout=30)
     assert uit == "Ulcus cruris li, 2 wk"
+
+
+# ── Deel 2: later versturen, nadicteren, foto's ──
+
+PNG = base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==")
+
+
+def test_photos_after_dictation_and_late_sending(monkeypatch):
+    api = TestClient(main.app)
+    gezien = {}
+    prive, spki = _sleutelpaar()
+    api.post("/api/v1/visite/ontvanger", json={"kid": "pc-praktijk-1", "spki": spki}, headers=API)
+    token = api.post("/api/v1/visite/koppel", json={}, headers=API).json()["pad"][3:]
+
+    async def nep(audio_path, taal=None, nadictaat_vanaf=None, **kw):
+        gezien["nadictaat"] = nadictaat_vanaf
+        return _Uitslag()
+    monkeypatch.setattr(pipeline, "process_consultation", nep)
+    import time as _t
+    toen = _t.time() - 3 * 3600                      # recorded three hours ago, no signal at the visit
+    r = api.post("/api/v1/visite/opname", headers={"X-VitaScribe-Visite": token},
+                 files=[("audio", ("v.webm", b"0" * 4000, "audio/webm")),
+                        ("fotos", ("wond.png", PNG, "image/png")), ("fotos", ("lijst.jpg", b"\xff\xd8\xff" + b"1" * 500, "image/jpeg"))],
+                 data={"toestemming": "true", "aanduiding": "mw. J.", "nadictaat_vanaf": "312.5", "opgenomen": str(toen)})
+    assert r.status_code == 200, r.text
+    assert gezien["nadictaat"] == 312.5
+    [v] = api.get("/api/v1/visite/postbus", headers=API).json()["visites"]
+    assert abs(v["gemaakt"] - toen) < 2 and abs(v["verloopt"] - (toen + visite.BEWAAR)) < 2
+    assert _open(v["kop"], "pc-praktijk-1", prive)["fotos"] == 2
+    env = api.get(f"/api/v1/visite/postbus/{v['id']}", headers=API).json()["envelop"]
+    fotos = _open(env, "pc-praktijk-1", prive)["fotos"]
+    assert [f["media_type"] for f in fotos] == ["image/png", "image/jpeg"]
+    assert base64.b64decode(fotos[0]["data"]) == PNG
+    assert "wond" not in json.dumps(visite._geheugen.post)          # photos only inside the envelope
+
+
+def test_photo_limits(monkeypatch):
+    api = TestClient(main.app)
+    _, token = _koppel(api, monkeypatch)
+    tel = {"X-VitaScribe-Visite": token}
+    audio = ("audio", ("v.webm", b"0" * 4000, "audio/webm"))
+    te_veel = [audio] + [("fotos", (f"f{i}.png", PNG, "image/png")) for i in range(visite.MAX_FOTOS + 1)]
+    assert api.post("/api/v1/visite/opname", headers=tel, files=te_veel, data={"toestemming": "true"}).status_code == 400
+    raar = [audio, ("fotos", ("x.exe", b"MZ" * 100, "application/octet-stream"))]
+    assert api.post("/api/v1/visite/opname", headers=tel, files=raar, data={"toestemming": "true"}).status_code == 400
+    # a time far in the past or in the future is kept within the 48 hours
+    import time as _t
+    r = api.post("/api/v1/visite/opname", headers=tel, files=[audio],
+                 data={"toestemming": "true", "opgenomen": str(_t.time() + 99999)})
+    assert r.status_code == 200
+    [v] = api.get("/api/v1/visite/postbus", headers=API).json()["visites"]
+    assert v["gemaakt"] <= _t.time() + 1

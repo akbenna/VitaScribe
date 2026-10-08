@@ -35,7 +35,13 @@ Endpoints, paneel (API-sleutel):
   DELETE /api/v1/visite/postbus/{id}                 weg
 Endpoints, telefoon (toestelsleutel in X-VitaScribe-Visite):
   POST /api/v1/visite/hallo     -> modus en naam van de arts, om te tonen
-  POST /api/v1/visite/opname    multipart: audio, toestemming, aanduiding?, taal?
+  POST /api/v1/visite/opname    multipart: audio, toestemming, aanduiding?, taal?,
+                                nadictaat_vanaf?, opgenomen?, fotos (0-6 afbeeldingen)
+
+Deel 2: de telefoon bewaart een opname zonder bereik versleuteld en stuurt hem
+later (opgenomen = het moment van opnemen); nadicteren markeert het moment
+waarop de arts na het gesprek dicteert; foto's (wond, huid, medicijnlijst)
+gaan mee in dezelfde envelop en verschijnen in het zijpaneel bij de visite.
 Pagina: GET /v (en /v/visite.js)
 """
 
@@ -73,6 +79,9 @@ MAX_ONTVANGERS = 5                 # browsers (pc's) van dezelfde arts
 MAX_OPEN = 30                      # visites tegelijk in de postbus van een arts
 MAX_AANDUIDING = 60
 MAX_MB = 60
+MAX_FOTOS = 6
+MAX_FOTO_MB = 8
+FOTO_TYPES = {"image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"}
 
 
 def aan() -> bool:
@@ -365,7 +374,8 @@ async def hallo(token: Optional[str] = Header(default=None, alias=KOP)):
     return {"modus": t["modus"], "naam": t.get("naam") or ""}
 
 
-async def _verwerk(pid: str, t: Dict, inhoud: bytes, ext: str, taal: Optional[str]) -> None:
+async def _verwerk(pid: str, t: Dict, inhoud: bytes, ext: str, taal: Optional[str],
+                   nadictaat_vanaf: Optional[float] = None, fotos: Optional[List[Dict[str, str]]] = None) -> None:
     """Make the report as for a consult, encrypt it for the doctor's browsers,
     and throw the recording away. Runs after the phone got its answer."""
     from .config import get_config
@@ -380,9 +390,12 @@ async def _verwerk(pid: str, t: Dict, inhoud: bytes, ext: str, taal: Optional[st
             tmp.write(inhoud)
             pad = Path(tmp.name)
         del inhoud
-        result = await process_consultation(audio_path=pad, taal=taal)
+        result = await process_consultation(audio_path=pad, taal=taal, nadictaat_vanaf=nadictaat_vanaf)
         ontvangers = await opslag().ontvangers_van(t["wie"])
-        envelop = versleutel(result.to_dict(), ontvangers)
+        inhoud_envelop = result.to_dict()
+        if fotos:
+            inhoud_envelop["fotos"] = fotos   # into the same envelope: nothing readable here
+        envelop = versleutel(inhoud_envelop, ontvangers)
         await opslag().werk_post_bij(pid, status="klaar", envelop=envelop)
         logger.info("visite.klaar", modus=t["modus"], ontvangers=len(ontvangers))
     except Exception as exc:  # the phone already has its answer: the panel shows the failure
@@ -404,6 +417,9 @@ async def opname(
     toestemming: bool = Form(default=False),
     aanduiding: str = Form(default="", max_length=MAX_AANDUIDING),
     taal: Optional[str] = Form(default=None, max_length=8),
+    nadictaat_vanaf: Optional[float] = Form(default=None),
+    opgenomen: Optional[float] = Form(default=None),
+    fotos: List[UploadFile] = File(default=[]),
     token: Optional[str] = Header(default=None, alias=KOP),
 ):
     """The recording of a visit. Answers at once; the report follows in the postbus."""
@@ -418,6 +434,17 @@ async def opname(
         raise HTTPException(status_code=400, detail="De opname is leeg of te kort.")
     if len(inhoud) > MAX_MB * 1024 * 1024:
         raise HTTPException(status_code=413, detail=f"De opname is te groot (maximaal {MAX_MB} MB).")
+    if len(fotos) > MAX_FOTOS:
+        raise HTTPException(status_code=400, detail=f"Hooguit {MAX_FOTOS} foto's per visite.")
+    beelden: List[Dict[str, str]] = []
+    for f in fotos:
+        soort = (f.content_type or "").lower()
+        data = await f.read()
+        if soort not in FOTO_TYPES or not data:
+            raise HTTPException(status_code=400, detail="Een foto heeft een onbekend formaat (jpg, png, heic).")
+        if len(data) > MAX_FOTO_MB * 1024 * 1024:
+            raise HTTPException(status_code=413, detail=f"Een foto is te groot (maximaal {MAX_FOTO_MB} MB).")
+        beelden.append({"media_type": soort, "data": base64.b64encode(data).decode()})
     open_ = await opslag().post_van(t["wie"])
     if len(open_) >= MAX_OPEN:
         raise HTTPException(status_code=429, detail="Er staan al veel visites klaar. Verwerk ze eerst in het zijpaneel.")
@@ -426,20 +453,24 @@ async def opname(
         raise HTTPException(status_code=409, detail="Er is geen browser om het verslag voor te versleutelen. Koppel opnieuw.")
     nu = time.time()
     pid = str(uuid.uuid4())
+    # Sent later (no signal at the visit): the moment of recording, within the 48 hours.
+    moment = min(nu, max(nu - BEWAAR, float(opgenomen))) if opgenomen else nu
     # The label is encrypted at once as well: nothing readable stays here.
-    kop = versleutel({"aanduiding": aanduiding.strip()[:MAX_AANDUIDING], "gemaakt": nu}, ontvangers)
-    await opslag().zet_post({"id": pid, "wie": t["wie"], "gemaakt": nu, "verloopt": nu + BEWAAR,
+    kop = versleutel({"aanduiding": aanduiding.strip()[:MAX_AANDUIDING], "gemaakt": moment,
+                      "fotos": len(beelden)}, ontvangers)
+    await opslag().zet_post({"id": pid, "wie": t["wie"], "gemaakt": moment, "verloopt": moment + BEWAAR,
                              "status": "verwerken", "kop": kop, "envelop": None, "fout": ""})
     ext = (Path(audio.filename or "").suffix.lstrip(".").lower() or "webm")[:5]
-    achtergrond.add_task(_verwerk, pid, t, inhoud, ext, taal)
-    audit.log_event(t["wie"], "visite.opname", consent=True, mode=t["modus"])
+    vanaf = nadictaat_vanaf if nadictaat_vanaf is not None and nadictaat_vanaf >= 0 else None
+    achtergrond.add_task(_verwerk, pid, t, inhoud, ext, taal, vanaf, beelden)
+    audit.log_event(t["wie"], "visite.opname", consent=True, mode=t["modus"], status=f"fotos={len(beelden)}")
     return {"id": pid, "status": "verwerken"}
 
 
 def _bestand(naam: str, soort: Optional[str] = None) -> FileResponse:
     return FileResponse(STATIC / naam, media_type=soort, headers={
         "Cache-Control": "no-store", "Referrer-Policy": "no-referrer", "X-Content-Type-Options": "nosniff",
-        "Content-Security-Policy": "default-src 'self'; media-src 'self' blob:; img-src 'self' data:; "
+        "Content-Security-Policy": "default-src 'self'; media-src 'self' blob:; img-src 'self' data: blob:; "
                                    "style-src 'self' 'unsafe-inline'; frame-ancestors 'none'"})
 
 

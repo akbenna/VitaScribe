@@ -53,6 +53,14 @@
       padding: 12px; font: inherit; font-size: 15px; font-weight: 600; }
     .noot { font-size: 12px; color: var(--zacht); text-align: center; margin: 4px 0 10px; }
     .link { background: none; border: 0; color: var(--zacht); text-decoration: underline; font: inherit; font-size: 13px; }
+    .rij { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .knop.hoofd { background: var(--merk); border-color: var(--merk); color: #fff; }
+    .knop:disabled { opacity: .45; }
+    .fotos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .fotos img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 10px; border: 1px solid var(--rand); }
+    .wacht { background: var(--merk-licht); color: var(--merk); border-radius: 12px; padding: 10px 12px; font-size: 14px;
+      display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .label-nad { text-align: center; color: var(--merk); font-weight: 600; min-height: 1.4em; }
   </style>
 </head>
 <body>
@@ -79,14 +87,32 @@
 
     <section id="opname" class="hidden" style="display:flex;flex-direction:column;gap:14px">
       <div class="klok"><span class="stip"></span><span id="klok">00:00</span></div>
+      <p id="nad-label" class="label-nad"></p>
       <button id="stop" class="rond stop" type="button">Stop</button>
-      <p class="noot">Na het gesprek kun je gewoon doorpraten om na te dicteren: onderzoek en beleid.</p>
+      <button id="nadicteer" class="knop" type="button">Nadicteren (patiënt is weg)</button>
+      <p class="noot">Nadicteren: onderzoek en beleid, zoals je het in het dossier wilt hebben. Dat stuk geldt als het
+        woord van de arts.</p>
     </section>
+
+    <section id="na" class="hidden" style="display:flex;flex-direction:column;gap:14px">
+      <div class="kaart"><b id="na-titel">Opname klaar</b><br><span id="na-sub" class="noot"></span></div>
+      <div id="fotos" class="fotos"></div>
+      <div class="rij">
+        <button id="foto" class="knop" type="button">Foto toevoegen</button>
+        <button id="verstuur" class="knop hoofd" type="button">Versturen</button>
+      </div>
+      <p class="noot">Een foto (wond, huid, medicijnlijst) gaat met het verslag mee en komt niet in je fotorol.</p>
+      <button id="weggooien" class="link" type="button">Opname weggooien</button>
+    </section>
+
+    <div id="wacht" class="wacht hidden"><span id="wacht-tekst"></span>
+      <button id="wacht-nu" class="knop" type="button">Nu versturen</button></div>
 
     <p id="melding" class="melding" role="status" aria-live="polite"></p>
     <button id="opnieuw" class="knop hidden" type="button">Opnieuw versturen</button>
     <button id="ontkoppel" class="link hidden" type="button">Deze telefoon ontkoppelen</button>
   </main>
+  <input id="foto-invoer" type="file" accept="image/*" capture="environment" class="hidden">
   <script src="/v/visite.js"></script>
 </body>
 </html>
