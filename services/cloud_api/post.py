@@ -18,8 +18,13 @@ leeftijd en de episodelijst als context. Terug komt:
 
 Niets wordt bewaard; het audit-log bevat alleen soort en oordeel.
 
+Meedenken over wat in beeld is (dossiervraagbalk): dezelfde beoordeling op
+een tabblad van het dossier in plaats van een postbericht (bron "scherm"),
+bijvoorbeeld het lab met eerdere waarden, eventueel met een vraag van de arts
+als focus. Zonder klinische ondersteuning blijft het antwoord feitelijk.
+
 Endpoint (API-sleutel verplicht):
-  POST /api/v1/post/beoordeel  {tekst, leeftijd?, problemen?, cds} -> beoordeling
+  POST /api/v1/post/beoordeel  {tekst, leeftijd?, problemen?, cds, bron?, vraag?} -> beoordeling
 """
 
 from __future__ import annotations
@@ -119,8 +124,31 @@ LAB (bij soort "lab"; anders lege velden)
   verder gebeurt."""
 
 
-def system_prompt(cds: bool) -> str:
-    return _BASIS + "\n\n" + (_LAB_MET if cds else _LAB_ZONDER)
+_SCHERM = """\
+BRON: geen los postbericht, maar wat de arts in Bricks in beeld heeft (een \
+tabblad met lab over de tijd, uitslagen of correspondentie). Beoordeel de \
+meest recente uitslag(en); eerdere waarden in beeld gebruik je voor \
+"vergelijking" en mag je dan "gestegen" of "gedaald" noemen. Menu's, knoppen \
+en kopjes negeer je."""
+
+_VRAAG_MET = """\
+VRAAG: staat er een VRAAG VAN DE ARTS, beantwoord die in "antwoord" in 1 tot \
+3 korte zinnen, alleen uit wat in beeld en in de episodes staat. Kun je het \
+niet uit die gegevens halen, zeg dat. Geen vraag: "antwoord" leeg."""
+
+_VRAAG_ZONDER = """\
+VRAAG: staat er een VRAAG VAN DE ARTS, beantwoord die in "antwoord" in 1 tot \
+3 korte zinnen, alleen feitelijk uit wat in beeld en in de episodes staat \
+(welke waarden, wanneer, hoe ze zich verhouden tot de referentie of eerdere \
+waarden). Geen duiding, diagnose of beleid: vraagt de vraag daarom, zeg dan \
+dat klinische ondersteuning op deze server uit staat. Geen vraag: "antwoord" leeg."""
+
+
+def system_prompt(cds: bool, scherm: bool = False) -> str:
+    delen = [_BASIS, _LAB_MET if cds else _LAB_ZONDER, _VRAAG_MET if cds else _VRAAG_ZONDER]
+    if scherm:
+        delen.append(_SCHERM)
+    return "\n\n".join(delen)
 
 
 SCHEMA = {
@@ -165,8 +193,9 @@ SCHEMA = {
             "additionalProperties": False,
         },
         "let_op": {"type": "string"},
+        "antwoord": {"type": "string"},
     },
-    "required": ["soort", "samenvatting", "patient", "brief", "lab", "let_op"],
+    "required": ["soort", "samenvatting", "patient", "brief", "lab", "let_op", "antwoord"],
     "additionalProperties": False,
 }
 
@@ -176,6 +205,8 @@ class BeoordeelRequest(BaseModel):
     leeftijd: Optional[int] = Field(None, ge=0, le=120)
     problemen: List[str] = Field(default_factory=list)
     cds: bool = False
+    bron: str = Field("post", pattern=r"^(post|scherm)$")   # scherm: a tab of the dossier in view
+    vraag: Optional[str] = Field(None, max_length=600)     # the doctor's question, as focus
 
 
 def _t(v) -> str:
@@ -203,7 +234,10 @@ def bouw_bericht(req: BeoordeelRequest) -> str:
         kop.append(f"LEEFTIJD: {req.leeftijd} jaar")
     if problemen:
         kop.append("EPISODES:\n" + "\n".join(f"- {p}" for p in problemen))
-    return "\n".join(kop + ["BERICHT:", tekst])
+    vraag = privacy_safety_net(_t(req.vraag))[:600]
+    if vraag:
+        kop.append("VRAAG VAN DE ARTS: " + vraag)
+    return "\n".join(kop + ["SCHERM (in beeld in Bricks):" if req.bron == "scherm" else "BERICHT:", tekst])
 
 
 @router.post("/beoordeel")
@@ -212,7 +246,7 @@ async def beoordeel(body: BeoordeelRequest, user: str = Depends(verify_api_key))
     provider = data_policy.phi_llm_provider()
     try:
         raw = await llm_service.complete(
-            system_prompt(cds), bouw_bericht(body), provider=provider, json_mode=True,
+            system_prompt(cds, body.bron == "scherm"), bouw_bericht(body), provider=provider, json_mode=True,
             max_tokens=MAX_TOKENS, quality=True, json_schema=SCHEMA,
         )
         data = _parse(raw)
@@ -252,8 +286,9 @@ async def beoordeel(body: BeoordeelRequest, user: str = Depends(verify_api_key))
             "vergelijking": _t(lab.get("vergelijking")) if cds else "",
         } if soort == "lab" else None,
         "let_op": _t(data.get("let_op")) if cds else "",
+        "antwoord": _t(data.get("antwoord")) if _t(body.vraag) else "",
     }
-    logger.info("post.beoordeel", soort=soort, cds=cds, chars=len(body.tekst),
+    logger.info("post.beoordeel", soort=soort, cds=cds, chars=len(body.tekst), bron=body.bron, vraag=bool(_t(body.vraag)),
                 bevindingen=len(bevindingen), oordeel=oordeel)
     audit.log_event(user, "post.beoordeel", kind=soort, provider=provider,
                     mode="cds" if cds else "feitelijk", status=oordeel, chars=len(body.tekst))

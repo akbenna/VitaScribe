@@ -110,6 +110,17 @@ jouw verantwoordelijkheid (WGBO). Dat verandert niet door de software.
 4. **Telefoon kwijt?** Hij kan geen verslag lezen. Ontkoppel toch meteen:
    *telefoon koppelen › Ontkoppel alle telefoons*.
 
+## Meedenken over wat in beeld is
+
+Open in Bricks het lab, een uitslag of een brief, klik in de balk onderaan
+op **Denk mee over wat in beeld is**. VitaScribe beoordeelt dat scherm zoals
+in het tabblad Post: waarden met richting, verloop als eerdere waarden in
+beeld staan, een samenvatting voor het journaal en uitleg voor de patiënt.
+Typ eerst een vraag om te richten (bijv. "is het Hb gedaald sinds de vorige
+keer?"). Duiding en beleidsvoorstel alleen als klinische ondersteuning aan
+staat; anders krijg je de feiten. Open alleen het onderdeel dat telt: wat
+in beeld staat, gaat (gefilterd op naam en BSN) mee.
+
 ## Foto's in het dossier
 
 Een foto van de telefoon (wond, huid, medicijnlijst) verschijnt in het

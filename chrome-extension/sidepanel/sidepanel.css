@@ -477,3 +477,8 @@ body.consult-running .dv-balk { border-color: var(--rec); background: #fff5f5; }
 .vis-item.fout .vis-wat { color: #b91c1c; }
 .vis-tijd { font-variant-numeric: tabular-nums; color: var(--muted, #5b6778); }
 .vis .note { margin: 4px 0 0; }
+
+/* Dossiervraag: meedenken over wat in beeld is */
+.dv-meedenken { margin: 4px 0; }
+.dv-md-waarden { margin: 4px 0 4px 16px; padding: 0; font-size: 12px; }
+.dv-md-regel { margin: 3px 0; font-size: 12px; }

@@ -12,6 +12,12 @@
  * Vragen en antwoorden staan alleen in het geheugen van dit paneel; bij een
  * andere patiënt of het sluiten van het paneel zijn ze weg.
  *
+ * "Denk mee over wat in beeld is": wat in Bricks in beeld staat (het lab met
+ * eerdere waarden, een uitslag, een brief) gaat naar dezelfde beoordeling als
+ * in het tabblad Post (/api/v1/post/beoordeel, bron "scherm"), met een
+ * getypte vraag als focus. Duiding en beleid alleen met klinische
+ * ondersteuning aan (server én de keuze van de arts), net als bij Post.
+ *
  * Uses from sidepanel.js: getConfig()
  */
 (function () {
@@ -51,6 +57,7 @@
     // Broad: everything that is on screen in Bricks (journal, episodes,
     // medication, letters, notes), not only recognised sections.
     var d = await SVBricksDossier.lees(SVDossiervraag.MAX_TOTAAL, true);
+    dv.leeftijd = leeftijdUit(d.geboren);
     if (!SVDossiervraag.zelfdePatient(dv.naam, d.naam)) {
       dv.eerder = [];
       $('dv-antwoorden').textContent = '';
@@ -71,6 +78,14 @@
     // An e-consult on screen: offer the concept answer right here.
     $('dv-econsult').classList.toggle('hidden', !SVEconsult.inBeeld(b.tekst));
     return b;
+  }
+
+  function leeftijdUit(geboren) {
+    var m = /^(\d{1,2})-(\d{1,2})-(\d{4})$/.exec(String(geboren || '').trim());
+    if (!m) return null;
+    var nu = new Date(), jaren = nu.getFullYear() - Number(m[3]);
+    if (nu.getMonth() + 1 < Number(m[2]) || (nu.getMonth() + 1 === Number(m[2]) && nu.getDate() < Number(m[1]))) jaren--;
+    return jaren >= 0 && jaren <= 120 ? jaren : null;
   }
 
   $('dv-lees').addEventListener('click', async function () {
@@ -167,6 +182,110 @@
     kaart.appendChild(acties);
   }
 
+  // ── Thinking along about what is in view (same assessment as Post) ──
+  var MAX_SCHERM = 30000;   // what /api/v1/post/beoordeel takes
+
+  async function beoordeelScherm(dossier, focus) {
+    var config = await getConfig();
+    var keuze = await SVInstellingen.lees(['meedenken']);
+    var headers = { 'Content-Type': 'application/json' };
+    if (config.apiKey) headers['X-API-Key'] = config.apiKey;
+    await SVPraktijk.metKop(headers);
+    var resp;
+    try {
+      resp = await fetch(config.apiUrl + '/api/v1/post/beoordeel', {
+        method: 'POST', headers: headers,
+        body: JSON.stringify({ tekst: dossier.slice(0, MAX_SCHERM), leeftijd: dv.leeftijd, problemen: [],
+          cds: keuze.meedenken === true, bron: 'scherm', vraag: focus || null }),
+      });
+    } catch (e) {
+      throw new Error('Kan de server niet bereiken op ' + config.apiUrl + '.');
+    }
+    if (!resp.ok) {
+      var detail = await resp.json().then(function (j) { return j.detail; }).catch(function () { return ''; });
+      if (Array.isArray(detail)) detail = detail.map(function (d) { return d.msg; }).join('; ');
+      if (resp.status === 422) throw new Error('Deze server kent meedenken over wat in beeld is nog niet: de server moet eerst bijgewerkt worden.');
+      throw new Error('Server gaf fout ' + resp.status + (detail ? ': ' + detail : ''));
+    }
+    return resp.json();
+  }
+
+  var PIJL = { hoog: '↑', laag: '↓', normaal: '', afwijkend: '!' };
+  var OORDEEL = { normaal: 'Normaal', afwijkend: 'Afwijkend', niet_beoordeelbaar: 'Via aanvrager' };
+
+  function kopieerKnop(label, tekst) {
+    var b = el('button', 'btn small', label);
+    b.type = 'button';
+    b.addEventListener('click', function () {
+      navigator.clipboard.writeText(tekst).then(function () {
+        b.textContent = 'Gekopieerd';
+        setTimeout(function () { b.textContent = label; }, 1500);
+      }).catch(function () { status('Kopiëren lukte niet.', true); });
+    });
+    return b;
+  }
+
+  function toonMeedenken(kaart, focus, a, ingekort) {
+    kaart.classList.remove('bezig');
+    kaart.classList.add('dv-md');
+    kaart.textContent = '';
+    var kop = el('div', 'dv-kop-item');
+    kop.appendChild(el('p', 'dv-vraag', focus ? 'Meedenken: ' + focus : 'Meedenken over wat in beeld is'));
+    var lab = a.lab || {};
+    if (OORDEEL[lab.oordeel]) kop.appendChild(el('span', 'dv-zeker ' + (lab.oordeel === 'normaal' ? 'expliciet' : 'indirect'), OORDEEL[lab.oordeel]));
+    kaart.appendChild(kop);
+    if (a.let_op) kaart.appendChild(el('p', 'dv-letop', a.let_op));
+    if (a.antwoord) kaart.appendChild(el('p', 'dv-antwoord', a.antwoord));
+    if ((lab.bevindingen || []).length) {
+      var ul = el('ul', 'dv-md-waarden');
+      lab.bevindingen.forEach(function (b) {
+        ul.appendChild(el('li', '', (PIJL[b.richting] ? PIJL[b.richting] + ' ' : '') + b.bepaling + ' ' + b.waarde + (b.duiding ? ' — ' + b.duiding : '')));
+      });
+      kaart.appendChild(ul);
+    }
+    if (lab.vergelijking) kaart.appendChild(el('p', 'dv-md-regel', 'Verloop: ' + lab.vergelijking));
+    if (lab.beleid) kaart.appendChild(el('p', 'dv-md-regel', 'Voorstel: ' + lab.beleid));
+    if (a.brief) {
+      [['Van', a.brief.afzender], ['Reden', a.brief.reden], ['Conclusie', a.brief.conclusie]].forEach(function (r) {
+        if (r[1]) kaart.appendChild(el('p', 'dv-md-regel', r[0] + ': ' + r[1]));
+      });
+    }
+    if (a.samenvatting) kaart.appendChild(el('p', 'dv-antwoord', a.samenvatting));
+    if (!a.cds) kaart.appendChild(el('p', 'muted', 'Alleen de feiten: klinische duiding en beleid staan uit (Instellingen of de server).'));
+    if (ingekort) kaart.appendChild(el('p', 'muted', 'Er stond veel in beeld; alleen het bovenste deel is beoordeeld. Open alleen het onderdeel dat telt.'));
+    var acties = el('div', 'dv-acties');
+    if (a.samenvatting) acties.appendChild(kopieerKnop('Kopieer samenvatting', a.samenvatting));
+    if (a.patient) acties.appendChild(kopieerKnop('Kopieer uitleg patiënt', a.patient));
+    kaart.appendChild(acties);
+  }
+
+  async function meedenken() {
+    if (dv.bezig) return;
+    var focus = $('dv-input').value.trim();
+    dv.bezig = true;
+    $('dv-meedenken').disabled = true;
+    var kaart = null;
+    try {
+      status('Inlezen wat in beeld is…');
+      var b = await leesDossier();
+      open(true);
+      kaart = el('div', 'dv-item bezig');
+      kaart.appendChild(el('p', 'dv-vraag', focus ? 'Meedenken: ' + focus : 'Meedenken over wat in beeld is'));
+      kaart.appendChild(el('p', 'dv-antwoord muted', 'VitaScribe beoordeelt wat in beeld is…'));
+      $('dv-antwoorden').prepend(kaart);
+      status('');
+      var a = await beoordeelScherm(b.tekst, focus);
+      toonMeedenken(kaart, focus, a, b.tekst.length > MAX_SCHERM);
+      $('dv-input').value = '';
+    } catch (e) {
+      if (kaart) kaart.remove();
+      status(e.message, true);
+    } finally {
+      dv.bezig = false;
+      $('dv-meedenken').disabled = false;
+    }
+  }
+
   async function vraag(tekst) {
     tekst = String(tekst || '').trim();
     if (dv.bezig) return;
@@ -222,6 +341,7 @@
     this.style.height = Math.min(this.scrollHeight + 2, 120) + 'px';
   });
   $('dv-dicht').addEventListener('click', function () { open(false); });
+  $('dv-meedenken').addEventListener('click', meedenken);
   $('dv-econsult').addEventListener('click', function () {
     open(false);
     if (window.SVEconsultUI) window.SVEconsultUI.start('');
