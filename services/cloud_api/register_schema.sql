@@ -157,3 +157,39 @@ CREATE TABLE IF NOT EXISTS vs_leermeting (
     weggehaald   INTEGER NOT NULL DEFAULT 0,
     PRIMARY KEY (eigenaar, dag, soort)
 );
+
+-- Visites (visite.py). Openbare sleutels van de browsers van een arts; alleen
+-- die browsers kunnen een visiteverslag openen.
+CREATE TABLE IF NOT EXISTS vs_visite_ontvanger (
+    wie     TEXT NOT NULL,
+    kid     TEXT NOT NULL,
+    spki    TEXT NOT NULL,
+    gezien  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (wie, kid)
+);
+
+-- Telefoons die een visite mogen insturen (alleen schrijven). Alleen de
+-- SHA-256 van de toestelsleutel staat hier.
+CREATE TABLE IF NOT EXISTS vs_visite_toestel (
+    hash      TEXT PRIMARY KEY,
+    wie       TEXT NOT NULL,
+    eigenaar  TEXT NOT NULL DEFAULT '',
+    modus     TEXT NOT NULL,
+    naam      TEXT NOT NULL DEFAULT '',
+    gemaakt   TIMESTAMPTZ NOT NULL DEFAULT now(),
+    laatst    TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- De postbus: per visite een versleutelde envelop (verslag) en kop
+-- (aanduiding). De server kan ze niet openen. Uiterlijk na 48 uur gewist.
+CREATE TABLE IF NOT EXISTS vs_visite_post (
+    id        TEXT PRIMARY KEY,
+    wie       TEXT NOT NULL,
+    gemaakt   TIMESTAMPTZ NOT NULL DEFAULT now(),
+    verloopt  TIMESTAMPTZ NOT NULL,
+    status    TEXT NOT NULL,              -- verwerken | klaar | fout
+    kop       JSONB,
+    envelop   JSONB,
+    fout      TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS vs_visite_post_wie ON vs_visite_post (wie, verloopt);

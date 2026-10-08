@@ -899,6 +899,7 @@ async function nieuwConsult() {
   if (window.SVTolkUI) window.SVTolkUI.wis();   // the interpreter conversation belongs to this consult
   if (window.SVEconsultUI) window.SVEconsultUI.wis();
   if (window.SVLetters && window.SVLetters.wis) window.SVLetters.wis();   // the letter form belongs to this patient
+  if (window.SVVisiteUI) window.SVVisiteUI.afgerond();                    // the visit shown is done: off the server
   if (window.SVTelefoon) window.SVTelefoon.wisFotos();   // photos belong to this patient
   verversAfsluiten();
   setStatus('Klaar voor het volgende consult.');

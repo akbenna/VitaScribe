@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#0f766e">
+  <meta name="robots" content="noindex">
+  <title>VitaScribe visite</title>
+  <style>
+    :root {
+      --bg: #f3f6f9; --panel: #ffffff; --tekst: #0f172a; --zacht: #5b6778; --rand: #d5dde7;
+      --merk: #0f766e; --merk-licht: #e6f4f2; --rood: #b91c1c; --fout: #b91c1c;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg: #0b1220; --panel: #131c2e; --tekst: #e8eef6; --zacht: #9aa8bb; --rand: #26344c;
+        --merk: #2dd4bf; --merk-licht: #10302d; --rood: #f87171; --fout: #f87171; }
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    body {
+      background: var(--bg); color: var(--tekst);
+      font: 17px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      padding: env(safe-area-inset-top) 16px env(safe-area-inset-bottom);
+      display: flex; flex-direction: column;
+    }
+    header { display: flex; align-items: center; justify-content: space-between; padding: 12px 0 8px; }
+    .merk { font-weight: 700; }
+    .pil { font-size: 13px; padding: 4px 10px; border-radius: 999px; background: var(--merk-licht); color: var(--merk); }
+    main { flex: 1; display: flex; flex-direction: column; gap: 14px; }
+    .hidden { display: none !important; }
+    .kaart { background: var(--panel); border: 1px solid var(--rand); border-radius: 16px; padding: 16px; }
+    label.veld { display: flex; flex-direction: column; gap: 6px; font-size: 15px; color: var(--zacht); }
+    input[type=text] { font: inherit; padding: 12px; border-radius: 12px; border: 1px solid var(--rand);
+      background: var(--panel); color: var(--tekst); }
+    .vink { display: flex; gap: 10px; align-items: flex-start; font-size: 16px; }
+    .vink input { width: 24px; height: 24px; margin-top: 1px; }
+    .rond {
+      align-self: center; width: 190px; height: 190px; border-radius: 50%; border: 0;
+      background: var(--merk); color: #fff; font-size: 26px; font-weight: 700;
+      box-shadow: 0 10px 30px rgba(15, 118, 110, .35);
+    }
+    .rond:disabled { opacity: .4; box-shadow: none; }
+    .rond.stop { background: var(--rood); box-shadow: 0 10px 30px rgba(185, 28, 28, .35); }
+    .klok { text-align: center; font-size: 34px; font-variant-numeric: tabular-nums; font-weight: 600; }
+    .stip { display: inline-block; width: 12px; height: 12px; border-radius: 50%; background: var(--rood);
+      margin-right: 8px; animation: puls 1.2s infinite; vertical-align: middle; }
+    @keyframes puls { 0%, 100% { opacity: 1; } 50% { opacity: .3; } }
+    .melding { text-align: center; font-size: 15px; color: var(--zacht); min-height: 1.4em; margin: 0; }
+    .melding.fout { color: var(--fout); }
+    .melding.goed { color: var(--merk); font-weight: 600; }
+    .knop { border: 1px solid var(--rand); background: var(--panel); color: var(--tekst); border-radius: 14px;
+      padding: 12px; font: inherit; font-size: 15px; font-weight: 600; }
+    .noot { font-size: 12px; color: var(--zacht); text-align: center; margin: 4px 0 10px; }
+    .link { background: none; border: 0; color: var(--zacht); text-decoration: underline; font: inherit; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <header>
+    <span class="merk">VitaScribe visite</span>
+    <span id="pil" class="pil">…</span>
+  </header>
+  <main>
+    <section id="geen" class="kaart hidden">
+      <p>Deze telefoon is nog niet gekoppeld.</p>
+      <p class="noot">Open in het zijpaneel van VitaScribe <b>Visites › Telefoon koppelen</b> en scan de QR-code. Daarna
+        werkt deze pagina ook zonder computer; zet hem op je beginscherm.</p>
+    </section>
+
+    <section id="klaar" class="hidden" style="display:flex;flex-direction:column;gap:14px">
+      <label class="veld">Korte aanduiding (geen naam of BSN)
+        <input type="text" id="aanduiding" maxlength="60" autocomplete="off" placeholder="bijv. mw. J., wondcontrole">
+      </label>
+      <label class="vink"><input type="checkbox" id="toestemming"> De patiënt geeft toestemming voor de opname</label>
+      <button id="start" class="rond" type="button" disabled>Start visite</button>
+      <p class="noot">Laat het scherm aan tijdens de visite. Na Stop gaat de opname naar VitaScribe en wordt hij
+        weggegooid; op deze telefoon blijft niets staan.</p>
+    </section>
+
+    <section id="opname" class="hidden" style="display:flex;flex-direction:column;gap:14px">
+      <div class="klok"><span class="stip"></span><span id="klok">00:00</span></div>
+      <button id="stop" class="rond stop" type="button">Stop</button>
+      <p class="noot">Na het gesprek kun je gewoon doorpraten om na te dicteren: onderzoek en beleid.</p>
+    </section>
+
+    <p id="melding" class="melding" role="status" aria-live="polite"></p>
+    <button id="opnieuw" class="knop hidden" type="button">Opnieuw versturen</button>
+    <button id="ontkoppel" class="link hidden" type="button">Deze telefoon ontkoppelen</button>
+  </main>
+  <script src="/v/visite.js"></script>
+</body>
+</html>

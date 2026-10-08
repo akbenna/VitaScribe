@@ -89,6 +89,21 @@ jouw verantwoordelijkheid (WGBO). Dat verandert niet door de software.
 - Klik na de patiënt op "Consult afsluiten": de koppeling en de foto's zijn
   dan weg. Sluit na het spreekuur het tabblad op de telefoon.
 
+## Visites
+
+1. **Koppelen, eenmalig.** Zijpaneel, kaart *Visites*: *telefoon koppelen*
+   en de QR-code scannen. Zet de pagina op het beginscherm van de telefoon.
+2. **Bij de patiënt.** Typ een korte aanduiding, nooit naam of BSN (bijv.
+   "mw. J., wondcontrole"). Vraag toestemming en vink die aan. *Start visite*,
+   laat het scherm aan, en *Stop*. Nadicteren kan door gewoon door te praten
+   voor je op Stop drukt.
+3. **In de praktijk.** Open de patiënt in Bricks, klik in het zijpaneel bij
+   de visite op *Open*, lees het verslag na en voeg het in. *Consult
+   afsluiten* haalt de visite daarna van de server; anders gebeurt dat na
+   48 uur vanzelf.
+4. **Telefoon kwijt?** Hij kan geen verslag lezen. Ontkoppel toch meteen:
+   *telefoon koppelen › Ontkoppel alle telefoons*.
+
 ## Wat VitaScribe van je leert
 
 VitaScribe stelt na invoegen regels voor uit wat je aanpaste. Keur alleen een

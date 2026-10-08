@@ -52,6 +52,7 @@ from .tolk import router as tolk_router
 from .leren import router as leren_router
 from .econsult import router as econsult_router
 from .telefoon import router as telefoon_router
+from .visite import router as visite_router
 from . import register
 from . import audit, data_policy, leren, llm_service
 from .medical_vocabulary import (
@@ -404,6 +405,7 @@ app.include_router(tolk_router)
 app.include_router(leren_router)
 app.include_router(econsult_router)
 app.include_router(telefoon_router)
+app.include_router(visite_router)
 
 
 @app.get("/vitascribe-logo.svg", include_in_schema=False)

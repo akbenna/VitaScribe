@@ -466,3 +466,14 @@ body.consult-running .dv-balk { border-color: var(--rec); background: #fff5f5; }
 .afs-item.gedaan .afs-tekst { text-decoration: line-through; opacity: .6; }
 .afs-soort { font-size: 11px; font-weight: 600; padding: 1px 6px; border-radius: 999px; background: #e6f4f2; color: #0f766e; }
 .afs-uitleg { margin: 6px 0 0; color: var(--muted, #5b6778); }
+
+/* ── Visites ── */
+.vis { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; margin-top: 8px; font-size: 12px; }
+.vis-kop { display: flex; align-items: center; gap: 6px; }
+.vis-kop .ruimte { flex: 1; }
+.vis-lijst { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.vis-item { display: grid; grid-template-columns: auto 1fr auto auto; gap: 6px; align-items: center; }
+.vis-item.open .vis-wat { font-weight: 600; }
+.vis-item.fout .vis-wat { color: #b91c1c; }
+.vis-tijd { font-variant-numeric: tabular-nums; color: var(--muted, #5b6778); }
+.vis .note { margin: 4px 0 0; }
