@@ -166,21 +166,47 @@ heb je twee sporen met hetzelfde juridische profiel, en wordt de keuze
 tussen Claude en Mistral een kwaliteitskeuze. De code kent die route al
 (`PHI_LLM_PROVIDER=bedrock`).
 
+**Gebouwd (versie 2.23.2).** De route zelf bestond al: dezelfde modellen
+(Sonnet 5 voor het verslag, Haiku 4.5 voor de rest) via het
+EU-inferentieprofiel in Frankfurt. De server weigert te verzenden als de
+regio of een model-ID buiten de EU kan routeren. Nieuw:
+
+- De SOEP-test in `/beheer › Spraaktest` heeft bij *EU-model* de keuze
+  *Claude via Bedrock (Frankfurt)*. Zo test je Bedrock op de gespeelde
+  consulten voordat je iets omzet. Zonder AWS-sleutels of met een niet-EU
+  instelling geeft de test een melding en verstuurt hij niets.
+- Het paneel waarschuwt als de EU-modus op Bedrock staat maar de sleutels
+  ontbreken, en ook als de Mistral-sleutel voor de spraak (Voxtral) ontbreekt.
+
 **Wat je doet.**
 
 1. Maak een AWS-account op naam van de rechtspersoon. De AWS GDPR Data
    Processing Addendum maakt automatisch deel uit van de voorwaarden.
    Download hem en bewaar hem.
-2. Vraag in de console, regio `eu-central-1`, toegang aan tot het
-   Claude-model (Bedrock › Model access).
-3. Maak een IAM-gebruiker met alleen `bedrock:InvokeModel` en zet de sleutels
-   op de server.
-4. Zet `EU_LLM_PROVIDER=bedrock` (of laat Mistral, en gebruik Bedrock in de
-   Claude-modus).
-5. Draai de soeptest: tien gespeelde consulten, met dezelfde markeringen als
+2. Vraag in de console, regio `eu-central-1`, toegang aan tot Claude Sonnet 5
+   en Claude Haiku 4.5 (Bedrock › Model access). Laat *model invocation
+   logging* uit.
+3. Maak een IAM-gebruiker met alleen `bedrock-mantle:CreateInference`,
+   beperkt tot die twee modellen, en maak een toegangssleutel. Zet in Railway
+   `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` en `BEDROCK_REGION=eu-central-1`.
+   Wijken de model-ID's in de console af van `eu.anthropic.claude-sonnet-5`
+   en `eu.anthropic.claude-haiku-4-5`, zet dan ook `BEDROCK_SOEP_MODEL` en
+   `BEDROCK_MODEL`. Er verandert dan nog niets voor de artsen.
+4. Draai de SOEP-test: *Spraaktest › EU-model: Claude via Bedrock ›
+   Hele testset*. Vergelijk de valkuilen en markeringen met Claude direct en
    met Mistral.
+5. Is de test goed, kies dan:
+   - `EU_LLM_PROVIDER=bedrock`: de EU-modus schrijft met Claude in
+     Frankfurt. De spraak blijft Voxtral (Mistral), want Bedrock doet geen
+     spraak.
+   - en/of `PHI_LLM_PROVIDER=bedrock` en `LETTERS_LLM_PROVIDER=bedrock`: de
+     Claude-modus gaat dan ook via Frankfurt. De live spraak blijft Deepgram
+     (Amerikaans bedrijf, EU-endpoint), dus het modusslot blijft nodig zolang
+     dat zo is.
+
+   Terug kan altijd: zet de variabele weer op `mistral` of `anthropic`.
 6. Laat Claude stuk 03 en 05 bijwerken: AWS EMEA SARL als verwerker, data in
-   Frankfurt.
+   Frankfurt. Doe dat pas als stap 5 hierboven echt aan staat.
 
 **Wie.** Jij voor het account en de sleutels. Claude voor de test en de
 stukken.

@@ -934,6 +934,10 @@ function connectPort() {
     if (msg.action === 'SV_TOGGLE_DICTATION') toggleDictation();
   });
   port.onDisconnect.addListener(function () { setTimeout(connectPort, 250); });
+  // Say in which window this panel is open: the page pill there steps aside.
+  chrome.windows.getCurrent().then(function (w) {
+    try { port.postMessage({ action: 'SV_PANEEL_VENSTER', windowId: w.id }); } catch (e) { /* gone */ }
+  }).catch(function () {});
 }
 connectPort();
 

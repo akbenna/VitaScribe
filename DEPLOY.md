@@ -452,6 +452,10 @@ toegang tot prompts of antwoorden en is dan geen subverwerker.
    `BEDROCK_SOEP_MODEL` en `BEDROCK_MODEL`.
 4. Test lokaal, zonder patiëntgegevens:
    `AWS_ACCESS_KEY_ID=… AWS_SECRET_ACCESS_KEY=… python scripts/bedrock_check.py`
+   Of zet eerst alleen de sleutels in Railway en draai in `/beheer ›
+   Spraaktest` de SOEP-test met *EU-model: Claude via Bedrock (Frankfurt)*:
+   de gespeelde consulten via Bedrock, naast Claude direct. Er verandert
+   niets voor de artsen tot je stap 5 zet.
 5. Zet in Railway: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`,
    `BEDROCK_REGION=eu-central-1`, eventueel de model-ID's, en als laatste
    `PHI_LLM_PROVIDER=bedrock` (en `LETTERS_LLM_PROVIDER=bedrock`).

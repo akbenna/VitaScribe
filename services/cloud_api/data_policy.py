@@ -118,6 +118,17 @@ def eu_gereed() -> Optional[str]:
     from .config import get_config
     if eu_llm_provider() == "mistral" and not get_config().llm.mistral_api_key:
         return "Op de server is geen Mistral-sleutel ingesteld; in de EU-modus mislukken aanvragen tot die er is."
+    if eu_llm_provider() == "bedrock":
+        from . import llm_service
+        if not (os.getenv("AWS_ACCESS_KEY_ID") and os.getenv("AWS_SECRET_ACCESS_KEY")):
+            return "Op de server zijn geen AWS-sleutels voor Bedrock ingesteld; in de EU-modus mislukken aanvragen tot die er zijn."
+        llm = get_config().llm
+        probleem = llm_service.bedrock_eu_problem(llm.bedrock_region, llm.bedrock_model, llm.bedrock_soep_model)
+        if probleem:
+            return f"Bedrock staat niet op de EU ({probleem}); de server verstuurt niets tot dat klopt."
+    # Voxtral (speech in the eu mode) always needs the Mistral key, also with Bedrock for text.
+    if not get_config().llm.mistral_api_key:
+        return "Op de server is geen Mistral-sleutel ingesteld; de spraakherkenning in de EU-modus (Voxtral) mislukt tot die er is."
     return None
 
 

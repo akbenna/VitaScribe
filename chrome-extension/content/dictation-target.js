@@ -741,6 +741,9 @@
   function renderConsultPill() {
     var st = cState.state;
     if (!st || st === 'idle') { hideConsultPill(); return; }
+    // The side panel is open in this window and shows the same: no pill in the
+    // way. Minimise the panel and the pill comes back (the recording runs on).
+    if (cState.paneel) { hideConsultPill(); return; }
     if (!cPill) buildConsultPill();
     cPill.host.style.display = '';
     clearInterval(cTimer);
