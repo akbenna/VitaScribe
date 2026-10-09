@@ -122,7 +122,8 @@ def test_beurt_van_de_telefoon_namens_de_arts_in_zijn_modus(api, monkeypatch):
     assert r.status_code == 200, r.text
     assert r.json()["vertaling"] == "واش عندك السخانة؟"
     # The phone sent no mode header; the pairing's EU mode was used: Voxtral and Mistral.
-    assert stt == [None] and gezien == ["mistral"]
+    # Twee vaste talen (Nederlands en Arabisch), niet uit alle talen kiezen.
+    assert sorted(stt) == ["ar", "nl"] and gezien == ["mistral"]
     # The panel received the same turn.
     p = api.get("/api/v1/telefoon/paneel/ontvang?wacht=0", headers={**EU_A, **tel(g)}).json()["berichten"]
     assert p[-1]["type"] == "beurt" and p[-1]["data"]["spreker"] == "arts"

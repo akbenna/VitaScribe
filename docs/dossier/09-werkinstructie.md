@@ -65,7 +65,21 @@ jouw verantwoordelijkheid (WGBO). Dat verandert niet door de software.
   verstaan dan standaard-Arabisch; Berbers kan de tolk niet.
 - In de EU-modus wordt Turks, Pools en Oekraïens niet verstaan: je kunt dan
   wel spreken en laten voorlezen, maar het antwoord van de patiënt niet laten
-  vertalen.
+  vertalen. Typen kan wel (zie hieronder).
+- **Handsfree** kiest per beurt tussen twee talen: Nederlands en de taal van
+  de patiënt. Bij twijfel weegt mee wie net níet sprak. Koos hij de verkeerde
+  spreker, tik dan op **⇄ Andere spreker**: de beurt wordt opnieuw vertaald
+  uit wat in de andere taal gehoord is, zonder opnieuw te spreken. Een kuch,
+  een stoel of een deur wordt niet meer als beurt verstuurd; een kort "ja" is
+  sneller klaar dan een lang verhaal, dat even mag pauzeren.
+- **Typen**: onder de knoppen staat een typveld. Typ wat de arts of de patiënt
+  wil zeggen en kies *Arts* of *Patiënt*. Handig voor een patiënt die liever
+  schrijft, of voor een taal die niet verstaan wordt.
+- **Tigrinya** kan, met beperkingen die je vooraf ziet: de vertaling is van
+  matige kwaliteit, de spraak van de patiënt wordt door geen enkele dienst
+  verstaan en er is geen stem om voor te lezen. Jij spreekt; de vertaling
+  staat groot op het scherm (Ge'ez-schrift) en de patiënt typt het antwoord.
+  Voor iets belangrijks: een professionele tolk.
 
 ## E-consult
 

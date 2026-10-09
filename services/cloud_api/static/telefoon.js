@@ -243,7 +243,7 @@
       if (spreekt || pauze) { opname = null; voor = []; return; }
       var som = 0;
       for (var i = 0; i < data.length; i++) som += data[i] * data[i];
-      var stap = SVTolk.vadStap(vad, Math.sqrt(som / data.length), Date.now(), { frameMs: frameMs });
+      var stap = SVTolk.vadStap(vad, Math.sqrt(som / data.length), Date.now(), { frameMs: frameMs }, SVTolk.zcr(data));
       vad = stap.st;
       if (opname) opname.push(data);
       else { voor.push(data); if (voor.length * frameMs > 600) voor.shift(); }
@@ -255,7 +255,9 @@
       } else if (stap.gebeurtenis === 'einde' && opname) {
         var frames = opname;
         opname = null;
-        stuur(frames, ctx.sampleRate);
+        // A cough or a door: too little speech to be a turn.
+        if (stap.kort) { zetLuister('aan', 'Luistert'); status('luistert'); }
+        else stuur(frames, ctx.sampleRate);
       }
     };
     bron.connect(proc);

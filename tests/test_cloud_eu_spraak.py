@@ -183,7 +183,8 @@ def test_interpreter_understands_all_languages_with_gladia(monkeypatch):
     try:
         assert not tolk.verstaat(tolk.TALEN["tr"])                # Voxtral: no Turkish
         monkeypatch.setenv("EU_STT_PROVIDER", "gladia")
-        assert all(tolk.verstaat(t) for t in tolk.TALEN.values())
+        # Alle talen behalve Tigrinya, dat geen enkele spraakdienst kent.
+        assert [c for c, t in tolk.TALEN.items() if not tolk.verstaat(t)] == ["ti"]
         gezien = {}
 
         async def nep(audio, language=None, naam="", diarize=True, provider=None):

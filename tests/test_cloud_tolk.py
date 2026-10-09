@@ -54,10 +54,11 @@ def beurt(api, headers=H, **velden):
 def test_talen_per_modus(api):
     claude = {t["code"]: t for t in api.get("/api/v1/tolk/talen", headers=H).json()["talen"]}
     eu = {t["code"]: t for t in api.get("/api/v1/tolk/talen", headers=EU).json()["talen"]}
-    assert set(claude) == {"tr", "pl", "uk", "ar", "ar-SY", "ar-MA", "de", "fr", "en"}
-    assert all(t["verstaat"] for t in claude.values())
+    assert set(claude) == {"tr", "pl", "uk", "ar", "ar-SY", "ar-MA", "de", "fr", "en", "ti"}
+    # Tigrinya kent geen enkele spraakdienst; de rest verstaat Deepgram.
+    assert [c for c, t in claude.items() if not t["verstaat"]] == ["ti"]
     # Voxtral kent geen Turks, Pools of Oekraïens; Arabisch, Duits, Frans en Engels wel.
-    assert [c for c, t in eu.items() if not t["verstaat"]] == ["tr", "pl", "uk"]
+    assert [c for c, t in eu.items() if not t["verstaat"]] == ["tr", "pl", "uk", "ti"]
     assert "Voxtral" in eu["tr"]["waarom"]
     # Mistral leest de talen van Voxtral TTS (ook met een stem uit een andere taal); Turks niet.
     assert claude["fr"]["stem"] == "mistral" and claude["ar-MA"]["stem"] == "mistral"
@@ -172,7 +173,9 @@ def test_azure_moedertaalstemmen_en_eu_beleid(api, monkeypatch):
     monkeypatch.setenv("TOLK_AZURE_KEY", "a")
     monkeypatch.setenv("TOLK_AZURE_REGION", "westeurope")
     claude = api.get("/api/v1/tolk/talen", headers=H).json()
-    assert claude["nl_stem"] == "azure" and {t["stem"] for t in claude["talen"]} == {"azure"}
+    stemmen = {t["code"]: t["stem"] for t in claude["talen"]}
+    # Elke taal een moedertaalstem van Azure; Tigrinya heeft er geen (de patiënt leest mee).
+    assert claude["nl_stem"] == "azure" and stemmen.pop("ti") == "computer" and set(stemmen.values()) == {"azure"}
     # Azure is van Microsoft (VS): in de EU-modus alleen als de praktijk dat toestaat.
     eu = api.get("/api/v1/tolk/talen", headers=EU).json()
     assert eu["nl_stem"] == "mistral" and {t["code"]: t["stem"] for t in eu["talen"]}["tr"] == "computer"
@@ -249,7 +252,8 @@ def test_handsfree_eu_een_keer_voxtral_zelf_de_taal(api, monkeypatch):
                  files={"audio": ("beurt.wav", b"RIFF", "audio/wav")})
     assert r.status_code == 200, r.text
     assert r.json()["spreker"] == "arts" and r.json()["terugvertaling"] == "Heeft u koorts?"
-    assert stt == [(None, "beurt.wav", False)]   # geen taal opgegeven: Voxtral herkent hem zelf
+    # Alleen twee talen mogelijk: twee keer verstaan, als Nederlands en als Arabisch (niet uit honderd kiezen).
+    assert sorted(stt, key=str) == [("ar", "beurt.wav", False), ("nl", "beurt.wav", False)]
     # Turks verstaat Voxtral niet: handsfree kan dan niet.
     r = api.post("/api/v1/tolk/beurt", headers=EU, data={"spreker": "auto", "taal": "tr", "consent": "true"},
                  files={"audio": ("beurt.wav", b"RIFF", "audio/wav")})
@@ -332,3 +336,44 @@ def test_eigen_stem_opnemen(api, monkeypatch):
     assert r.json() == {"taal": "ar-MA", "stem": "nieuwe-stem"}
     assert gezien["url"].endswith("/v1/audio/voices") and gezien["body"]["sample_audio"] == "Z2VsdWlk"
     assert tolk._eigen["ar-MA"] == "nieuwe-stem"
+
+
+def test_handsfree_beurtwisseling_en_andere_lezing(api, monkeypatch):
+    gezien = []
+
+    async def verstaan(audio, taal, sleutel, content_type="audio/webm"):
+        return "Başım ağrıyor." if taal.code == "tr" else "Basim aar je jor."
+    monkeypatch.setattr(tolk, "spraak_naar_tekst", verstaan)
+    monkeypatch.setattr(llm_service, "complete", nep_llm(
+        {"spreker": "patient", "origineel": "Başım ağrıyor.", "vertaling": "Ik heb hoofdpijn.",
+         "terugvertaling": "", "onzeker": True, "twijfel": "Kort."}, gezien))
+    eerder = json.dumps([{"spreker": "arts", "nl": "Waar heeft u last van?"}])
+    r = api.post("/api/v1/tolk/beurt", headers=H,
+                 data={"spreker": "auto", "taal": "tr", "consent": "true", "eerder": eerder},
+                 files={"audio": ("beurt.wav", b"RIFF", "audio/wav")})
+    assert r.status_code == 200, r.text
+    # De vorige beurt was van de arts: bij twijfel is de patiënt aan de beurt.
+    assert "de vorige beurt was van de arts" in gezien[0]["user"] and "de patiënt aan de beurt" in gezien[0]["user"]
+    # Wat de spraakdienst in de andere taal hoorde, gaat mee: één klik maakt er een beurt van de arts van.
+    assert r.json()["alternatief"] == {"spreker": "arts", "origineel": "Basim aar je jor."}
+
+
+def test_tigrinya_arts_spreekt_patient_typt(api, monkeypatch):
+    gezien = []
+    monkeypatch.setattr(llm_service, "complete", nep_llm(
+        {"vertaling": "ርእሰይ የሕመኒ ኣሎ", "terugvertaling": "Ik heb hoofdpijn.", "onzeker": False, "twijfel": ""}, gezien))
+    info = {t["code"]: t for t in api.get("/api/v1/tolk/talen", headers=H).json()["talen"]}["ti"]
+    assert info["verstaat"] is False and "matige kwaliteit" in info["noot"] and info["stem"] == "computer"
+    assert "typen" in info["waarom"]
+    # Spraak van de patiënt: geen dienst verstaat het.
+    r = beurt(api, spreker="patient", taal="ti")
+    assert r.status_code == 400
+    # Getypt antwoord van de patiënt: wordt vertaald, zonder spraakherkenning.
+    r = api.post("/api/v1/tolk/beurt", headers=H,
+                 data={"spreker": "patient", "taal": "ti", "consent": "true", "tekst": "ርእሰይ የሕመኒ ኣሎ"})
+    assert r.status_code == 200, r.text
+    assert "Ge'ez" in gezien[0]["system"] and "ርእሰይ" in gezien[0]["user"]
+    # Handsfree kan niet: de patiënt wordt niet verstaan.
+    r = api.post("/api/v1/tolk/beurt", headers=H, data={"spreker": "auto", "taal": "ti", "consent": "true"},
+                 files={"audio": ("beurt.wav", b"RIFF", "audio/wav")})
+    assert r.status_code == 400

@@ -24,7 +24,10 @@ var SVTolk = (function () {
     de: ['de-DE', 'de-AT', 'de-CH', 'de'],
     fr: ['fr-FR', 'fr-BE', 'fr-CA', 'fr'],
     en: ['en-GB', 'en-US', 'en'],
+    ti: ['ti-ER', 'ti-ET', 'ti'],
   };
+  // Languages for which no voice exists anywhere (not in Windows either): the patient reads along.
+  var GEEN_STEM = { ti: true };
   var RTL = { ar: true, 'ar-SY': true, 'ar-MA': true };
   var MAX_EERDER = 6;
 
@@ -49,7 +52,8 @@ var SVTolk = (function () {
   function rtl(code) { return !!RTL[code]; }
 
   /** How to add a voice to Windows, for a language without one. */
-  function stemHint(naam) {
+  function stemHint(naam, code) {
+    if (GEEN_STEM[code]) return 'Voor ' + naam + ' bestaat geen stem om voor te lezen. De vertaling staat groot op het scherm: laat de patiënt meelezen.';
     return 'Op deze computer staat geen stem voor ' + naam + '. Voeg er een toe in Windows: Instellingen › Tijd en taal › '
       + 'Spraak › Stemmen toevoegen. Tot die tijd: laat de vertaling groot zien.';
   }
@@ -95,17 +99,30 @@ var SVTolk = (function () {
   }
 
 
+  /** Zero-crossing rate of a frame (0..1): speech is low, hiss and clicks are high. */
+  function zcr(frame) {
+    var n = 0;
+    for (var i = 1; i < frame.length; i++) if ((frame[i - 1] >= 0) !== (frame[i] >= 0)) n++;
+    return frame.length > 1 ? n / (frame.length - 1) : 0;
+  }
+
   /**
    * Hands-free voice activity detection, one step per audio frame.
    * Keeps a slowly adapting noise floor, so a humming fan or a quiet street
-   * does not count as speech. Returns {st, gebeurtenis: 'begin'|'einde'|null}.
-   * 'einde' comes after `stilteMs` of silence following at least `minSpraakMs`
-   * of speech, or when a turn reaches `maxMs`.
+   * does not count as speech; a loud frame with a very high zero-crossing rate
+   * (hiss, paper, a click) does not either. Returns
+   * {st, gebeurtenis: 'begin'|'einde'|null, kort}.
+   * 'einde' comes after a silence following at least `minSpraakMs` of speech,
+   * or when a turn reaches `maxMs`. The silence that ends a turn grows with the
+   * turn: a short "yes" is done quickly, someone telling a story may pause to
+   * think (`stilteKortMs` up to `stilteLangMs`). kort: the turn held less than
+   * `minStemMs` of actual speech (a cough, a door): better not sent.
    */
-  function vadStap(st, rms, nu, opties) {
-    var o = Object.assign({ minDrempel: 0.012, factor: 3.2, minSpraakMs: 350, stilteMs: 1200, maxMs: 45000, frameMs: 64,
-      kalibratieMs: 500 }, opties || {});
-    st = st || { ruis: null, kalibratie: 0, inSpraak: false, begin: 0, spraak: 0, laatsteGeluid: 0 };
+  function vadStap(st, rms, nu, opties, nulDoorgangen) {
+    var o = Object.assign({ minDrempel: 0.012, factor: 3.2, minSpraakMs: 350, stilteKortMs: 800, stilteLangMs: 1400,
+      langNaMs: 4000, maxMs: 45000, frameMs: 64, kalibratieMs: 500, maxZcr: 0.4, minStemMs: 450 }, opties || {});
+    if (o.stilteMs) { o.stilteKortMs = o.stilteMs; o.stilteLangMs = o.stilteMs; }
+    st = st || { ruis: null, kalibratie: 0, inSpraak: false, begin: 0, spraak: 0, laatsteGeluid: 0, stem: 0 };
     // The first half second only measures the room: the quietest frame is the
     // noise floor (robust when someone already talks during part of it).
     if (st.kalibratie < o.kalibratieMs) {
@@ -114,7 +131,7 @@ var SVTolk = (function () {
       return { st: st, gebeurtenis: null };
     }
     var drempel = Math.max(o.minDrempel, st.ruis * o.factor);
-    var luid = rms >= drempel;
+    var luid = rms >= drempel && !(typeof nulDoorgangen === 'number' && nulDoorgangen > o.maxZcr);
     if (!st.inSpraak) {
       // Noise floor follows the room while nobody speaks.
       st.ruis = st.ruis * 0.95 + Math.min(rms, drempel) * 0.05;
@@ -123,6 +140,7 @@ var SVTolk = (function () {
         if (st.spraak >= o.minSpraakMs) {
           st.inSpraak = true;
           st.begin = nu - st.spraak;
+          st.stem = st.spraak;
           st.laatsteGeluid = nu;
           return { st: st, gebeurtenis: 'begin' };
         }
@@ -131,11 +149,15 @@ var SVTolk = (function () {
       }
       return { st: st, gebeurtenis: null };
     }
-    if (luid) st.laatsteGeluid = nu;
-    if (nu - st.laatsteGeluid >= o.stilteMs || nu - st.begin >= o.maxMs) {
+    if (luid) { st.laatsteGeluid = nu; st.stem += o.frameMs; }
+    var duur = st.laatsteGeluid - st.begin;
+    var stilte = o.stilteKortMs + (o.stilteLangMs - o.stilteKortMs) * Math.min(1, Math.max(0, duur / o.langNaMs));
+    if (nu - st.laatsteGeluid >= stilte || nu - st.begin >= o.maxMs) {
+      var kort = st.stem < o.minStemMs;
       st.inSpraak = false;
       st.spraak = 0;
-      return { st: st, gebeurtenis: 'einde' };
+      st.stem = 0;
+      return { st: st, gebeurtenis: 'einde', kort: kort };
     }
     return { st: st, gebeurtenis: null };
   }
@@ -159,7 +181,7 @@ var SVTolk = (function () {
 
   return {
     STEMTALEN: STEMTALEN, kiesStem: kiesStem, spraakTag: spraakTag, rtl: rtl, stemHint: stemHint,
-    stilteStap: stilteStap, vadStap: vadStap, wav: wav, nl: nl, verslagBeurten: verslagBeurten, eerder: eerder, voorlezen: voorlezen,
+    stilteStap: stilteStap, vadStap: vadStap, zcr: zcr, wav: wav, nl: nl, verslagBeurten: verslagBeurten, eerder: eerder, voorlezen: voorlezen,
   };
 })();
 if (typeof module !== 'undefined') module.exports = SVTolk;

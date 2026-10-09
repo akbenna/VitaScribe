@@ -98,8 +98,10 @@ window.SVTolkUI = (function () {
     if (!t) return;
     var regels = [];
     if (!t.verstaat) regels.push(t.waarom + ' U kunt wel spreken en laten voorlezen; voor antwoorden van de patiënt: Claude-modus of een tolk.');
-    regels.push(t.stem === 'mistral' ? 'Voorlezen: stem van Mistral (EU).' : 'Voorlezen: met een stem op deze computer.');
+    if (t.noot) regels = [t.noot];
+    else regels.push(t.stem === 'mistral' ? 'Voorlezen: stem van Mistral (EU).' : 'Voorlezen: met een stem op deze computer.');
     $('tk-taal-uitleg').textContent = regels.join(' ');
+    $('tk-taal-uitleg').classList.toggle('tk-waarschuwing', !!t.noot);
   }
 
   function toonGesprek() {
@@ -114,6 +116,10 @@ window.SVTolkUI = (function () {
     $('tk-handsfree').title = t.verstaat ? 'Eén keer aanzetten; daarna hoort VitaScribe aan de taal wie er spreekt' : t.waarom;
     if (!t.verstaat) stopHandsfree();
     $('tk-patient').title = t.verstaat ? 'Enter' : t.waarom;
+    $('tk-noot').textContent = t.noot || (t.verstaat ? '' : t.waarom);
+    $('tk-noot').classList.toggle('hidden', !$('tk-noot').textContent);
+    $('tk-typ').classList.toggle('nadruk', !t.verstaat);
+    $('tk-typ-tekst').placeholder = t.verstaat ? 'Of typ een beurt…' : 'Laat de patiënt hier typen (' + (t.eigen || t.naam) + ')…';
     $('tk-verslag').disabled = SVTolk.verslagBeurten(tk.beurten).length === 0;
   }
 
@@ -139,7 +145,7 @@ window.SVTolkUI = (function () {
     var kaart = el('div', 'tk-beurt ' + b.spreker + (b.bezig ? ' bezig' : ''));
     kaart.dataset.id = b.id;
     var wie = b.spreker === 'auto' ? 'Herkennen…' : b.spreker === 'arts' ? 'Arts' : 'Patiënt · ' + (t.naam || '');
-    kaart.appendChild(el('span', 'tk-wie', wie + (b.telefoon ? ' · via telefoon' : b.auto ? ' · herkend aan de taal' : '')));
+    kaart.appendChild(el('span', 'tk-wie', wie + (b.telefoon ? ' · via telefoon' : b.auto ? ' · herkend aan de taal' : b.getypt ? ' · getypt' : '')));
     if (b.bezig) {
       kaart.appendChild(el('p', 'tk-orig', b.bezig));
       return kaart;
@@ -155,6 +161,10 @@ window.SVTolkUI = (function () {
     acties.appendChild(knop('▶ Opnieuw', 'Nog eens voorlezen', function () { leesVoor(b); }));
     if (b.spreker === 'arts') {
       acties.appendChild(knop('Eenvoudiger', 'Nog eenvoudiger zeggen', function () { eenvoudiger(b); }));
+    }
+    if (b.auto) {
+      acties.appendChild(knop('⇄ Andere spreker', 'Verkeerd herkend wie er sprak: maak er een beurt van de '
+        + (b.spreker === 'arts' ? 'patiënt' : 'arts') + ' van', function () { wissel(b); }));
     }
     acties.appendChild(knop('✕', 'Verkeerd verstaan: deze beurt weghalen (gaat niet mee in het verslag)', function () {
       tk.beurten = tk.beurten.filter(function (x) { return x.id !== b.id; });
@@ -246,8 +256,9 @@ window.SVTolkUI = (function () {
       }
       var gelukt = await computerStem(wat.tekst, wat.taal);
       if (!gelukt) {
-        status(SVTolk.stemHint(info.naam || wat.taal), true);
-        if (b.spreker === 'arts') toonGroot(wat.tekst, wat.taal);
+        status(SVTolk.stemHint(info.naam || wat.taal, wat.taal), true);
+        // Only for a turn still in the conversation (not one wiped while it was on its way).
+        if (b.spreker === 'arts' && tk.beurten.indexOf(b) !== -1) toonGroot(wat.tekst, wat.taal);
       }
     } finally {
       pauzeer(false);
@@ -282,7 +293,7 @@ window.SVTolkUI = (function () {
         hf.pauze = false;
         hf.st = null;   // fresh start: the voice is not a speaker
         hfLabel('luistert');
-      }, 350);
+      }, 500);   // the room's echo of the voice dies away first
     }
   }
 
@@ -327,7 +338,7 @@ window.SVTolkUI = (function () {
       var frame = new Float32Array(e.inputBuffer.getChannelData(0));
       var som = 0;
       for (var i = 0; i < frame.length; i++) som += frame[i] * frame[i];
-      var r = SVTolk.vadStap(hf.st, Math.sqrt(som / frame.length), Date.now(), { frameMs: frameMs });
+      var r = SVTolk.vadStap(hf.st, Math.sqrt(som / frame.length), Date.now(), { frameMs: frameMs }, SVTolk.zcr(frame));
       hf.st = r.st;
       if (r.gebeurtenis === 'begin') {
         hf.segment = hf.preroll.concat([frame]);
@@ -339,7 +350,8 @@ window.SVTolkUI = (function () {
           var seg = hf.segment;
           hf.segment = null;
           hfLabel('luistert');
-          stuurSegment(seg, ctx.sampleRate);
+          // A cough, a chair, a door: too little speech to be a turn; not sent.
+          if (!r.kort) stuurSegment(seg, ctx.sampleRate);
         }
       } else {
         hf.preroll.push(frame);
@@ -461,7 +473,7 @@ window.SVTolkUI = (function () {
           teken();
           return;
         }
-        Object.assign(b, { spreker: d.spreker || spreker, auto: spreker === 'auto', origineel: d.origineel,
+        Object.assign(b, { spreker: d.spreker || spreker, auto: spreker === 'auto', alternatief: d.alternatief || null, origineel: d.origineel,
           vertaling: d.vertaling, terugvertaling: d.terugvertaling || '', onzeker: !!d.onzeker, twijfel: d.twijfel || '' });
         bewaar();
         teken();
@@ -472,6 +484,60 @@ window.SVTolkUI = (function () {
         status(e.message, true);
       }
     });
+  }
+
+  // A turn from text: typed (a patient who writes, a language no speech service
+  // knows), or the other reading of a hands-free turn.
+  async function tekstBeurt(spreker, tekst, b) {
+    var nieuw = !b;
+    b = b || { id: 'b' + (++volgnummer) + '-' + Date.now(), spreker: spreker };
+    b.bezig = 'Vertalen…';
+    if (nieuw) tk.beurten.push(b);
+    teken();
+    var eerder = SVTolk.eerder(tk.beurten.filter(function (x) { return x !== b; }));
+    bezigMet = bezigMet.then(async function () {
+      try {
+        var fd = new FormData();
+        fd.append('tekst', tekst);
+        fd.append('spreker', spreker);
+        fd.append('taal', tk.taal);
+        fd.append('consent', 'true');
+        fd.append('eerder', JSON.stringify(eerder));
+        var resp = await aanvraag('/api/v1/tolk/beurt', { method: 'POST', body: fd });
+        if (!resp.ok) throw await fout(resp);
+        var d = await resp.json();
+        delete b.bezig;
+        if (tk.beurten.indexOf(b) === -1) return;   // the conversation was wiped meanwhile
+        Object.assign(b, { spreker: spreker, auto: false, getypt: nieuw, origineel: d.origineel || tekst, vertaling: d.vertaling,
+          terugvertaling: d.terugvertaling || '', onzeker: !!d.onzeker, twijfel: d.twijfel || '', alternatief: null });
+        bewaar();
+        teken();
+        status('');
+        if (b.spreker === 'arts' || $('tk-nl-voorlezen').checked) await leesVoor(b);
+      } catch (e) {
+        delete b.bezig;
+        if (nieuw) tk.beurten = tk.beurten.filter(function (x) { return x !== b; });
+        teken();
+        status(e.message, true);
+      }
+    });
+    return bezigMet;
+  }
+
+  /** Hands-free picked the wrong speaker: the other reading becomes the turn. */
+  function wissel(b) {
+    var ander = b.spreker === 'arts' ? 'patient' : 'arts';
+    var alt = b.alternatief && b.alternatief.spreker === ander ? b.alternatief.origineel : b.origineel;
+    tk.gewisseld = (tk.gewisseld || 0) + 1;
+    return tekstBeurt(ander, alt, b);
+  }
+
+  function getypt(spreker) {
+    var veld = $('tk-typ-tekst');
+    var tekst = veld.value.trim();
+    if (tekst.length < 1) { status('Typ eerst wat er gezegd of geschreven is.', true); veld.focus(); return; }
+    veld.value = '';
+    tekstBeurt(spreker, tekst);
   }
 
   async function eenvoudiger(b) {
@@ -537,6 +603,7 @@ window.SVTolkUI = (function () {
     stopBeurt();
     stopVoorlezen();
     tk = { taal: tk.taal, gestart: false, beurten: [] };
+    $('tk-scherm').classList.add('hidden');
     chrome.storage.session.remove('svTolk').catch(function () {});
     status('');
     teken();
@@ -640,7 +707,7 @@ window.SVTolkUI = (function () {
     SVTelefoon.on('beurt', function (d) {
       if (!tk.gestart) return;
       tk.beurten.push({ id: 'b' + (++volgnummer) + '-' + Date.now(), spreker: d.spreker, auto: true, telefoon: true,
-        origineel: d.origineel, vertaling: d.vertaling, terugvertaling: d.terugvertaling || '',
+        alternatief: d.alternatief || null, origineel: d.origineel, vertaling: d.vertaling, terugvertaling: d.terugvertaling || '',
         onzeker: !!d.onzeker, twijfel: d.twijfel || '' });
       bewaar();
       teken();
@@ -654,6 +721,8 @@ window.SVTolkUI = (function () {
   $('tk-arts').addEventListener('click', function () { this.blur(); startBeurt('arts'); });
   $('tk-patient').addEventListener('click', function () { this.blur(); startBeurt('patient'); });
   $('tk-verslag').addEventListener('click', function () { stopHandsfree(); maakVerslag(); });
+  $('tk-typ-arts').addEventListener('click', function () { getypt('arts'); });
+  $('tk-typ-patient').addEventListener('click', function () { getypt('patient'); });
   $('tk-handsfree').addEventListener('click', function () {
     this.blur();
     if (hf) { stopHandsfree(); status('Handsfree uit. Gebruik de knoppen, of zet handsfree weer aan.'); }
