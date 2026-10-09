@@ -102,3 +102,15 @@ test('één breed onderdeel wordt niet op 60k afgekapt', () => {
   assert.ok(b.onderdelen[0].tekens > SVDossiervraag.MAX_SECTIE);
   assert.equal(b.ingekort, false);
 });
+
+test('vervolgvraag: alleen een klok veranderd = exact dezelfde tekst (prompt-cache)', () => {
+  const D = require('../../chrome-extension/lib/dossiervraag.js');
+  const a = 'Bricks 14:39\nJournaal\n03-09-2026 HA blaasspoeling\nLaatst bijgewerkt 2 minuten geleden';
+  const b = 'Bricks 14:40\nJournaal\n03-09-2026 HA blaasspoeling\nLaatst bijgewerkt 3 minuten geleden';
+  assert.strictEqual(D.hergebruik(a, b), a);
+  // A new entry, or a changed value: the new text.
+  const c = b + '\n08-10-2026 HA kweek ingezet';
+  assert.strictEqual(D.hergebruik(a, c), c);
+  assert.strictEqual(D.hergebruik(a, a.replace('blaasspoeling', 'katheter')), a.replace('blaasspoeling', 'katheter'));
+  assert.strictEqual(D.hergebruik('', b), b);
+});

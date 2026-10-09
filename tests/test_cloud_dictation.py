@@ -393,18 +393,59 @@ async def test_soep_on_sonnet5_uses_structured_output_without_prefill(monkeypatc
 
 
 @pytest.mark.asyncio
-async def test_light_tasks_stay_on_haiku_with_prefill(monkeypatch):
+async def test_light_tasks_on_haiku_5_5_low_effort_without_prefill(monkeypatch):
+    from services.cloud_api import llm_service
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "k")
+    get_config.cache_clear()
+    client = _fake_anthropic([{"type": "text", "text": '{"decisief": "x"}'}])
+    schema = {"type": "object", "properties": {"decisief": {"type": "string"}}, "required": ["decisief"],
+              "additionalProperties": False}
+    with patch.object(llm_service.httpx, "AsyncClient", return_value=client):
+        out = await llm_service.complete("sys", "usr", provider="anthropic", json_mode=True, max_tokens=300,
+                                         json_schema=schema)
+    body = client.post.call_args.kwargs["json"]
+    # Haiku 5.5: a tenth of the price of Haiku 4.5; no temperature and no prefill (400), low effort (quick).
+    assert body["model"] == "claude-haiku-5-5"
+    assert "temperature" not in body and body["messages"][-1]["role"] == "user"
+    assert body["output_config"]["effort"] == "low" and body["output_config"]["format"]["schema"] == schema
+    assert json.loads(out) == {"decisief": "x"}
+
+
+@pytest.mark.asyncio
+async def test_light_model_falls_back_to_haiku_4_5_when_refused(monkeypatch):
+    from unittest.mock import MagicMock
     from services.cloud_api import llm_service
     monkeypatch.setenv("ANTHROPIC_API_KEY", "k")
     get_config.cache_clear()
     client = _fake_anthropic([{"type": "text", "text": '"decisief": "x"}'}])
+    geweigerd = MagicMock(status_code=400, text="model niet beschikbaar")
+    goed = client.post.return_value
+    client.post = AsyncMock(side_effect=[geweigerd, goed])
     with patch.object(llm_service.httpx, "AsyncClient", return_value=client):
         out = await llm_service.complete("sys", "usr", provider="anthropic", json_mode=True, max_tokens=300)
-    body = client.post.call_args.kwargs["json"]
-    assert body["model"].startswith("claude-haiku-4-5")
-    assert body["temperature"] == 0.1
-    assert body["messages"][-1] == {"role": "assistant", "content": "{"}
+    eerste, tweede = (c.kwargs["json"] for c in client.post.call_args_list)
+    assert eerste["model"] == "claude-haiku-5-5"
+    # Haiku 4.5 as before: low temperature and the JSON prefill.
+    assert tweede["model"].startswith("claude-haiku-4-5") and tweede["temperature"] == 0.1
+    assert tweede["messages"][-1] == {"role": "assistant", "content": "{"}
     assert json.loads(out) == {"decisief": "x"}
+
+
+@pytest.mark.asyncio
+async def test_quality_model_does_not_fall_back(monkeypatch):
+    from unittest.mock import MagicMock
+    import httpx
+    from services.cloud_api import llm_service
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "k")
+    get_config.cache_clear()
+    client = _fake_anthropic([])
+    fout = MagicMock(status_code=400, text="x")
+    fout.raise_for_status = MagicMock(side_effect=httpx.HTTPStatusError("400", request=None, response=None))
+    client.post = AsyncMock(return_value=fout)
+    with patch.object(llm_service.httpx, "AsyncClient", return_value=client):
+        with pytest.raises(httpx.HTTPStatusError):
+            await llm_service.complete("sys", "usr", provider="anthropic", quality=True)
+    assert client.post.call_count == 1   # the SOEP model is never silently swapped for a lighter one
 
 
 @pytest.mark.asyncio
