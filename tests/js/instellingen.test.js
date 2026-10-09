@@ -107,3 +107,14 @@ test('de EU-sleutel blijft ook op het apparaat', async () => {
   assert.deepEqual(s.sync.data, { apiUrlEu: 'https://eu.server' });
   assert.deepEqual(s.local.data, { apiKeyEu: 'eu-geheim' });
 });
+
+test('sleutel ontbreekt: melding bij een server elders, niet bij een server op deze computer', () => {
+  assert.equal(I.sleutelOntbreekt({ apiUrl: 'https://smartvoice-production.up.railway.app', apiKey: '' }), true);
+  assert.equal(I.sleutelOntbreekt({ apiUrl: 'https://eu.server', apiKey: '   ' }), true);
+  assert.equal(I.sleutelOntbreekt({ apiUrl: 'https://railway', apiKey: 'sv-123' }), false);
+  assert.equal(I.sleutelOntbreekt({ apiUrl: 'http://localhost:8002', apiKey: '' }), false);
+  assert.equal(I.sleutelOntbreekt({ apiUrl: 'http://127.0.0.1:8000/', apiKey: '' }), false);
+  assert.equal(I.sleutelOntbreekt({ apiKey: '' }), false);   // standaardadres is localhost
+  // Een adres dat met localhost begint maar elders ligt, telt niet als deze computer.
+  assert.equal(I.sleutelOntbreekt({ apiUrl: 'https://localhost.evil.example', apiKey: '' }), true);
+});

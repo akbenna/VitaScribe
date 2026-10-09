@@ -91,7 +91,18 @@ var SVInstellingen = (function () {
     await s.sync.remove(LOKAAL);
   }
 
-  return { LOKAAL: LOKAAL, lees: lees, bewaar: bewaar, migreer: migreer };
+  /** Of er een serversleutel ontbreekt die wel nodig is. Zonder sleutel weigert
+   *  de server alles met 401, en dan bleef het zijpaneel stil: een lege taalbalk,
+   *  knoppen die niets doen (9 oktober 2026, na het opnieuw laden van de extensie;
+   *  de sleutel staat alleen op het apparaat en verdwijnt dan). Een server op deze
+   *  computer mag zonder sleutel (dev-mode). c: { apiUrl, apiKey } uit lees(). */
+  function sleutelOntbreekt(c) {
+    if (String((c && c.apiKey) || '').trim()) return false;
+    var adres = String((c && c.apiUrl) || 'http://localhost:8002').trim().toLowerCase();
+    return !/^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?(\/|$)/.test(adres);
+  }
+
+  return { LOKAAL: LOKAAL, lees: lees, bewaar: bewaar, migreer: migreer, sleutelOntbreekt: sleutelOntbreekt };
 })();
 
 if (typeof module !== 'undefined' && module.exports) module.exports = SVInstellingen;
