@@ -94,8 +94,10 @@ for pad in list(map_.rglob("*.js")) + list(map_.rglob("*.html")):
     nieuw = tekst.replace(hint, f"Standaard: {server}").replace(ontwikkel, server)
     if nieuw != tekst:
         pad.write_text(nieuw, encoding="utf-8")
+# A localhost address left in the package (not the word itself: a pattern that
+# recognises a local development server, lib/instellingen.js, may name it).
 over = [str(p.relative_to(map_)) for p in map_.rglob("*") if p.is_file() and p.suffix in (".js", ".html", ".json")
-        and "localhost" in p.read_text(encoding="utf-8")]
+        and "://localhost" in p.read_text(encoding="utf-8")]
 if over:
     sys.exit(f"Er staat nog localhost in het pakket: {over}")
 print(f"standaardserver {server}")
