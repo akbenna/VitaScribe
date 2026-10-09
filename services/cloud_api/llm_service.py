@@ -138,6 +138,9 @@ async def _complete_mistral(
     usage = data.get("usage") or {}
     logger.info("llm.mistral.usage", model=body.get("model"), input_tokens=usage.get("prompt_tokens"),
                 output_tokens=usage.get("completion_tokens"))
+    from . import kosten
+    kosten.tel("mistral", body.get("model") or "", "tekst", in_tokens=usage.get("prompt_tokens"),
+               uit_tokens=usage.get("completion_tokens"))
     return data["choices"][0]["message"]["content"]
 
 
@@ -227,6 +230,9 @@ async def _complete_anthropic(
         cache_read=usage.get("cache_read_input_tokens"),
         cache_write=usage.get("cache_creation_input_tokens"),
     )
+    from . import kosten
+    kosten.tel("anthropic", model, "tekst", in_tokens=usage.get("input_tokens"), uit_tokens=usage.get("output_tokens"),
+               cache_w=usage.get("cache_creation_input_tokens"), cache_r=usage.get("cache_read_input_tokens"))
 
     if data.get("stop_reason") == "refusal":
         raise ValueError("Het taalmodel weigerde dit verzoek.")
@@ -390,6 +396,9 @@ async def _complete_bedrock(
         cache_read=getattr(usage, "cache_read_input_tokens", None),
         cache_write=getattr(usage, "cache_creation_input_tokens", None),
     )
+    from . import kosten
+    kosten.tel("bedrock", model, "tekst", in_tokens=usage.input_tokens, uit_tokens=usage.output_tokens,
+               cache_w=getattr(usage, "cache_creation_input_tokens", None), cache_r=getattr(usage, "cache_read_input_tokens", None))
     if message.stop_reason == "refusal":
         raise ValueError("Het taalmodel weigerde dit verzoek.")
 

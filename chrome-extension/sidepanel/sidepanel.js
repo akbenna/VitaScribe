@@ -460,6 +460,9 @@ function verversAfsluiten() {
 var soepConcept = [];      // the report as VitaScribe wrote it, per part: to learn from the doctor's edits
 
 function renderSoep(soep) {
+  // The cost line belongs to a consult report only (consult-ui.js sets it after this).
+  var kosten = document.getElementById('soep-kosten');
+  if (kosten) kosten.classList.add('hidden');
   var delen = Array.isArray(soep.problemen) ? soep.problemen : [];
   soepConcept = (delen.length > 1 ? delen : [soep]).map(function (d) {
     return { s: d.s || '', o: d.o || '', e: d.e || '', p: d.p || '', geleerd: false };
@@ -878,7 +881,7 @@ function wisSoepBlok() {
   soepAlgemeen = {};
   lastSoep = null;
   document.getElementById('soep-delen').textContent = '';
-  ['soep-delen', 'soep-delen-hint', 'soep-decisief', 'soep-mark', 'soep-check', 'md', 'pi', 'ta', 'bt'].forEach(function (id) {
+  ['soep-delen', 'soep-delen-hint', 'soep-decisief', 'soep-mark', 'soep-check', 'soep-kosten', 'md', 'pi', 'ta', 'bt'].forEach(function (id) {
     var n = document.getElementById(id);
     if (n) n.classList.add('hidden');
   });

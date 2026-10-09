@@ -535,3 +535,30 @@ def test_praktijk_alleen_eu_weigert_de_claude_modus(api):
     # Switched off again in Beheer: both modes.
     _activeer(api, p["id"], alleen_eu=False)
     assert api.get("/api/v1/licentie", headers={**kop, "X-VitaScribe-Modus": "claude"}).status_code == 200
+
+
+def test_beheer_kostenoverzicht_en_eigen_prijzen(api):
+    from datetime import datetime, timezone
+    from services.cloud_api import kosten
+    kosten._eigen_cache, kosten._eigen_tijd = {}, 0.0
+    dag = datetime.now(timezone.utc).date().isoformat()
+    api.portal.call(kosten._bewaar, dag, ("anthropic", "claude-haiku-5-5", "tekst"),
+                    kosten.Regel(aanroepen=2, in_tokens=1_000_000, uit_tokens=200_000))
+    api.portal.call(kosten._bewaar, dag, ("anthropic", "claude-haiku-5-5", "tekst"),
+                    kosten.Regel(aanroepen=1, in_tokens=1_000_000))
+    api.portal.call(kosten._bewaar, dag, ("mistral", "mistral-large-latest", "tekst"),
+                    kosten.Regel(aanroepen=1, in_tokens=1_000_000, uit_tokens=100_000))
+    o = api.get("/api/v1/beheer/kosten?dagen=7", headers=BEHEER).json()
+    haiku = [r for r in o["regels"] if r["model"] == "claude-haiku-5-5"][0]
+    # Two rows on the same day add up; Haiku 5.5: 2M in x 0.10 + 0.2M uit x 0.50.
+    assert o["opslag"] == "register" and haiku["aanroepen"] == 3 and haiku["kosten"] == 0.3
+    assert o["totaal"] == {"USD": 0.3} and o["onbekend"] == ["mistral mistral-large-latest"]
+    assert api.get("/api/v1/beheer/kosten", headers={"X-Beheer-Sleutel": "fout"}).status_code == 403
+    # Mistral's price from the invoice, in euros.
+    r = api.put("/api/v1/beheer/kosten/prijzen", headers=BEHEER,
+                json={"prijzen": {"mistral:mistral-large-latest": {"in": "2,00", "uit": 6, "valuta": "EUR"}}})
+    assert r.status_code == 200, r.text
+    o = api.get("/api/v1/beheer/kosten?dagen=7", headers=BEHEER).json()
+    assert o["totaal"] == {"USD": 0.3, "EUR": 2.6} and o["onbekend"] == []
+    assert api.put("/api/v1/beheer/kosten/prijzen", headers=BEHEER,
+                   json={"prijzen": {"x": {"in": "veel"}}}).status_code == 400
