@@ -116,6 +116,9 @@ window.SVConsultUI = (function () {
       var data = huidig.result;
       renderSoep(data.soep || {});
       gekoppeld = true;
+      var kost = SVKosten.tekst(data.kosten);
+      $('soep-kosten').textContent = kost;
+      $('soep-kosten').classList.toggle('hidden', !kost);
       var dec = $('soep-decisief');
       dec.textContent = data.decisief || '';
       dec.classList.toggle('hidden', !data.decisief);

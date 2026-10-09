@@ -203,3 +203,20 @@ CREATE TABLE IF NOT EXISTS vs_visite_ronde (
     envelop   JSONB NOT NULL,
     verloopt  TIMESTAMPTZ NOT NULL
 );
+
+-- AI-gebruik per dag, per dienst, model en soort (kosten.py): alleen hoeveelheden,
+-- nooit inhoud. Voor het kostenoverzicht in Beheer.
+CREATE TABLE IF NOT EXISTS vs_ai_gebruik (
+    dag        DATE NOT NULL,
+    dienst     TEXT NOT NULL,
+    model      TEXT NOT NULL DEFAULT '',
+    soort      TEXT NOT NULL DEFAULT '',
+    aanroepen  INTEGER NOT NULL DEFAULT 0,
+    in_tokens  BIGINT NOT NULL DEFAULT 0,
+    uit_tokens BIGINT NOT NULL DEFAULT 0,
+    cache_w    BIGINT NOT NULL DEFAULT 0,
+    cache_r    BIGINT NOT NULL DEFAULT 0,
+    seconden   DOUBLE PRECISION NOT NULL DEFAULT 0,
+    tekens     BIGINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (dag, dienst, model, soort)
+);

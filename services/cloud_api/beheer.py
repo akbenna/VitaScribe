@@ -567,6 +567,62 @@ async def auditlog(gebruiker: str = "", dagen: int = 30, _: str = Depends(vereis
     return {"log": uit, "bewaardagen": audit.retention_days()}
 
 
+# ── AI-gebruik en geschatte kosten (kosten.py) ──
+
+_PRIJSVELDEN = ("in", "uit", "cache_w", "cache_r", "minuut", "tekens")
+
+
+@router.get("/api/v1/beheer/kosten")
+async def kostenoverzicht(dagen: int = 30, _: str = Depends(vereis_beheerder)):
+    """Wat VitaScribe aan AI afnam, per dienst en model, met een schatting in geld."""
+    from . import kosten
+    return await kosten.overzicht(min(max(dagen, 1), 400))
+
+
+class Prijzen(BaseModel):
+    prijzen: Dict[str, Optional[Dict[str, object]]] = Field(default_factory=dict)
+
+
+@router.put("/api/v1/beheer/kosten/prijzen")
+async def prijzen_opslaan(invoer: Prijzen, door: str = Depends(vereis_beheerder)):
+    """Eigen prijzen (uit de facturen), per prijsregel. null haalt een eigen prijs weg."""
+    from . import kosten
+    schoon: Dict[str, Optional[dict]] = {}
+    for sleutel, waarden in invoer.prijzen.items():
+        sleutel = str(sleutel).strip()[:80]
+        if not sleutel:
+            continue
+        if waarden is None:
+            schoon[sleutel] = None
+            continue
+        regel: dict = {}
+        for veld in _PRIJSVELDEN:
+            w = waarden.get(veld)
+            if w in (None, ""):
+                continue
+            try:
+                getal = float(str(w).replace(",", "."))
+            except ValueError:
+                raise HTTPException(status_code=400, detail=f"Prijs voor {sleutel} ({veld}) is geen getal.")
+            if getal < 0 or getal > 1000:
+                raise HTTPException(status_code=400, detail=f"Prijs voor {sleutel} ({veld}) is niet aannemelijk.")
+            regel[veld] = getal
+        valuta = str(waarden.get("valuta") or "USD").upper()
+        if valuta not in ("USD", "EUR"):
+            raise HTTPException(status_code=400, detail="Valuta is USD of EUR.")
+        regel["valuta"] = valuta
+        schoon[sleutel] = regel
+    huidig = dict(await kosten.eigen_prijzen())
+    for k, v in schoon.items():
+        if v is None:
+            huidig.pop(k, None)
+        else:
+            huidig[k] = v
+    await kosten.zet_eigen_prijzen(huidig)
+    await register.log(door, "kosten.prijzen", sleutels=sorted(schoon))
+    return {"prijzen": kosten.prijzen(huidig)}
+
+
 @router.get("/api/v1/beheer/export")
 async def export(_: str = Depends(vereis_beheerder)):
     """Het register als JSON, om naast de database te bewaren. Zonder sleutels

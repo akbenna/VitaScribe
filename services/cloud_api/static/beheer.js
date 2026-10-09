@@ -514,10 +514,135 @@
     } catch (e) { meld(e.message, true); }
   }
 
+  // ── AI-gebruik en geschatte kosten (kosten.py) ──
+  // Only what VitaScribe itself takes from the AI services; the invoice of each provider is leading.
+
+  var DIENST = { anthropic: 'Anthropic', mistral: 'Mistral', bedrock: 'AWS Bedrock', deepgram: 'Deepgram (achteraf)',
+    deepgram_live: 'Deepgram (live)', voxtral: 'Voxtral (Mistral)', gladia: 'Gladia', speechmatics: 'Speechmatics',
+    azure_tts: 'Azure (voorlezen)', mistral_tts: 'Mistral (voorlezen)', groq: 'Groq', openai: 'OpenAI' };
+
+  function geld(n, valuta) {
+    if (n === null || n === undefined) return '—';
+    var teken = valuta === 'EUR' ? '€ ' : '$ ';
+    return teken + n.toLocaleString('nl-NL', { minimumFractionDigits: 2, maximumFractionDigits: n < 1 ? 3 : 2 });
+  }
+  function geldregel(obj) {
+    var delen = Object.keys(obj || {}).map(function (v) { return geld(obj[v], v); });
+    return delen.length ? delen.join(' + ') : '—';
+  }
+  function hoeveel(r) {
+    var d = [];
+    if (r.in_tokens || r.uit_tokens) d.push(Math.round(r.in_tokens / 1000).toLocaleString('nl-NL') + 'k in · '
+      + Math.round(r.uit_tokens / 1000).toLocaleString('nl-NL') + 'k uit');
+    if (r.cache_r || r.cache_w) d.push('cache ' + Math.round(r.cache_w / 1000) + 'k gezet, ' + Math.round(r.cache_r / 1000) + 'k gelezen');
+    if (r.minuten) d.push(r.minuten.toLocaleString('nl-NL') + ' min');
+    if (r.tekens) d.push(r.tekens.toLocaleString('nl-NL') + ' tekens');
+    return d.join(' · ') || '—';
+  }
+
+  function kostenblok() {
+    var blok = el('details', { klasse: 'kaart', style: 'margin-top:16px', open: !!staat.kostenOpen },
+      el('summary', { tekst: 'AI-gebruik en geschatte kosten' }), el('div', { id: 'kosten' }));
+    blok.addEventListener('toggle', function () {
+      staat.kostenOpen = blok.open;
+      if (blok.open) laadKosten();
+    });
+    if (blok.open) setTimeout(laadKosten, 0);
+    return blok;
+  }
+
+  async function laadKosten() {
+    var plek = document.getElementById('kosten');
+    if (!plek) return;
+    var dagen = staat.kostenDagen || 30;
+    try { staat.kosten = await vraag('/kosten?dagen=' + dagen); }
+    catch (e) { leeg(plek); plek.appendChild(el('p', { klasse: 'klein', tekst: e.message })); return; }
+    tekenKosten();
+  }
+
+  function tekenKosten() {
+    var plek = document.getElementById('kosten');
+    var k = staat.kosten;
+    if (!plek || !k) return;
+    leeg(plek);
+    var keuze = el('select', { style: 'width:auto', bij: function (e) { staat.kostenDagen = Number(e.target.value); laadKosten(); } },
+      [7, 30, 90, 365].map(function (n) { return el('option', { value: String(n), tekst: 'laatste ' + n + ' dagen', selected: k.dagen === n }); }));
+    plek.appendChild(el('div', { klasse: 'knoppen', style: 'justify-content:flex-start;align-items:center' }, keuze,
+      el('span', { klasse: 'klein', tekst: 'Totaal: ' + geldregel(k.totaal) + ' · per maand (21 werkdagen): ' + geldregel(k.per_maand) })));
+    if (k.opslag !== 'register') plek.appendChild(el('p', { klasse: 'klein', tekst: 'Zonder register telt de server alleen tot hij herstart.' }));
+    plek.appendChild(el('table', { style: 'margin-top:8px' },
+      el('thead', null, el('tr', null, ['Dienst', 'Model', 'Aanroepen', 'Hoeveelheid', 'Geschat'].map(function (h) { return el('th', { tekst: h }); }))),
+      el('tbody', null, k.regels.length ? k.regels.map(function (r) {
+        return el('tr', null, el('td', { tekst: DIENST[r.dienst] || r.dienst }), el('td', { klasse: 'klein', tekst: r.model || '' }),
+          el('td', { tekst: String(r.aanroepen) }), el('td', { klasse: 'klein', tekst: hoeveel(r) }),
+          el('td', { tekst: r.kosten === null ? 'prijs invullen' : geld(r.kosten, r.valuta) }));
+      }) : [el('tr', null, el('td', { tekst: 'Nog geen gebruik in deze periode.' }))])));
+    if (k.per_dag.length) {
+      plek.appendChild(el('p', { klasse: 'klein', style: 'margin-top:8px', tekst: 'Per dag: ' + k.per_dag.slice(-14).map(function (d) {
+        var b = {}; Object.keys(d).forEach(function (x) { if (x !== 'dag') b[x] = d[x]; });
+        return datum(d.dag) + ' ' + geldregel(b);
+      }).join(' · ') }));
+    }
+    plek.appendChild(prijsblok(k));
+    plek.appendChild(el('p', { klasse: 'klein', tekst: 'Een schatting van wat VitaScribe zelf afnam (tokens, minuten spraak, tekens voorlezen), '
+      + 'met de prijzen hieronder (stand ' + k.prijzen_per + '). Leidend is de factuur van elke aanbieder: daar staan ook kortingen, '
+      + 'btw en de wisselkoers in. Ander gebruik op dezelfde sleutels (bijvoorbeeld Claude.ai) staat hier niet in.' }));
+  }
+
+  // Prices: the known ones are filled in; the rest from your own invoices.
+  function prijsblok(k) {
+    var sleutels = Object.keys(k.prijzen);
+    k.regels.forEach(function (r) { if (sleutels.indexOf(r.sleutel) === -1) sleutels.push(r.sleutel); });
+    sleutels.sort();
+    var velden = {};
+    var rijen = sleutels.map(function (s) {
+      var p = k.prijzen[s] || {};
+      var spraak = !/[:]/.test(s) && !/_tts$/.test(s);
+      var stem = /_tts$/.test(s);
+      var cel = function (veld, titel) {
+        var i = el('input', { type: 'number', step: 'any', min: '0', waarde: p[veld] === undefined ? '' : String(p[veld]),
+          title: titel, style: 'width:80px' });
+        velden[s] = velden[s] || {};
+        velden[s][veld] = i;
+        return i;
+      };
+      var valuta = el('select', null, ['USD', 'EUR'].map(function (v) { return el('option', { value: v, tekst: v, selected: (p.valuta || 'USD') === v }); }));
+      velden[s] = velden[s] || {};
+      velden[s].valuta = valuta;
+      var invoer = spraak ? [cel('minuut', 'per minuut')] : stem ? [cel('tekens', 'per miljoen tekens')]
+        : [cel('in', 'per miljoen tokens erin'), cel('uit', 'per miljoen tokens eruit')];
+      return el('tr', null, el('td', { klasse: 'klein', tekst: s }),
+        el('td', null, el('span', { style: 'display:flex;gap:4px;align-items:center' }, invoer.concat([valuta]))),
+        el('td', { klasse: 'klein', tekst: p.bron || (Object.keys(p).length ? '' : 'nog geen prijs') }));
+    });
+    var details = el('details', { style: 'margin-top:10px' }, el('summary', { tekst: 'Prijzen (tokens per miljoen, spraak per minuut, voorlezen per miljoen tekens)' }),
+      el('table', null, el('tbody', null, rijen)),
+      el('div', { klasse: 'knoppen' }, el('button', { klasse: 'hoofd', tekst: 'Prijzen opslaan', klik: async function () {
+        var uit = {};
+        Object.keys(velden).forEach(function (s) {
+          var huidig = k.prijzen[s] || {};
+          var r = { valuta: velden[s].valuta.value }, iets = false;
+          var anders = (huidig.valuta || 'USD') !== r.valuta;
+          Object.keys(velden[s]).forEach(function (v) {
+            if (v === 'valuta' || velden[s][v].value === '') return;
+            r[v] = velden[s][v].value; iets = true;
+            if (Number(String(r[v]).replace(',', '.')) !== huidig[v]) anders = true;
+          });
+          // Only what changed: an untouched standard price keeps its source.
+          if (iets && anders) uit[s] = r;
+        });
+        if (!Object.keys(uit).length) { meld('Geen prijs veranderd.'); return; }
+        try { await vraag('/kosten/prijzen', { methode: 'PUT', body: { prijzen: uit } }); meld('Prijzen opgeslagen.'); laadKosten(); }
+        catch (e) { meld(e.message, true); }
+      } })));
+    return details;
+  }
+
   function teken() {
     leeg(app);
     app.appendChild(tegels());
     app.appendChild(el('div', { klasse: 'indeling' }, lijst(), detail()));
+    app.appendChild(kostenblok());
     app.appendChild(instellingenblok());
   }
 

@@ -195,3 +195,18 @@ merk je of je te veel gaat vertrouwen op het concept (automation bias).
 | | | | |
 | | | | |
 | | | | |
+
+## AI-kosten
+
+- Onder elk consultverslag staat wat dat consult aan AI kostte, geschat: de
+  spraakherkenning en de taalmodellen samen, bijvoorbeeld "± $ 0,04".
+- In *Beheer › AI-gebruik en geschatte kosten* staat per dienst en model wat
+  VitaScribe afnam (tokens, minuten spraak, tekens voorlezen), per dag en voor
+  een gekozen periode, met een schatting per maand.
+- Alleen de prijzen die vaststaan zijn ingevuld (Anthropic, en de spraakprijzen
+  uit de spraaktest). Vul de andere in vanuit je eigen facturen, onder
+  *Prijzen*; tot die tijd staat er "prijs invullen" en telt dat deel niet mee.
+- Het blijft een schatting: leidend is de factuur van elke aanbieder (kortingen,
+  btw, wisselkoers). Ander gebruik op dezelfde sleutels, zoals Claude.ai, staat
+  er niet in.
+

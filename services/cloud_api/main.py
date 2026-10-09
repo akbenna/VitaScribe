@@ -348,15 +348,17 @@ async def process_consult(
             filename=audio.filename,
         )
 
-        result = await process_consultation(
-            audio_path=audio_path,
-            stt_provider=stt_provider,
-            llm_provider=llm_provider,
-            # Only Deepgram needs a key here; with Voxtral the practice's Deepgram setting does not apply.
-            deepgram_key=(await kies_spraak(ident)) if data_policy.stt_provider(stt_provider) == "deepgram" else None,
-            nadictaat_vanaf=nadictaat_vanaf,
-            taal=taal,
-        )
+        from . import kosten
+        with kosten.meten() as teller:   # what this consult uses goes into its report ("kosten")
+            result = await process_consultation(
+                audio_path=audio_path,
+                stt_provider=stt_provider,
+                llm_provider=llm_provider,
+                # Only Deepgram needs a key here; with Voxtral the practice's Deepgram setting does not apply.
+                deepgram_key=(await kies_spraak(ident)) if data_policy.stt_provider(stt_provider) == "deepgram" else None,
+                nadictaat_vanaf=nadictaat_vanaf,
+                taal=taal,
+            )
 
         processing_time = time.time() - start_time
         logger.info(
@@ -366,6 +368,8 @@ async def process_consult(
 
         response = result.to_dict()
         response["processing_time_secs"] = round(processing_time, 2)
+        await kosten.eigen_prijzen()
+        response["kosten"] = kosten.samenvatting(teller)
         return response
 
     finally:
@@ -379,7 +383,9 @@ async def process_consult(
 @app.websocket("/api/v1/consult/stream")
 async def consult_stream(ws: WebSocket):
     """Live consult: het gesprek wordt gevolgd, na stop komt het verslag."""
-    await volg_consult(ws)
+    from . import kosten
+    with kosten.meten():   # what this consult uses goes into its report ("kosten")
+        await volg_consult(ws)
 
 
 # ── Live dictation (side panel) ──

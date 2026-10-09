@@ -61,6 +61,7 @@ from urllib.parse import urlencode
 import structlog
 from fastapi import WebSocket, WebSocketDisconnect
 
+from . import kosten
 from . import audit, data_policy, pipeline, stt_service, talen, vraagsuggesties
 from .config import AppConfig, get_config
 from .dictation import (
@@ -199,6 +200,14 @@ class Gesprek:
         )
 
 
+async def _voeg_kosten_toe(data: dict) -> None:
+    """What this consult cost in AI, estimated (kosten.py), into the report."""
+    teller = kosten.huidige()
+    if teller is not None:
+        await kosten.eigen_prijzen()
+        data["kosten"] = kosten.samenvatting(teller)
+
+
 async def volg_consult(
     ws: WebSocket,
     connect: Callable[[str, str], Any] = _default_connect,
@@ -312,6 +321,7 @@ async def volg_consult(
     zender = asyncio.create_task(client_naar_deepgram())
     ontvanger = asyncio.create_task(deepgram_naar_gesprek())
     start = time.time()
+    live_geteld = False
     try:
         klaar, _ = await asyncio.wait({zender, ontvanger}, timeout=max_seconden(),
                                       return_when=asyncio.FIRST_COMPLETED)
@@ -339,10 +349,14 @@ async def volg_consult(
             ontvanger.cancel()
 
         await _send_json(ws, {"type": "verwerken"})
+        # The streamed seconds belong to this consult: count them now, so they are in its total.
+        kosten.tel("deepgram_live", "", "consult", seconden=time.time() - start)
+        live_geteld = True
         transcript = gesprek.transcript()
         result = await verwerk(transcript, llm_provider=auth.get("llm_provider"), taal=taal.code)
         data = result.to_dict()
         data["processing_time_secs"] = round(time.time() - start, 2)
+        await _voeg_kosten_toe(data)
         await _send_json(ws, {"type": "result", "data": data, "leeg": not transcript.raw_text.strip()})
         logger.info("consult_live.complete", seconden=transcript.duration_secs,
                     sprekers=len(gesprek.sprekers))
@@ -355,6 +369,8 @@ async def volg_consult(
         # Content-free: only how long, for the quarterly cost check (filter "usage").
         logger.info("stt.usage", provider="deepgram_live", seconden=round(time.time() - start, 1),
                     audio=round(gesprek.seconden, 1), soort="consult")
+        if not live_geteld:   # broke off before the report: still billed
+            kosten.tel("deepgram_live", "", "consult", seconden=time.time() - start)
         if meedenker is not None:
             meedenker.stop()
         for taak in (zender, ontvanger):
@@ -449,6 +465,7 @@ async def _volg_met_voxtral(ws: WebSocket, auth: Dict[str, Any], ident: Any,
         result = await verwerk(transcript, llm_provider=auth.get("llm_provider"), taal=taal.code)
         data = result.to_dict()
         data["processing_time_secs"] = round(time.time() - start, 2)
+        await _voeg_kosten_toe(data)
         await _send_json(ws, {"type": "result", "data": data, "leeg": not transcript.raw_text.strip()})
         logger.info("consult_live.complete", stt=dienst, seconden=transcript.duration_secs,
                     sprekers=len({x.speaker for x in transcript.segments if x.speaker}))

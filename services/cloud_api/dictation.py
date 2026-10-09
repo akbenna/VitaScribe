@@ -383,6 +383,8 @@ async def relay_dictation(
     finally:
         # Billed per second streamed: content-free, for the quarterly cost check (filter "usage").
         logger.info("stt.usage", provider="deepgram_live", seconden=round(time.time() - start, 1), soort="dictaat")
+        from . import kosten
+        kosten.tel("deepgram_live", "", "dictaat", seconden=time.time() - start)
         if meedenker is not None:
             meedenker.stop()
         try:

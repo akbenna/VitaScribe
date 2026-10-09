@@ -62,6 +62,8 @@ const REPORT = {
           ] },
   decisief: 'Keelpijn 3d, viraal (R74), expectatief',
   transcript_raw: 'Ik heb sinds drie dagen keelpijn, geen koorts.',
+  // What the server counted for this consult (kosten.py).
+  kosten: { totaal: { USD: 0.0412 }, onbekend: [], aanroepen: 14, prijzen_per: '2026-10-09' },
 };
 // Two separate problems, one of them psychological: two SOEP parts.
 const REPORT2 = {
@@ -423,6 +425,9 @@ async function listenPill(page, clickStop) {
   check('zijpaneel toont hetzelfde verslag met decisief',
     (await side.$eval('.soep-text[data-key="s"]', (e) => e.textContent)) === REPORT.soep.s &&
     (await side.textContent('#soep-decisief')).includes('R74'));
+  check('onder het verslag: wat dit consult aan AI kostte (schatting)',
+    await side.isVisible('#soep-kosten') && (await side.textContent('#soep-kosten')) === 'AI-kosten van dit consult: ± $ 0,04 (schatting, 14 AI-aanroepen)',
+    await side.textContent('#soep-kosten'));
   // Sources: a word nobody said is underlined; clicking a sentence shows where it was said.
   check('bronnen: woord dat niemand zei is onderstreept',
     (await side.$$eval('.soep-text[data-key="p"] .sv-onbekend', (n) => n.map((x) => x.textContent))).join() === 'Terug');

@@ -122,8 +122,11 @@ def _gebruik(res: "TranscriptResult", provider: str, soort: str) -> "TranscriptR
     """One content-free line per transcription: which service and how many
     seconds of audio. Speech is billed per minute; this is what the quarterly
     cost check counts (filter "usage")."""
-    logger.info("stt.usage", provider=getattr(res, "provider", "") or provider,
-                seconden=round(float(getattr(res, "duration_secs", 0) or 0), 1), soort=soort)
+    dienst = getattr(res, "provider", "") or provider
+    seconden = float(getattr(res, "duration_secs", 0) or 0)
+    logger.info("stt.usage", provider=dienst, seconden=round(seconden, 1), soort=soort)
+    from . import kosten
+    kosten.tel(dienst, "", soort, seconden=seconden)
     return res
 
 

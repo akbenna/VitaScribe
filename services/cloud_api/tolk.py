@@ -163,8 +163,10 @@ async def _deepgram_beurt(audio: bytes, taal: Taal, sleutel: str, content_type: 
         logger.warning("tolk.deepgram_fout", status=r.status_code, body=r.text[:300], taal=taal.code)
         raise ValueError(f"Spraakherkenning gaf fout {r.status_code}.")
     data = r.json()
-    logger.info("stt.usage", provider="deepgram", seconden=round(float((data.get("metadata") or {}).get("duration") or 0), 1),
-                soort="beurt")
+    duur = float((data.get("metadata") or {}).get("duration") or 0)
+    logger.info("stt.usage", provider="deepgram", seconden=round(duur, 1), soort="beurt")
+    from . import kosten
+    kosten.tel("deepgram", "", "beurt", seconden=duur)
     kanalen = (data.get("results") or {}).get("channels") or [{}]
     alts = kanalen[0].get("alternatives") or [{}]
     return str(alts[0].get("transcript") or "").strip()
@@ -698,6 +700,8 @@ async def tekst_naar_spraak(tekst: str, taal: Taal, geslacht: str = "vrouw") -> 
         if audio:
             # Voices are billed per character: the cost check counts these (no text, only the length).
             logger.info("tts.usage", provider="azure" if bron == "azure" else "mistral", tekens=len(tekst), taal=taal.code)
+            from . import kosten
+            kosten.tel("azure_tts" if bron == "azure" else "mistral_tts", "", "stem", tekens=len(tekst))
             return audio
     return None
 
