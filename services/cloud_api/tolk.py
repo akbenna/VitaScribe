@@ -549,17 +549,40 @@ def kies_stem(stemmen: List[dict], taal: str) -> Optional[str]:
     return None
 
 
+STEMMEN_PAGINA = 100   # voices per page asked for
+STEMMEN_MAX_PAGINAS = 20
+
+
+def _stemmen_uit(body) -> List[dict]:
+    lijst = body if isinstance(body, list) else (body.get("items") or body.get("data") or body.get("voices") or [])
+    return [s for s in lijst if isinstance(s, dict)]
+
+
 async def _laad_stemmen(sleutel: str) -> List[dict]:
+    """All voices of the account. The list is paginated: on 9 October 2026 only
+    the first page came back (ten English voices), so Arabic and Dutch, which
+    Voxtral does have, were read with an English voice. Keep asking for the
+    next page until one brings nothing new; that also stops when the server
+    ignores the page parameter and keeps sending the first page."""
     global _stemmen
     if _stemmen is None:
+        gevonden: List[dict] = []
+        gezien: set = set()
         try:
             async with httpx.AsyncClient(timeout=20.0) as client:
-                r = await client.get(STEMMEN_URL, headers={"Authorization": f"Bearer {sleutel}"})
-            body = r.json() if r.status_code == 200 else {}
-            lijst = body if isinstance(body, list) else (body.get("items") or body.get("data") or body.get("voices") or [])
-            _stemmen = [s for s in lijst if isinstance(s, dict)]
+                for pagina in range(STEMMEN_MAX_PAGINAS):
+                    r = await client.get(STEMMEN_URL, headers={"Authorization": f"Bearer {sleutel}"},
+                                         params={"page": pagina, "page_size": STEMMEN_PAGINA, "limit": STEMMEN_PAGINA})
+                    if r.status_code != 200:
+                        break
+                    nieuw = [s for s in _stemmen_uit(r.json()) if _stem_id(s) and _stem_id(s) not in gezien]
+                    if not nieuw:
+                        break
+                    gezien.update(_stem_id(s) for s in nieuw)
+                    gevonden += nieuw
         except Exception:
-            _stemmen = []
+            pass
+        _stemmen = gevonden
         # Names and languages of the voices (no patient data), to see which languages have one.
         logger.info("tolk.stemmen", aantal=len(_stemmen),
                     stemmen=[f"{_stem_id(s)}:{'/'.join(_stem_talen(s))}" for s in _stemmen][:40])
