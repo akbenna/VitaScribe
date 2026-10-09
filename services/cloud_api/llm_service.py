@@ -135,12 +135,15 @@ async def _complete_mistral(
         response.raise_for_status()
         data = response.json()
 
+    usage = data.get("usage") or {}
+    logger.info("llm.mistral.usage", model=body.get("model"), input_tokens=usage.get("prompt_tokens"),
+                output_tokens=usage.get("completion_tokens"))
     return data["choices"][0]["message"]["content"]
 
 
 # Claude 4.6+ models (Sonnet 5, Opus, ...) reject assistant prefill and
 # sampling parameters with a 400; they take structured outputs instead.
-_MODERN_CLAUDE = re.compile(r"^claude-(sonnet-5|opus-5|opus-4-[6-9]|sonnet-4-[6-9]|fable|mythos)")
+_MODERN_CLAUDE = re.compile(r"^claude-(sonnet-5|opus-5|opus-4-[6-9]|sonnet-4-[6-9]|haiku-5|fable|mythos)")
 
 
 def _is_modern(model: str) -> bool:
@@ -170,11 +173,11 @@ async def _complete_anthropic(
 ) -> str:
     """Complete using Anthropic Claude API.
 
-    Haiku 4.5 (default model):
+    Haiku 4.5 (fallback for the light model):
       - JSON-prefill: bij json_mode starten we de assistant-beurt met "{" zodat
         Claude direct geldige JSON produceert. Bespaart output-tokens.
       - Lage temperatuur voor medische output.
-    Sonnet 5 en nieuwer (SOEP-model):
+    Haiku 5.5, Sonnet 5 en nieuwer (licht model en SOEP-model):
       - Geen prefill/temperatuur (400); JSON via structured outputs
         (output_config.format met json_schema) wanneer een schema is gegeven.
       - Adaptief nadenken met instelbare effort; max_tokens ruimer.
@@ -185,23 +188,35 @@ async def _complete_anthropic(
         raise ValueError("ANTHROPIC_API_KEY niet geconfigureerd.")
 
     model = config.llm.anthropic_soep_model if quality else config.llm.anthropic_model
-    body, prefilled = _claude_body(model, system_prompt, user_prompt, json_mode, max_tokens,
-                                   cache_system, json_schema, structured=True)
+    effort = config.llm.anthropic_effort if quality else config.llm.anthropic_snel_effort
 
-    async with httpx.AsyncClient(timeout=90.0) as client:
-        response = await client.post(
-            "https://api.anthropic.com/v1/messages",
-            headers={
-                "x-api-key": api_key,
-                "anthropic-version": "2023-06-01",
-                "Content-Type": "application/json",
-            },
-            json=body,
-        )
+    async def stuur(model: str) -> httpx.Response:
+        body, prefilled = _claude_body(model, system_prompt, user_prompt, json_mode, max_tokens,
+                                       cache_system, json_schema, structured=True, effort=effort)
+        async with httpx.AsyncClient(timeout=90.0) as client:
+            response = await client.post(
+                "https://api.anthropic.com/v1/messages",
+                headers={
+                    "x-api-key": api_key,
+                    "anthropic-version": "2023-06-01",
+                    "Content-Type": "application/json",
+                },
+                json=body,
+            )
         if response.status_code >= 400:
-            logger.error("llm.anthropic.error", status=response.status_code, body=response.text[:500])
-        response.raise_for_status()
-        data = response.json()
+            logger.error("llm.anthropic.error", status=response.status_code, model=model, body=response.text[:500])
+        return response, prefilled
+
+    response, prefilled = await stuur(model)
+    terug = config.llm.anthropic_fallback_model
+    if not quality and response.status_code in (400, 404) and terug and terug != model:
+        # The light model refused the request (model not available, a parameter it does not take):
+        # the previous model does the work, and the log says so.
+        logger.warning("llm.anthropic.fallback", van=model, naar=terug, status=response.status_code)
+        model = terug
+        response, prefilled = await stuur(model)
+    response.raise_for_status()
+    data = response.json()
 
     usage = data.get("usage", {})
     logger.info(
@@ -225,7 +240,7 @@ async def _complete_anthropic(
 
 def _claude_body(model: str, system_prompt: str, user_prompt: str, json_mode: bool,
                  max_tokens: int, cache_system: bool, json_schema: Optional[dict],
-                 structured: bool) -> "tuple[dict, bool]":
+                 structured: bool, effort: Optional[str] = None) -> "tuple[dict, bool]":
     """Messages API request body, shared by the direct API and Bedrock.
 
     Returns (body, prefilled). structured: the endpoint supports structured
@@ -254,7 +269,7 @@ def _claude_body(model: str, system_prompt: str, user_prompt: str, json_mode: bo
     prefilled = False
     if modern:
         body["max_tokens"] = max(max_tokens, MODERN_MIN_MAX_TOKENS)
-        output_config = {"effort": config.llm.anthropic_effort}
+        output_config = {"effort": effort or config.llm.anthropic_effort}
         if json_mode and json_schema and structured:
             output_config["format"] = {"type": "json_schema", "schema": json_schema}
         body["output_config"] = output_config
@@ -356,8 +371,10 @@ async def _complete_bedrock(
     """
     import anthropic
     region, model = _bedrock_model(quality)
+    cfg = get_config().llm
     body, prefilled = _claude_body(model, system_prompt, user_prompt, json_mode, max_tokens,
-                                   cache_system, json_schema, structured=False)
+                                   cache_system, json_schema, structured=False,
+                                   effort=cfg.anthropic_effort if quality else cfg.anthropic_snel_effort)
     try:
         message = await _bedrock_client(region).messages.create(**_bedrock_kwargs(body))
     except anthropic.APIError as exc:

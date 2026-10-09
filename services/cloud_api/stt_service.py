@@ -118,6 +118,15 @@ def met_sprekers(transcript: TranscriptResult) -> str:
     return "\n".join(regels)
 
 
+def _gebruik(res: "TranscriptResult", provider: str, soort: str) -> "TranscriptResult":
+    """One content-free line per transcription: which service and how many
+    seconds of audio. Speech is billed per minute; this is what the quarterly
+    cost check counts (filter "usage")."""
+    logger.info("stt.usage", provider=getattr(res, "provider", "") or provider,
+                seconden=round(float(getattr(res, "duration_secs", 0) or 0), 1), soort=soort)
+    return res
+
+
 async def transcribe(audio_path: Path, provider: str = None,
                      deepgram_key: Optional[str] = None,
                      language: Optional[str] = None) -> TranscriptResult:
@@ -131,17 +140,17 @@ async def transcribe(audio_path: Path, provider: str = None,
     logger.info("stt.start", provider=provider, file=str(audio_path))
 
     if provider == "groq":
-        return await _transcribe_groq(audio_path)
+        return _gebruik(await _transcribe_groq(audio_path), provider, "consult")
     elif provider == "deepgram":
-        return await _transcribe_deepgram(audio_path, deepgram_key, language)
+        return _gebruik(await _transcribe_deepgram(audio_path, deepgram_key, language), provider, "consult")
     elif provider == "openai":
-        return await _transcribe_openai(audio_path)
+        return _gebruik(await _transcribe_openai(audio_path), provider, "consult")
     elif provider == "voxtral":
-        return await _transcribe_voxtral(audio_path, language)
+        return _gebruik(await _transcribe_voxtral(audio_path, language), provider, "consult")
     elif provider == "gladia":
-        return await _transcribe_gladia(audio_path, language)
+        return _gebruik(await _transcribe_gladia(audio_path, language), provider, "consult")
     elif provider == "speechmatics":
-        return await _transcribe_speechmatics(audio_path, language)
+        return _gebruik(await _transcribe_speechmatics(audio_path, language), provider, "consult")
     else:
         raise ValueError(f"Onbekende STT provider: {provider}")
 
@@ -392,11 +401,12 @@ async def transcribe_eu(audio: Union[Path, bytes], language: Optional[str] = Non
     code ("nl", "multi", "ar-SY"); None or "multi" lets the service detect it."""
     from . import data_policy
     provider = provider or data_policy.eu_stt_provider()
+    soort = "consult" if diarize else "beurt"
     if provider == "gladia":
-        return await _transcribe_gladia(audio, language, naam=naam, diarize=diarize)
+        return _gebruik(await _transcribe_gladia(audio, language, naam=naam, diarize=diarize), provider, soort)
     if provider == "speechmatics":
-        return await _transcribe_speechmatics(audio, language, naam=naam, diarize=diarize)
-    return await _transcribe_voxtral(audio, language, naam=naam, diarize=diarize)
+        return _gebruik(await _transcribe_speechmatics(audio, language, naam=naam, diarize=diarize), provider, soort)
+    return _gebruik(await _transcribe_voxtral(audio, language, naam=naam, diarize=diarize), "voxtral", soort)
 
 
 async def _transcribe_voxtral(audio_path: Union[Path, bytes], language: Optional[str] = None,

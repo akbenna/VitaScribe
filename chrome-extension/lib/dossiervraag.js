@@ -93,13 +93,31 @@ var SVDossiervraag = (function () {
     return !na || !nb || na === nb;
   }
 
+  // What changes on a Bricks page between two reads without the dossier
+  // changing: a clock, "3 minuten geleden".
+  var KLOK = /\b\d{1,2}:\d{2}(:\d{2})?\b/g;
+  var GELEDEN = /\b\d+\s*(sec|seconde|seconden|s|min|minuut|minuten|uur)\.?\s+geleden\b/gi;
+  function zonderKlok(t) { return String(t || '').replace(KLOK, '00:00').replace(GELEDEN, 'even geleden'); }
+
+  /**
+   * The text to send for a follow-up question. When the dossier read again
+   * differs from the previous one only in a clock or "… geleden", send the
+   * previous text exactly: then the server's prompt cache hits (a tenth of the
+   * price for the dossier) and nothing of medical meaning is lost. Anything
+   * else changed (a newly opened section, a new entry): the new text.
+   */
+  function hergebruik(vorige, nieuw) {
+    if (!vorige || vorige === nieuw) return nieuw;
+    return zonderKlok(vorige) === zonderKlok(nieuw) ? vorige : nieuw;
+  }
+
   function tekens(n) {
     return n < 1000 ? n + ' tekens' : (Math.round(n / 100) / 10).toString().replace('.', ',') + 'k tekens';
   }
 
   return {
     MAX_SECTIE: MAX_SECTIE, MAX_TOTAAL: MAX_TOTAAL, SNELVRAGEN: SNELVRAGEN,
-    bouw: bouw, ontdubbel: ontdubbel, zelfdePatient: zelfdePatient, tekens: tekens,
+    bouw: bouw, ontdubbel: ontdubbel, zelfdePatient: zelfdePatient, tekens: tekens, hergebruik: hergebruik,
   };
 })();
 if (typeof module !== 'undefined') module.exports = SVDossiervraag;

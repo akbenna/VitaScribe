@@ -51,7 +51,12 @@ class LLMConfig:
     # SOEP, letters and reading screenshots need the stronger (multimodal) model.
     mistral_quality_model: str = "mistral-large-latest"
     anthropic_api_key: str = ""
-    anthropic_model: str = "claude-haiku-4-5-20251001"
+    # Light tasks (interpreter, cleanup, nazorg). Haiku 5.5 costs a tenth of Haiku 4.5;
+    # when it refuses a request (400/404), the server falls back to the previous model.
+    anthropic_model: str = "claude-haiku-5-5"
+    anthropic_fallback_model: str = "claude-haiku-4-5-20251001"
+    # Thinking depth of the light model: low keeps the interpreter quick.
+    anthropic_snel_effort: str = "low"
     # SOEP generation needs medical reasoning (diagnosis naming, ICPC); the
     # light tasks (cleanup, nazorg) stay on the cheaper, faster model.
     anthropic_soep_model: str = "claude-sonnet-5"
@@ -134,7 +139,9 @@ def get_config() -> AppConfig:
             mistral_model=os.getenv("MISTRAL_MODEL", "mistral-small-latest"),
             mistral_quality_model=os.getenv("MISTRAL_QUALITY_MODEL", "mistral-large-latest"),
             anthropic_api_key=os.getenv("ANTHROPIC_API_KEY", ""),
-            anthropic_model=os.getenv("ANTHROPIC_MODEL", "claude-haiku-4-5-20251001"),
+            anthropic_model=os.getenv("ANTHROPIC_MODEL", "claude-haiku-5-5"),
+            anthropic_fallback_model=os.getenv("ANTHROPIC_FALLBACK_MODEL", "claude-haiku-4-5-20251001"),
+            anthropic_snel_effort=os.getenv("ANTHROPIC_SNEL_EFFORT", "low"),
             anthropic_soep_model=os.getenv("ANTHROPIC_SOEP_MODEL", "claude-sonnet-5"),
             anthropic_effort=os.getenv("ANTHROPIC_EFFORT", "medium"),
             bedrock_region=os.getenv("BEDROCK_REGION", "eu-central-1"),

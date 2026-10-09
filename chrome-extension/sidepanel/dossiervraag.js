@@ -70,6 +70,11 @@
     if (!d.naam) dv.eerder = [];
     dv.naam = d.naam || dv.naam;
     var b = SVDossiervraag.bouw(d.secties, d.naam, SVPrivacy, SVPrivacy.datum(d.geboren));
+    // A follow-up within a few minutes: the same text as before when only a clock changed (prompt cache).
+    if (dv.vorig && Date.now() - dv.vorig.t < 4 * 60000 && SVDossiervraag.zelfdePatient(dv.vorig.naam, d.naam)) {
+      b.tekst = SVDossiervraag.hergebruik(dv.vorig.tekst, b.tekst);
+    }
+    dv.vorig = { tekst: b.tekst, naam: d.naam, t: Date.now() };
     var totaal = b.onderdelen.reduce(function (n, o) { return n + o.tekens; }, 0);
     $('dv-bron').textContent = 'Ingelezen (' + b.initialen + '): '
       + b.onderdelen.map(function (o) { return o.naam === 'Dossier (in beeld)' ? 'alles wat in beeld staat' : o.naam; }).join(', ')
