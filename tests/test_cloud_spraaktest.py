@@ -52,7 +52,7 @@ def test_voxtral_request_and_speakers(monkeypatch, tmp_path):
     audio.write_bytes(b"\x1aE\xdf\xa3" + b"0" * 2000)
     res = asyncio.run(stt_service.transcribe(audio, provider="voxtral", language="nl"))
 
-    assert seen["url"] == "https://api.mistral.ai/v1/audio/transcriptions"
+    assert seen["url"] == "https://api.eu.mistral.ai/v1/audio/transcriptions"
     assert seen["auth"] == "Bearer mistral-test"
     body = seen["body"]
     assert 'name="diarize"' in body and "true" in body

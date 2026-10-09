@@ -19,6 +19,7 @@ from typing import Optional
 import httpx
 import structlog
 
+from .mistral_adres import MISTRAL_API
 from .config import get_config
 
 logger = structlog.get_logger()
@@ -121,7 +122,7 @@ async def _complete_mistral(
 
     async with httpx.AsyncClient(timeout=60.0) as client:
         response = await client.post(
-            "https://api.mistral.ai/v1/chat/completions",
+            f"{MISTRAL_API}/v1/chat/completions",
             headers={
                 "Authorization": f"Bearer {api_key}",
                 "Content-Type": "application/json",
@@ -568,7 +569,7 @@ async def stream_mistral(system_prompt: str, user_content, max_tokens: int, qual
     import json as _json
     async with httpx.AsyncClient(timeout=httpx.Timeout(120.0, connect=15.0)) as client:
         async with client.stream(
-            "POST", "https://api.mistral.ai/v1/chat/completions",
+            "POST", f"{MISTRAL_API}/v1/chat/completions",
             headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
             json=body,
         ) as response:

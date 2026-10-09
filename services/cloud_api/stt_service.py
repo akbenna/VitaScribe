@@ -25,6 +25,7 @@ from typing import List, Optional, Union
 import httpx
 import structlog
 
+from .mistral_adres import MISTRAL_API
 from .config import get_config
 
 logger = structlog.get_logger()
@@ -347,7 +348,7 @@ async def _transcribe_openai(audio_path: Path) -> TranscriptResult:
 
 # ── Mistral Voxtral (EU) ──
 
-VOXTRAL_URL = "https://api.mistral.ai/v1/audio/transcriptions"
+VOXTRAL_URL = f"{MISTRAL_API}/v1/audio/transcriptions"
 MAX_CONTEXT_BIAS = 100   # Mistral accepts up to 100 words or phrases
 
 
