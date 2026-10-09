@@ -1,6 +1,6 @@
 #!/bin/bash
 # =============================================================================
-# VitaScribe — Stop Alles (dubbelklik om te stoppen)
+# VitaScribe - Stop Alles (dubbelklik om te stoppen)
 # =============================================================================
 clear
 RED='\033[0;31m'

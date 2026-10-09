@@ -1,5 +1,5 @@
 """
-SoepConcept model — SOEP-dossiervoering concept.
+SoepConcept model - SOEP-dossiervoering concept.
 """
 
 from __future__ import annotations

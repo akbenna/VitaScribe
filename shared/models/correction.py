@@ -1,5 +1,5 @@
 """
-Correction model — Arts-correcties op SOEP (feedbackloop).
+Correction model - Arts-correcties op SOEP (feedbackloop).
 """
 
 from __future__ import annotations

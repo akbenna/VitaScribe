@@ -1,5 +1,5 @@
 # =============================================================================
-# AI-Consultassistent — Python Dependencies
+# AI-Consultassistent - Python Dependencies
 # =============================================================================
 
 # --- Web Framework ---
@@ -15,7 +15,7 @@ alembic==1.14.1
 # --- Redis ---
 redis[hiredis]==5.2.1
 
-# --- PyTorch (GPU — vereist voor Whisper + PyAnnote) ---
+# --- PyTorch (GPU - vereist voor Whisper + PyAnnote) ---
 # Installeer via: pip install torch --index-url https://download.pytorch.org/whl/cu124
 torch>=2.4.0
 

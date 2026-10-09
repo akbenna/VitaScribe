@@ -522,13 +522,13 @@
     azure_tts: 'Azure (voorlezen)', mistral_tts: 'Mistral (voorlezen)', groq: 'Groq', openai: 'OpenAI' };
 
   function geld(n, valuta) {
-    if (n === null || n === undefined) return '—';
+    if (n === null || n === undefined) return '-';
     var teken = valuta === 'EUR' ? '€ ' : '$ ';
     return teken + n.toLocaleString('nl-NL', { minimumFractionDigits: 2, maximumFractionDigits: n < 1 ? 3 : 2 });
   }
   function geldregel(obj) {
     var delen = Object.keys(obj || {}).map(function (v) { return geld(obj[v], v); });
-    return delen.length ? delen.join(' + ') : '—';
+    return delen.length ? delen.join(' + ') : '-';
   }
   function hoeveel(r) {
     var d = [];
@@ -537,7 +537,7 @@
     if (r.cache_r || r.cache_w) d.push('cache ' + Math.round(r.cache_w / 1000) + 'k gezet, ' + Math.round(r.cache_r / 1000) + 'k gelezen');
     if (r.minuten) d.push(r.minuten.toLocaleString('nl-NL') + ' min');
     if (r.tekens) d.push(r.tekens.toLocaleString('nl-NL') + ' tekens');
-    return d.join(' · ') || '—';
+    return d.join(' · ') || '-';
   }
 
   function kostenblok() {

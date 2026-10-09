@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# VitaScribe — Zelflerende jobs (Fase 2)
+# VitaScribe - Zelflerende jobs (Fase 2)
 # =============================================================================
 # Draait beide leerjobs achter elkaar:
 #   1. Vocabulaire-job  (niveau 1): leert woordenlijstcorrecties uit feedback

@@ -1,4 +1,4 @@
-# CLAUDE.md — AI-Consultassistent
+# CLAUDE.md - AI-Consultassistent
 
 ## Projectoverzicht
 

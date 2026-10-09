@@ -1,5 +1,5 @@
 """
-DetectionResult model — Rode vlaggen + ontbrekende informatie.
+DetectionResult model - Rode vlaggen + ontbrekende informatie.
 """
 
 from __future__ import annotations

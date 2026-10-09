@@ -39,7 +39,7 @@ def _sql(query: str):
 
 
 def _as_dict(value) -> Dict:
-    """JSONB komt soms als dict, soms als string terug — normaliseer."""
+    """JSONB komt soms als dict, soms als string terug - normaliseer."""
     if value is None:
         return {}
     if isinstance(value, dict):

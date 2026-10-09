@@ -1,6 +1,6 @@
 #!/bin/bash
 # =============================================================================
-# VitaScribe — Systeemcheck vóór Opstarten
+# VitaScribe - Systeemcheck vóór Opstarten
 # =============================================================================
 # Controleert of alle vereisten aanwezig zijn voor lokale deployment.
 # Draai dit VOOR docker compose up.
@@ -50,7 +50,7 @@ if command -v nvidia-smi &>/dev/null; then
     # VRAM check
     MEM_MB=$(nvidia-smi --query-gpu=memory.total --format=csv,noheader,nounits 2>/dev/null | head -1)
     if [ -n "$MEM_MB" ] && [ "$MEM_MB" -lt 8000 ]; then
-        echo -e "      ${YELLOW}WAARSCHUWING: <8GB VRAM — Whisper large-v3 + Llama 3.3 8B past krap${NC}"
+        echo -e "      ${YELLOW}WAARSCHUWING: <8GB VRAM - Whisper large-v3 + Llama 3.3 8B past krap${NC}"
         echo "      Aanbevolen: ≥12GB VRAM (RTX 3060 12GB, RTX 3090, RTX 4070+)"
     fi
 else
@@ -67,7 +67,7 @@ if docker info 2>/dev/null | grep -q "nvidia"; then
 elif command -v nvidia-container-cli &>/dev/null; then
     echo -e "${GREEN}OK${NC} (nvidia-container-cli gevonden)"
 else
-    echo -e "${YELLOW}ONZEKER${NC} — kan niet verifiëren"
+    echo -e "${YELLOW}ONZEKER${NC} - kan niet verifiëren"
     echo "      Als 'docker compose up' faalt met GPU errors:"
     echo "      https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html"
 fi
@@ -108,7 +108,7 @@ FREE_GB=$(df -BG . 2>/dev/null | tail -1 | awk '{print $4}' | tr -d 'G')
 if [ -n "$FREE_GB" ] && [ "$FREE_GB" -gt 20 ]; then
     echo -e "${GREEN}OK${NC} (${FREE_GB}GB beschikbaar)"
 elif [ -n "$FREE_GB" ]; then
-    echo -e "${YELLOW}WEINIG${NC} (${FREE_GB}GB — aanbevolen ≥20GB)"
+    echo -e "${YELLOW}WEINIG${NC} (${FREE_GB}GB - aanbevolen ≥20GB)"
     echo "      Whisper model (~3GB) + Ollama model (~5GB) + Docker images"
 else
     echo -e "${YELLOW}ONZEKER${NC}"
@@ -121,7 +121,7 @@ if [ -f ".env" ]; then
     if [ -n "$HF" ] && [ "$HF" != "CHANGE_ME" ]; then
         echo -e "${GREEN}OK${NC}"
     else
-        echo -e "${YELLOW}ONTBREEKT${NC} — diarisatie (arts/patient herkenning) werkt niet"
+        echo -e "${YELLOW}ONTBREEKT${NC} - diarisatie (arts/patient herkenning) werkt niet"
         echo "      Maak een token aan op https://huggingface.co/settings/tokens"
         echo "      Accepteer de PyAnnote licentie op https://huggingface.co/pyannote/speaker-diarization-3.1"
     fi
@@ -132,9 +132,9 @@ fi
 echo ""
 echo "========================================"
 if [ $ERRORS -gt 0 ]; then
-    echo -e " ${RED}${ERRORS} PROBLEMEN GEVONDEN — fix deze eerst${NC}"
+    echo -e " ${RED}${ERRORS} PROBLEMEN GEVONDEN - fix deze eerst${NC}"
 else
-    echo -e " ${GREEN}ALLES OK — klaar voor: docker compose up -d${NC}"
+    echo -e " ${GREEN}ALLES OK - klaar voor: docker compose up -d${NC}"
 fi
 echo "========================================"
 echo ""

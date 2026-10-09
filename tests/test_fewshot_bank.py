@@ -117,7 +117,7 @@ class _FakeSession:
 
 def test_builder_populates_bank_and_scrubs(tmp_path):
     out = tmp_path / "bank.json"
-    # soep_corrected als dict (JSONB) en als string — beide moeten werken
+    # soep_corrected als dict (JSONB) en als string - beide moeten werken
     rows = [
         ("fb1", {"S": "meneer Jansen met hoofdpijn", "O": "geen LO",
                  "E": "spanningshoofdpijn", "P": "paracetamol"}),

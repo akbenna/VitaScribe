@@ -1,4 +1,4 @@
-# VitaScribe — Go-Live Deployment Guide
+# VitaScribe - Go-Live Deployment Guide
 
 ## Overzicht
 
@@ -10,14 +10,14 @@
 
 ---
 
-## Stap 1 — Railway Project Aanmaken
+## Stap 1 - Railway Project Aanmaken
 
 1. Ga naar [railway.app](https://railway.app) en log in met GitHub
 2. Klik **New Project** → **Deploy from GitHub repo**
 3. Selecteer je VitaScribe repository
 4. Railway detecteert automatisch `railway.toml` en `Dockerfile.railway`
 
-## Stap 2 — Database & Redis Toevoegen
+## Stap 2 - Database & Redis Toevoegen
 
 In het Railway dashboard:
 
@@ -26,7 +26,7 @@ In het Railway dashboard:
 3. (Optioneel) Klik **+ New** → **Database** → **Redis**
 4. Railway maakt `REDIS_URL` automatisch aan
 
-## Stap 3 — Environment Variables Instellen
+## Stap 3 - Environment Variables Instellen
 
 Ga naar je service → **Variables** en stel in:
 
@@ -35,14 +35,14 @@ Ga naar je service → **Variables** en stel in:
 APP_ENV=production
 APP_SECRET_KEY=<genereer: openssl rand -hex 32>
 
-# CORS — je Vercel frontend URL. Alleen services/api leest deze variabele. De
+# CORS - je Vercel frontend URL. Alleen services/api leest deze variabele. De
 # cloud-API die Railway draait (Dockerfile.railway: services.cloud_api) laat elke
 # herkomst toe, omdat de extensie vanaf chrome-extension:// aanroept.
 # Tijdens de overstap staan beide erin: het nieuwe adres en het huidige live adres.
 # Het oude kan eruit zodra de frontend alleen nog op vitascribe.vercel.app draait.
 CORS_ALLOWED_ORIGINS=https://vitascribe.vercel.app,https://smartvoice-nine.vercel.app
 
-# Database — Railway vult DATABASE_URL automatisch in
+# Database - Railway vult DATABASE_URL automatisch in
 # Je hoeft POSTGRES_* niet handmatig te zetten
 
 # Eerste keer users aanmaken
@@ -50,11 +50,11 @@ SEED_ON_START=true
 ADMIN_PASSWORD=<kies een sterk wachtwoord>
 ARTS_PASSWORD=<kies een sterk wachtwoord>
 
-# STT — Deepgram cloud API (geen GPU nodig)
+# STT - Deepgram cloud API (geen GPU nodig)
 CLOUD_STT_PROVIDER=deepgram
 CLOUD_STT_API_KEY=<je Deepgram API key>
 
-# LLM — Cloud fallback (geen lokale Ollama nodig)
+# LLM - Cloud fallback (geen lokale Ollama nodig)
 CLOUD_FALLBACK_ENABLED=true
 CLOUD_FALLBACK_PROVIDER=mistral
 CLOUD_FALLBACK_API_KEY=<je Mistral API key>
@@ -66,7 +66,7 @@ AUDIT_LOG_RETENTION_YEARS=5
 
 > Na eerste deploy: zet `SEED_ON_START=false` om te voorkomen dat seed elke keer draait.
 
-## Stap 4 — Deploy
+## Stap 4 - Deploy
 
 Railway bouwt automatisch bij push naar main. Je kunt ook handmatig triggeren:
 
@@ -77,7 +77,7 @@ Railway bouwt automatisch bij push naar main. Je kunt ook handmatig triggeren:
    naam met opzet: het staat in de extensie-instellingen op elke werkplek en in het
    installatiebeleid, en een ander adres betekent op elke pc opnieuw instellen.
 
-## Stap 5 — Frontend Koppelen aan Backend
+## Stap 5 - Frontend Koppelen aan Backend
 
 In het **Vercel** dashboard:
 
@@ -89,7 +89,7 @@ In het **Vercel** dashboard:
    (vervang met je daadwerkelijke Railway URL)
 3. Klik **Redeploy** om de nieuwe env var actief te maken
 
-## Stap 6 — Testen
+## Stap 6 - Testen
 
 1. Ga naar `https://vitascribe.vercel.app` (of, tot de overstap, `https://smartvoice-nine.vercel.app`)
 2. Log in met `arts1` / het wachtwoord dat je hebt ingesteld

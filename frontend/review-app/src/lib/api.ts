@@ -1,5 +1,5 @@
 /**
- * API Client — AI-Consultassistent
+ * API Client - AI-Consultassistent
  * Typed fetch wrapper met JWT authenticatie.
  */
 

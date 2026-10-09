@@ -1,4 +1,4 @@
-/** node --test tests/js/kosten.test.js — de kostenregel onder het verslag. */
+/** node --test tests/js/kosten.test.js - de kostenregel onder het verslag. */
 const test = require('node:test');
 const assert = require('node:assert');
 const K = require('../../chrome-extension/lib/kosten.js');

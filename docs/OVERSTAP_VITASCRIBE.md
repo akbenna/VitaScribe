@@ -7,7 +7,7 @@ staan buiten de repo, bij Railway, bij Vercel, op de server en in de browser van
 elke werkplek. Die zet je zelf om, in deze volgorde. Tot dat gebeurd is, blijft
 alles gewoon werken: waar de oude naam nog live is, vangt de code hem op.
 
-## 1. De sleutel van de extensie — eerst, en voorzichtig
+## 1. De sleutel van de extensie - eerst, en voorzichtig
 
 De sleutel staat niet in git, en hoort daar ook niet. Of er al een is, zie je op
 één werkplek op `edge://extensions`:

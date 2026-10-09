@@ -3,7 +3,7 @@ import "./globals.css";
 import { AuthProvider } from "@/lib/auth";
 
 export const metadata: Metadata = {
-  title: "AI-Consultassistent — Review",
+  title: "AI-Consultassistent - Review",
   description:
     "Privacy-first AI-systeem voor consultdocumentatie in de huisartsenpraktijk",
 };

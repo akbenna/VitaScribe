@@ -6,7 +6,7 @@ Optionele verfijning van woord-timestamps via wav2vec2 forced alignment
 (WhisperX). Faster-Whisper geeft segment-gedreven timestamps die kunnen
 "driften"; wav2vec2-alignment legt elk woord op een echte audiogrens. Dat maakt
 de woord-niveau diarisatie (services/transcription/diarization_align.py) nóg
-preciezer — vooral op sprekergrenzen midden in een segment.
+preciezer - vooral op sprekergrenzen midden in een segment.
 
 Zwaar (extra model + GPU) en daarom standaard uit. Schakel in via
 WHISPER_USE_FORCED_ALIGNMENT=true. Bij ontbrekende library of fout valt de
@@ -81,7 +81,7 @@ def forced_align(
     verfijnde woord-timestamps. Vereist whisperx + torch.
 
     Bij elke fout (geen lib, geen audio, modelprobleem) wordt het origineel
-    onveranderd teruggegeven — de pipeline degradeert dan naar Faster-Whisper.
+    onveranderd teruggegeven - de pipeline degradeert dan naar Faster-Whisper.
     """
     try:
         import whisperx

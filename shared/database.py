@@ -1,5 +1,5 @@
 """
-Database connectie — Async SQLAlchemy engine.
+Database connectie - Async SQLAlchemy engine.
 
 Ondersteunt PostgreSQL (productie) en SQLite (development).
 Keuze op basis van USE_SQLITE env var of afwezigheid van asyncpg.

@@ -44,7 +44,7 @@ hetroosendael.nl stuurt door).
 
 **Taal:** Nederlands.
 
-**Naam:** komt uit het manifest: *VitaScribe — AI Consultassistent*.
+**Naam:** komt uit het manifest: *VitaScribe - AI Consultassistent*.
 
 **Categorie:** Productiviteit.
 

@@ -1,8 +1,8 @@
 # =============================================================================
-# VitaScribe Cloud API — Railway Deployment
+# VitaScribe Cloud API - Railway Deployment
 # =============================================================================
 # Lightweight API server: no GPU, no ML models.
-# STT via Deepgram/Groq, LLM via Mistral/Claude — all cloud API calls.
+# STT via Deepgram/Groq, LLM via Mistral/Claude - all cloud API calls.
 # =============================================================================
 
 FROM python:3.12-slim

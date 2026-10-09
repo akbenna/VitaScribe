@@ -6,7 +6,7 @@ Akoestische Whisper fine-tuning (OPTIONEEL, audio-retentie vereist)
 Fine-tunet Whisper op (audio, gecorrigeerd transcript)-paren voor de beste
 WER-winst op Nederlands/dialect en medische termen.
 
-LET OP — privacy: het standaard VitaScribe-beleid VERWIJDERT audio na
+LET OP - privacy: het standaard VitaScribe-beleid VERWIJDERT audio na
 goedkeuring. Dit script is dus alleen bruikbaar als je een expliciete,
 toestemming-gedekte audio-retentie inricht voor trainingsdoeleinden (DPIA +
 bewaartermijn + verwijderrecht). Zonder retentie: gebruik in plaats hiervan de

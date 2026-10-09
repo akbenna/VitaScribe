@@ -14,5 +14,5 @@ aandoening het is. Dat is een gezondheidsgegeven. De code wordt daarom in de
 browser van de arts gemaakt en verlaat die niet.
 
 Bijwerken: haal `dist/qrcode.js` van de nieuwe versie op, vervang dit bestand,
-en draai `node --test tests/js/thuisarts.test.js` — de proef op de afdruk
+en draai `node --test tests/js/thuisarts.test.js` - de proef op de afdruk
 controleert dat er nog een QR uit komt.

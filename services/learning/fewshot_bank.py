@@ -15,7 +15,7 @@ gepseudonimiseerd in een aparte bank (zelfde bewaarregime als consulten).
 brondata.
 
 Bewust dependency-vrij (stdlib): retrieval via gewogen token-gelijkenis, geen
-embeddings/externe modellen — past bij de lokale, auditeerbare opzet.
+embeddings/externe modellen - past bij de lokale, auditeerbare opzet.
 """
 
 from __future__ import annotations

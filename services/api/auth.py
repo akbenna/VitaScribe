@@ -1,5 +1,5 @@
 """
-JWT Authenticatie — Login, token generatie en role-based access.
+JWT Authenticatie - Login, token generatie en role-based access.
 """
 
 from datetime import datetime, timedelta, timezone

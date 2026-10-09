@@ -1,5 +1,5 @@
 # =============================================================================
-# Railway/Cloud Dependencies — CPU-only (geen Whisper/PyAnnote/Torch)
+# Railway/Cloud Dependencies - CPU-only (geen Whisper/PyAnnote/Torch)
 # =============================================================================
 
 # --- Web Framework ---

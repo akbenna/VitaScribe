@@ -3,7 +3,7 @@ Few-shot koude start (seed)
 ===========================
 
 Laadt gecureerde, synthetische SOEP-voorbeelden in de few-shot-bank zodat de
-SOEP-generatie vanaf dag 1 — vóór er echte artsfeedback is — een sterke
+SOEP-generatie vanaf dag 1 - vóór er echte artsfeedback is - een sterke
 stijl-ankering heeft. De voorbeelden bevatten GEEN patiëntdata en sturen alleen
 de stijl (de prompt zegt expliciet: neem de stijl over, nooit de inhoud).
 

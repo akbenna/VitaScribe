@@ -138,7 +138,7 @@ class AudioPreprocessor:
 
         if path.stat().st_size < 100:
             raise AudioPreprocessingError(
-                f"Bestand te klein ({path.stat().st_size} bytes) — waarschijnlijk corrupt"
+                f"Bestand te klein ({path.stat().st_size} bytes) - waarschijnlijk corrupt"
             )
 
         ext = path.suffix.lower()
@@ -241,7 +241,7 @@ class AudioPreprocessor:
         """
         if not self._ffmpeg_path:
             logger.warning(
-                "ffmpeg niet beschikbaar — skip conversie, gebruik origineel",
+                "ffmpeg niet beschikbaar - skip conversie, gebruik origineel",
                 source=str(source),
             )
             return source
@@ -289,7 +289,7 @@ class AudioPreprocessor:
 
         if not output_path.exists() or output_path.stat().st_size == 0:
             raise AudioPreprocessingError(
-                "Geconverteerd bestand is leeg — bronbestand mogelijk corrupt"
+                "Geconverteerd bestand is leeg - bronbestand mogelijk corrupt"
             )
 
         logger.info(

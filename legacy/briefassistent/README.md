@@ -1,6 +1,6 @@
 # BriefAssistent v4
 
-Huisarts informatiebrief assistent — Chrome/Edge extensie met Bricks HIS integratie.
+Huisarts informatiebrief assistent - Chrome/Edge extensie met Bricks HIS integratie.
 
 ## Installatie
 

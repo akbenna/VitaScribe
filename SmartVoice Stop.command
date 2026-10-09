@@ -1,6 +1,6 @@
 #!/bin/bash
 # =============================================================================
-# SmartVoice — Stop Alles (dubbelklik om te stoppen)
+# SmartVoice - Stop Alles (dubbelklik om te stoppen)
 # =============================================================================
 clear
 RED='\033[0;31m'

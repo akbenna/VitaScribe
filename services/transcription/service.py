@@ -127,18 +127,18 @@ class TranscriptionService:
                 import torch
                 if device == "cuda" and not torch.cuda.is_available():
                     if hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
-                        # Apple Silicon — faster-whisper ondersteunt geen MPS, gebruik CPU
+                        # Apple Silicon - faster-whisper ondersteunt geen MPS, gebruik CPU
                         device = "cpu"
                         compute_type = "int8"
-                        logger.info("CUDA niet beschikbaar, Apple Silicon gedetecteerd — CPU mode met int8")
+                        logger.info("CUDA niet beschikbaar, Apple Silicon gedetecteerd - CPU mode met int8")
                     else:
                         device = "cpu"
                         compute_type = "int8"
-                        logger.info("CUDA niet beschikbaar — CPU mode met int8")
+                        logger.info("CUDA niet beschikbaar - CPU mode met int8")
             except ImportError:
                 device = "cpu"
                 compute_type = "int8"
-                logger.info("PyTorch niet beschikbaar — CPU mode met int8")
+                logger.info("PyTorch niet beschikbaar - CPU mode met int8")
 
             self.whisper_model = WhisperModel(
                 self.config.whisper.model,

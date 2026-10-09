@@ -4,7 +4,7 @@ VitaScribe - Few-shot koude start (seed)
 ========================================
 
 Laadt gecureerde, synthetische SOEP-voorbeelden in de few-shot-bank, zodat de
-SOEP-generatie vanaf dag 1 op niveau functioneert — nog vóór er echte
+SOEP-generatie vanaf dag 1 op niveau functioneert - nog vóór er echte
 artsfeedback is.
 
 Gebruik:

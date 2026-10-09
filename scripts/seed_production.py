@@ -1,5 +1,5 @@
 """
-Seed script — Maakt initiële gebruiker(s) aan in productie database.
+Seed script - Maakt initiële gebruiker(s) aan in productie database.
 
 Gebruik:
     python scripts/seed_production.py
@@ -29,7 +29,7 @@ async def seed():
         # Check of er al gebruikers bestaan
         result = await db.execute(select(User).limit(1))
         if result.scalar_one_or_none():
-            print("[seed] Database bevat al gebruikers — overgeslagen.")
+            print("[seed] Database bevat al gebruikers - overgeslagen.")
             return
 
         # Admin gebruiker

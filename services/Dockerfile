@@ -1,5 +1,5 @@
 # =============================================================================
-# AI-Consultassistent — Backend Services (Lokale GPU)
+# AI-Consultassistent - Backend Services (Lokale GPU)
 # =============================================================================
 # Multi-stage build: Python 3.12 + CUDA runtime voor Whisper/PyAnnote
 # Build context: project root (niet services/)
@@ -27,7 +27,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN python3.12 -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
-# PyTorch met CUDA 12.4 — apart installeren voor correcte GPU build
+# PyTorch met CUDA 12.4 - apart installeren voor correcte GPU build
 RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cu124
 
 # Overige dependencies (Whisper, PyAnnote, FastAPI, etc.)

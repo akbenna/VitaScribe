@@ -1,5 +1,5 @@
 """
-Test configuratie — Fixtures voor pytest.
+Test configuratie - Fixtures voor pytest.
 """
 
 import asyncio

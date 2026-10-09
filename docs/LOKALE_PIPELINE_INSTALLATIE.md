@@ -1,4 +1,4 @@
-# VitaScribe — Lokale pipeline installeren (on-premise)
+# VitaScribe - Lokale pipeline installeren (on-premise)
 
 Dit is het installatie-runbook voor de **privacy-first lokale pipeline**: Whisper
 (spraak→tekst) + PyAnnote (sprekerscheiding) + Ollama (lokaal LLM voor SOEP) +
@@ -8,9 +8,9 @@ cloud (conform NEN 7510 / AVG).
 Bedoeld voor de persoon die de server inricht (eigen IT / externe hulp). Er zijn
 twee fases:
 
-- **Fase A — Voorlopig (nu, zonder GPU):** draaien op CPU om te testen en te
+- **Fase A - Voorlopig (nu, zonder GPU):** draaien op CPU om te testen en te
   demonstreren. Trager, kleiner Whisper-model, maar het volledige proces werkt.
-- **Fase B — Definitief (zodra de NVIDIA-GPU er is):** omschakelen naar GPU voor
+- **Fase B - Definitief (zodra de NVIDIA-GPU er is):** omschakelen naar GPU voor
   productiekwaliteit en -snelheid.
 
 De applicatiecode is identiek; alleen de configuratie (`.env`) en het Docker
@@ -28,7 +28,7 @@ Compose-profiel verschillen.
 | Whisper-model | `small` of `medium` | `large-v3-turbo` |
 | Snelheid | minuten per consult | (bijna) realtime |
 
-Verder nodig: een **HuggingFace-token** (gratis) voor de PyAnnote-diarisatie —
+Verder nodig: een **HuggingFace-token** (gratis) voor de PyAnnote-diarisatie -
 maak een account op huggingface.co, accepteer de voorwaarden van
 `pyannote/speaker-diarization-3.1`, en genereer een token.
 
@@ -50,7 +50,7 @@ openssl rand -hex 32   # voor DB_ENCRYPTION_KEY
 
 ---
 
-## Fase A — Voorlopig draaien op CPU (nu)
+## Fase A - Voorlopig draaien op CPU (nu)
 
 Doel: testen zonder GPU. Gebruik een klein/sneller Whisper-model.
 
@@ -111,7 +111,7 @@ Doel: testen zonder GPU. Gebruik een klein/sneller Whisper-model.
 
 ---
 
-## Fase B — Definitief op GPU (zodra de NVIDIA-machine er is)
+## Fase B - Definitief op GPU (zodra de NVIDIA-machine er is)
 
 1. **GPU-drivers + toolkit** (Ubuntu):
    ```bash
@@ -181,13 +181,13 @@ NEXT_PUBLIC_API_URL=http://localhost:8000 npm run dev   # of :8001 bij CPU
 - [ ] Server staat in de praktijk, niet bereikbaar vanaf internet (alleen LAN/VPN).
 - [ ] `APP_ENV=production`, sterke `APP_SECRET_KEY` en `DB_ENCRYPTION_KEY` gezet.
 - [ ] `CLOUD_FALLBACK_ENABLED=false` (geen cloud).
-- [ ] Audio wordt na goedkeuring verwijderd (standaardgedrag) — geverifieerd.
+- [ ] Audio wordt na goedkeuring verwijderd (standaardgedrag) - geverifieerd.
 - [ ] Back-up en encryptie van de database geregeld.
 - [ ] DPIA bijgewerkt; verwerkersregister klopt (geen externe verwerkers nodig).
 
 ---
 
-## Hulp aan externe partij — korte checklist
+## Hulp aan externe partij - korte checklist
 
 1. Ubuntu-server met NVIDIA-GPU + drivers + Docker + NVIDIA Container Toolkit.
 2. `git clone`, `cp .env.gpu.example .env`, geheimen + `HF_TOKEN` invullen.

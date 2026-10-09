@@ -1,5 +1,5 @@
 """
-PatientInstruction model — Patientinstructie in eenvoudig Nederlands.
+PatientInstruction model - Patientinstructie in eenvoudig Nederlands.
 """
 
 from __future__ import annotations

@@ -4,7 +4,7 @@ Diff-miner
 
 Extraheert kandidaat-correcties (fout -> goed) uit een origineel en een door de
 arts gecorrigeerd transcript. Pure stdlib, volledig deterministisch en
-unit-testbaar — geen DB, geen LLM.
+unit-testbaar - geen DB, geen LLM.
 
 Aanpak: woord-alignment via difflib.SequenceMatcher. We kijken uitsluitend naar
 'replace'-operaties (vervangingen) van een korte woordreeks. Insertions en
@@ -50,7 +50,7 @@ _STOPWORDS = {
 
 @dataclass(frozen=True)
 class CandidateCorrection:
-    wrong: str   # genormaliseerd (lowercase) — sleutel voor de woordenlijst
+    wrong: str   # genormaliseerd (lowercase) - sleutel voor de woordenlijst
     correct: str # behoudt de schrijfwijze uit het gecorrigeerde transcript
 
 

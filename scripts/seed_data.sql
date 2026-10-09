@@ -1,5 +1,5 @@
 -- =============================================================================
--- Seed Data — Testgebruikers + demo consult
+-- Seed Data - Testgebruikers + demo consult
 -- =============================================================================
 -- Draai na 001_init.sql:
 --   psql -h localhost -U ca_app -d consultassistent -f scripts/seed_data.sql

@@ -1,6 +1,6 @@
 #!/bin/bash
 # =============================================================================
-# SmartVoice — Start Alles (dubbelklik om te starten)
+# SmartVoice - Start Alles (dubbelklik om te starten)
 # =============================================================================
 clear
 GREEN='\033[0;32m'

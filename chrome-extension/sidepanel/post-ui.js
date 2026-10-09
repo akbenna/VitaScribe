@@ -203,7 +203,7 @@
       li.appendChild(el('span', 'po-pijl', PIJL[b.richting] || '·'));
       var t = el('span', '');
       t.appendChild(el('b', '', b.bepaling));
-      t.append(' ' + b.waarde + (b.duiding ? ' — ' + b.duiding : ''));
+      t.append(' ' + b.waarde + (b.duiding ? ': ' + b.duiding : ''));
       li.appendChild(t);
       lijst.appendChild(li);
     });

@@ -1,5 +1,5 @@
 /**
- * PatientInstructie component — Toont gegenereerde patientinstructie in eenvoudig Nederlands.
+ * PatientInstructie component - Toont gegenereerde patientinstructie in eenvoudig Nederlands.
  */
 
 "use client";
@@ -37,7 +37,7 @@ export default function PatientInstruction({ instruction, sessionId }: PatientIn
             <h1>Informatie voor u</h1>
             <div>${instruction.replace(/\n/g, "<br>")}</div>
             <div class="footer">
-              AI-Consultassistent — Dit document is gegenereerd ter ondersteuning van uw huisarts.
+              AI-Consultassistent - Dit document is gegenereerd ter ondersteuning van uw huisarts.
               Neem bij vragen altijd contact op met uw huisartsenpraktijk.
             </div>
           </body>

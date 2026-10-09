@@ -163,7 +163,7 @@ const doc = new Document({
         }),
         new Paragraph({
           spacing: { after: 60 },
-          children: [new TextRun({ text: "Status: Intern werkdocument \u2014 niet voor publicatie", font: "Arial", size: 22, color: "444444" })],
+          children: [new TextRun({ text: "Status: Intern werkdocument - niet voor publicatie", font: "Arial", size: 22, color: "444444" })],
         }),
         new Paragraph({
           spacing: { after: 60 },
@@ -184,7 +184,7 @@ const doc = new Document({
         default: new Header({
           children: [new Paragraph({
             alignment: AlignmentType.RIGHT,
-            children: [new TextRun({ text: "Technische Memo \u2014 Eigen AI-server", font: "Arial", size: 16, color: "999999", italics: true })],
+            children: [new TextRun({ text: "Technische Memo - Eigen AI-server", font: "Arial", size: 16, color: "999999", italics: true })],
           })],
         }),
       },
@@ -204,8 +204,8 @@ const doc = new Document({
         heading1("1. Managementsamenvatting"),
         bodyText(
           "Dit document onderbouwt de investering in een eigen AI-server voor de huisartsenpraktijk. " +
-          "De server bedient meerdere producten \u2014 VitaScribe (consultdocumentatie), ProVita Care (telehealth/leefstijl), " +
-          "website-AI en toekomstige toepassingen \u2014 vanuit \u00e9\u00e9n lokale machine. De kernvoordelen zijn: " +
+          "De server bedient meerdere producten - VitaScribe (consultdocumentatie), ProVita Care (telehealth/leefstijl), " +
+          "website-AI en toekomstige toepassingen - vanuit \u00e9\u00e9n lokale machine. De kernvoordelen zijn: " +
           "volledige privacygarantie (geen pati\u00ebntdata verlaat het gebouw), onafhankelijkheid van externe leveranciers " +
           "en abonnementen, en structureel lagere kosten na de initi\u00eble investering."
         ),
@@ -219,7 +219,7 @@ const doc = new Document({
         // ===== 2. PRODUCTOVERZICHT =====
         heading1("2. Producten op de server"),
 
-        heading2("2.1 VitaScribe \u2014 AI-Consultassistent"),
+        heading2("2.1 VitaScribe - AI-Consultassistent"),
         bodyText(
           "VitaScribe neemt consultaudio op via een Chrome-extensie, transcribeert de spraak met Faster-Whisper " +
           "(Large v3 Turbo), en genereert SOEP-documentatie via een lokaal LLM (Ollama/Llama 3.3 8B). " +
@@ -229,7 +229,7 @@ const doc = new Document({
         boldBodyText("GPU-belasting: ", "Whisper Large v3 Turbo vereist ~6 GB VRAM. Llama 3.3 8B (Q4) vereist ~5\u20136 GB VRAM. " +
           "Verwerkingstijd per consult: 30\u201390 seconden (STT + LLM). Piekbelasting: sequentieel, niet continu."),
 
-        heading2("2.2 ProVita Care \u2014 Telehealth Platform"),
+        heading2("2.2 ProVita Care - Telehealth Platform"),
         bodyText(
           "ProVita Care is een telehealth-platform voor leefstijlinterventies (GLI, CVRM, obesitas). " +
           "Het platform gebruikt AI voor het genereren van gepersonaliseerde behandelplannen op basis van " +
@@ -238,10 +238,10 @@ const doc = new Document({
           "afhankelijkheid van Anthropic\u2019s cloud \u00e9n de bijbehorende API-kosten."
         ),
         boldBodyText("GPU-belasting: ", "Behandelplangeneratie is niet tijdkritisch (arts reviewt achteraf). " +
-          "Een groter model (32B\u201370B) is hier wenselijk voor kwaliteit. Bij 70B Q4 is ~40 GB VRAM nodig \u2014 " +
+          "Een groter model (32B\u201370B) is hier wenselijk voor kwaliteit. Bij 70B Q4 is ~40 GB VRAM nodig - " +
           "dit past niet op een consumentenkaart. Met 32B Q4 (~20 GB VRAM) is een RTX 4090 of RTX 5070 Ti toereikend."),
 
-        heading2("2.3 Website-AI \u2014 Pati\u00ebntcommunicatie"),
+        heading2("2.3 Website-AI - Pati\u00ebntcommunicatie"),
         bodyText(
           "Een AI-chatbot op de praktijkwebsite die veelgestelde vragen beantwoordt, triageinformatie geeft, " +
           "en pati\u00ebnten doorgeleidt naar de juiste zorgverlener. Dit vereist een lichtgewicht model (7\u20138B) " +
@@ -390,7 +390,7 @@ const doc = new Document({
         bodyText(
           "In de praktijk ziet een typische ochtend er zo uit: de arts draait 15 consulten tussen 8:00 en 12:00. " +
           "Na elk consult kost de VitaScribe-verwerking ~60 seconden GPU-tijd. Dat is 15 minuten GPU-belasting " +
-          "over 4 uur \u2014 6% bezettingsgraad. De overige 94% van de tijd staat de GPU beschikbaar voor " +
+          "over 4 uur - 6% bezettingsgraad. De overige 94% van de tijd staat de GPU beschikbaar voor " +
           "ProVita Care, de chatbot, of andere taken. Zelfs in een groepspraktijk met 3 artsen die tegelijk " +
           "afronden, is de wachttijd beperkt tot 2\u20133 minuten."
         ),
@@ -401,7 +401,7 @@ const doc = new Document({
         heading2("5.1 Lokaal vs. cloud: het fundamentele verschil"),
         bodyText(
           "Bij cloud-verwerking (Juvoly, Deepgram, OpenAI, Mistral) verlaat pati\u00ebntdata de praktijk. " +
-          "Hoe goed versleuteld en gecertificeerd ook \u2014 er is een externe verwerker die toegang heeft " +
+          "Hoe goed versleuteld en gecertificeerd ook - er is een externe verwerker die toegang heeft " +
           "tot medische data. Dit vereist een verwerkersovereenkomst, een DPIA, en vertrouwen in de " +
           "leverancier en diens toeleveranciers."
         ),
@@ -533,7 +533,7 @@ const doc = new Document({
           "De FastAPI-backend draait op een vast intern IP-adres (bijv. 192.168.1.100:8000). " +
           "De Chrome-extensie van VitaScribe wordt geconfigureerd met dit adres als API URL. " +
           "ProVita Care communiceert via dezelfde API. De website-chatbot wordt via een reverse proxy " +
-          "(Nginx/Caddy) ontsloten, zodat alleen de chatbot-endpoint extern bereikbaar is \u2014 " +
+          "(Nginx/Caddy) ontsloten, zodat alleen de chatbot-endpoint extern bereikbaar is - " +
           "de rest van de API blijft intern."
         ),
 
@@ -792,7 +792,7 @@ const doc = new Document({
           numbering: { reference: "numbers", level: 0 },
           spacing: { after: 100, line: 300 },
           children: [
-            new TextRun({ text: "Maand 1 \u2014 Hardware aanschaffen en OS installeren. ", bold: true, font: "Arial", size: 21 }),
+            new TextRun({ text: "Maand 1 - Hardware aanschaffen en OS installeren. ", bold: true, font: "Arial", size: 21 }),
             new TextRun({ text: "Ubuntu 22.04 LTS, NVIDIA-drivers, Docker, NVIDIA Container Toolkit.", font: "Arial", size: 21 }),
           ],
         }),
@@ -800,7 +800,7 @@ const doc = new Document({
           numbering: { reference: "numbers", level: 0 },
           spacing: { after: 100, line: 300 },
           children: [
-            new TextRun({ text: "Maand 1\u20132 \u2014 VitaScribe migreren naar lokale server. ", bold: true, font: "Arial", size: 21 }),
+            new TextRun({ text: "Maand 1\u20132 - VitaScribe migreren naar lokale server. ", bold: true, font: "Arial", size: 21 }),
             new TextRun({ text: "Docker Compose stack deployen. Extensie configureren op intern IP. Testen met eigen consulten.", font: "Arial", size: 21 }),
           ],
         }),
@@ -808,7 +808,7 @@ const doc = new Document({
           numbering: { reference: "numbers", level: 0 },
           spacing: { after: 100, line: 300 },
           children: [
-            new TextRun({ text: "Maand 2\u20133 \u2014 Feedbackloop bouwen. ", bold: true, font: "Arial", size: 21 }),
+            new TextRun({ text: "Maand 2\u20133 - Feedbackloop bouwen. ", bold: true, font: "Arial", size: 21 }),
             new TextRun({ text: "Correctie-UI, PostgreSQL feedback-tabel, promptoptimalisatie op basis van artscorrecties.", font: "Arial", size: 21 }),
           ],
         }),
@@ -816,7 +816,7 @@ const doc = new Document({
           numbering: { reference: "numbers", level: 0 },
           spacing: { after: 100, line: 300 },
           children: [
-            new TextRun({ text: "Maand 3\u20134 \u2014 ProVita Care lokaliseren. ", bold: true, font: "Arial", size: 21 }),
+            new TextRun({ text: "Maand 3\u20134 - ProVita Care lokaliseren. ", bold: true, font: "Arial", size: 21 }),
             new TextRun({ text: "Claude API vervangen door lokaal LLM. Behandelplangeneratie testen en kalibreren.", font: "Arial", size: 21 }),
           ],
         }),
@@ -824,7 +824,7 @@ const doc = new Document({
           numbering: { reference: "numbers", level: 0 },
           spacing: { after: 100, line: 300 },
           children: [
-            new TextRun({ text: "Maand 4\u20135 \u2014 Website-chatbot deployen. ", bold: true, font: "Arial", size: 21 }),
+            new TextRun({ text: "Maand 4\u20135 - Website-chatbot deployen. ", bold: true, font: "Arial", size: 21 }),
             new TextRun({ text: "RAG-pipeline over NHG-standaarden. Externe endpoint via reverse proxy.", font: "Arial", size: 21 }),
           ],
         }),
@@ -832,7 +832,7 @@ const doc = new Document({
           numbering: { reference: "numbers", level: 0 },
           spacing: { after: 100, line: 300 },
           children: [
-            new TextRun({ text: "Maand 5\u20136 \u2014 Monitoring en hardening. ", bold: true, font: "Arial", size: 21 }),
+            new TextRun({ text: "Maand 5\u20136 - Monitoring en hardening. ", bold: true, font: "Arial", size: 21 }),
             new TextRun({ text: "Uptime Kuma, automatische backups, UPS, beveiligingsaudit, documentatie voor IT-partner.", font: "Arial", size: 21 }),
           ],
         }),
@@ -845,14 +845,14 @@ const doc = new Document({
           "privacyniveau dat geen enkele externe leverancier kan evenaren. De investering van " +
           "\u20ac1.500\u2013\u20ac3.500 verdient zich binnen anderhalf jaar terug en maakt de praktijk " +
           "eigenaar van haar eigen AI-infrastructuur. De server bedient niet \u00e9\u00e9n product maar " +
-          "een heel ecosysteem \u2014 van consultdocumentatie tot telehealth tot pati\u00ebntcommunicatie \u2014 " +
+          "een heel ecosysteem - van consultdocumentatie tot telehealth tot pati\u00ebntcommunicatie - " +
           "en is uitbreidbaar naarmate nieuwe toepassingen zich aandienen."
         ),
         bodyText(
           "De belangrijkste strategische winst is onafhankelijkheid: geen abonnementen die jaarlijks stijgen, " +
           "geen leverancier die wordt overgenomen, geen data die het gebouw verlaat. " +
-          "Voor een huisartsenpraktijk die AI wil inzetten op een manier die past bij de waarden van het vak \u2014 " +
-          "privacy, autonomie, en zorg voor de pati\u00ebnt \u2014 is een eigen server de logische keuze."
+          "Voor een huisartsenpraktijk die AI wil inzetten op een manier die past bij de waarden van het vak - " +
+          "privacy, autonomie, en zorg voor de pati\u00ebnt - is een eigen server de logische keuze."
         ),
       ],
     },

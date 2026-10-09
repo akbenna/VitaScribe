@@ -1,4 +1,4 @@
-// content.js v4 — werkt op elke pagina inclusief Bricks
+// content.js v4 - werkt op elke pagina inclusief Bricks
 // Robuuste tekst-extractie met meerdere fallbacks
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {

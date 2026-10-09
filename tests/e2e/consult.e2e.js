@@ -794,7 +794,7 @@ async function listenPill(page, clickStop) {
   await tab.goto(BR + '/patient/a');
   await vp.click('#vis .vis-item:has(.vis-voor) button');
   await sleep(800);
-  check('ronde: juiste patiënt open = geopend zonder waarschuwing, met vinkje', (await vp.textContent('#status')).includes('deze patiënt staat open in Bricks ✓') &&
+  check('ronde: juiste patiënt open = geopend zonder waarschuwing, met vinkje', (await vp.textContent('#status')).includes('Deze patiënt staat open in Bricks ✓') &&
     (await vp.$eval('.soep-text[data-key="s"]', (e) => e.textContent)) === VISITE_VERSLAG.soep.s);
   await vp.click('#btn-consult-afsluiten');
   await sleep(800);

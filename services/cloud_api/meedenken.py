@@ -48,7 +48,7 @@ MAX_TOKENS = 1000
 OORDELEN = ("in_lijn", "deels", "afwijkend", "onbekend")
 
 _MEDICATIE = """\
-TAAK 1 — MEDICATIE HERKENNEN
+TAAK 1: MEDICATIE HERKENNEN
 - Zoek elk geneesmiddel in S en P (ook merknamen, afkortingen en verhaspelde \
   namen uit spraakherkenning).
 - "veld": "s" of "p", waar het staat.
@@ -72,7 +72,7 @@ _OPMERKING_ZONDER = """\
 - "opmerking": altijd een lege string."""
 
 _BELEID = """\
-TAAK 2 — MEEDENKEN MET HET BELEID (NHG)
+TAAK 2: MEEDENKEN MET HET BELEID (NHG)
 - Neem de werkdiagnose in E als uitgangspunt. Stel zelf geen andere diagnose.
 - Vergelijk P met de NHG-Standaard die daarbij hoort. "oordeel": \
   "in_lijn", "deels" (in lijn, maar iets wezenlijks ontbreekt of wijkt af), \
@@ -86,7 +86,7 @@ TAAK 2 — MEEDENKEN MET HET BELEID (NHG)
 - Patiëntfactoren (zwangerschap, nierfunctie, leeftijd, allergie) alleen \
   meewegen als ze in de SOEP staan.
 
-TAAK 3 — VOOR DE PATIËNT
+TAAK 3: VOOR DE PATIËNT
 - "thuisarts": hooguit 2 zoektermen voor een passende pagina op \
   Thuisarts.nl (bijv. "blaasontsteking"). Geen URL's. Leeg als niets past."""
 
