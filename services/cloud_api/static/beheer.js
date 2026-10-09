@@ -565,7 +565,7 @@
     var k = staat.kosten;
     if (!plek || !k) return;
     leeg(plek);
-    var keuze = el('select', { bij: function (e) { staat.kostenDagen = Number(e.target.value); laadKosten(); } },
+    var keuze = el('select', { style: 'width:auto', bij: function (e) { staat.kostenDagen = Number(e.target.value); laadKosten(); } },
       [7, 30, 90, 365].map(function (n) { return el('option', { value: String(n), tekst: 'laatste ' + n + ' dagen', selected: k.dagen === n }); }));
     plek.appendChild(el('div', { klasse: 'knoppen', style: 'justify-content:flex-start;align-items:center' }, keuze,
       el('span', { klasse: 'klein', tekst: 'Totaal: ' + geldregel(k.totaal) + ' · per maand (21 werkdagen): ' + geldregel(k.per_maand) })));
@@ -620,12 +620,18 @@
       el('div', { klasse: 'knoppen' }, el('button', { klasse: 'hoofd', tekst: 'Prijzen opslaan', klik: async function () {
         var uit = {};
         Object.keys(velden).forEach(function (s) {
+          var huidig = k.prijzen[s] || {};
           var r = { valuta: velden[s].valuta.value }, iets = false;
+          var anders = (huidig.valuta || 'USD') !== r.valuta;
           Object.keys(velden[s]).forEach(function (v) {
-            if (v !== 'valuta' && velden[s][v].value !== '') { r[v] = velden[s][v].value; iets = true; }
+            if (v === 'valuta' || velden[s][v].value === '') return;
+            r[v] = velden[s][v].value; iets = true;
+            if (Number(String(r[v]).replace(',', '.')) !== huidig[v]) anders = true;
           });
-          if (iets) uit[s] = r;
+          // Only what changed: an untouched standard price keeps its source.
+          if (iets && anders) uit[s] = r;
         });
+        if (!Object.keys(uit).length) { meld('Geen prijs veranderd.'); return; }
         try { await vraag('/kosten/prijzen', { methode: 'PUT', body: { prijzen: uit } }); meld('Prijzen opgeslagen.'); laadKosten(); }
         catch (e) { meld(e.message, true); }
       } })));
