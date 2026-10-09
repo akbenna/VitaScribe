@@ -506,6 +506,11 @@ class Instellingen(BaseModel):
     serveradres: Optional[str] = Field(None, max_length=200)
     winkellink: Optional[str] = Field(None, max_length=500)
     testgereedschap: Optional[bool] = None
+    stilte_inkorten: Optional[bool] = None
+
+
+# Switches stored as "aan"/"uit"; who flipped them, and when, stays in the admin log.
+SCHAKELAARS = (TESTGEREEDSCHAP, "stilte_inkorten")
 
 
 @router.get("/api/v1/beheer/instellingen")
@@ -517,18 +522,20 @@ async def instellingen_lezen(_: str = Depends(vereis_beheerder)):
         "serveradres": uit.get("serveradres", ""),
         "winkellink": uit.get("winkellink", ""),
         "testgereedschap": uit.get(TESTGEREEDSCHAP) == "aan",
+        "stilte_inkorten": uit.get("stilte_inkorten") == "aan",
     }
 
 
 @router.put("/api/v1/beheer/instellingen")
 async def instellingen_opslaan(invoer: Instellingen, door: str = Depends(vereis_beheerder)):
     for k, v in invoer.model_dump(exclude_unset=True).items():
-        if k == TESTGEREEDSCHAP:
-            # Who switched the test tools on or off, and when, stays in the admin log.
+        if k in SCHAKELAARS:
+            if v is None:
+                continue
             await register.execute(
                 "INSERT INTO vs_instellingen (sleutel, waarde) VALUES ($1, $2) "
                 "ON CONFLICT (sleutel) DO UPDATE SET waarde = EXCLUDED.waarde", k, "aan" if v else "uit")
-            await register.log(door, "testgereedschap.aan" if v else "testgereedschap.uit")
+            await register.log(door, f"{k}.aan" if v else f"{k}.uit")
             continue
         await register.execute(
             "INSERT INTO vs_instellingen (sleutel, waarde) VALUES ($1, $2) "

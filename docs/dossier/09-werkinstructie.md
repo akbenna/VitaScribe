@@ -215,3 +215,22 @@ merk je of je te veel gaat vertrouwen op het concept (automation bias).
   btw, wisselkoers). Ander gebruik op dezelfde sleutels, zoals Claude.ai, staat
   er niet in.
 
+
+### Minder minuten spraakherkenning (EU-modus)
+
+Spraakherkenning wordt per minuut opname betaald, ook voor de stiltes. Twee
+dingen houden dat in de EU-modus beperkt:
+
+- **Eén controle tijdens het consult.** Na 30 seconden laat de server de
+  opname tot dan toe één keer uitschrijven, om te melden of er een gesprek
+  gehoord wordt. Vroeger gebeurde dat ook na 2 en 5 minuten, telkens vanaf het
+  begin; dat kostte bijna evenveel als het consult zelf. Daarna let de
+  geluidsmeter in het paneel op de microfoon, zonder kosten.
+- **Stiltes inkorten** (Beheer › Instellingen, standaard uit). Elke stilte van
+  2 seconden of langer gaat terug tot een korte pauze voordat de opname naar de
+  spraakdienst gaat. Lichamelijk onderzoek, typen en aankleden kosten dan niets
+  meer. Zet het pas aan na een proef: open de spraaktest, kies een opname van
+  een gespeeld consult en klik *Test stiltes inkorten*. Je ziet hoeveel minuten
+  het scheelt, beide transcripten naast elkaar en de vaktermen die in maar één
+  van de twee staan. Laat daarna van beide een SOEP maken (blind): blijft het
+  verslag gelijk, dan kan het aan.

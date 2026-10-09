@@ -467,6 +467,25 @@
       el('span', { tekst: 'Testgereedschap (spraaktest, SOEP-test), alleen voor gespeelde consulten' }));
   }
 
+  // Shorten long silences before the EU speech service (fewer billed minutes).
+  // Off until the speech test showed, on the practice's own recordings, that
+  // the transcript and the report stay the same.
+  function stilteveld() {
+    var aan = !!staat.instellingen.stilte_inkorten;
+    var vink = el('input', { type: 'checkbox', aan: aan, style: 'width:auto;margin:0;flex:none', bij: async function () {
+      var nieuw = vink.checked;
+      if (nieuw && !confirm('Stiltes inkorten aanzetten? Doe dit pas als de spraaktest ("Test stiltes inkorten") op eigen opnamen liet zien dat transcript en verslag gelijk blijven.')) {
+        vink.checked = false; return;
+      }
+      try {
+        staat.instellingen = await vraag('/instellingen', { methode: 'PUT', body: { stilte_inkorten: nieuw } });
+        meld(nieuw ? 'Stiltes inkorten aan.' : 'Stiltes inkorten uit.'); teken();
+      } catch (e) { vink.checked = !nieuw; meld(e.message, true); }
+    } });
+    return el('label', { style: 'display:flex;gap:8px;align-items:center;justify-content:flex-start;margin-top:8px;font-size:14px' }, vink,
+      el('span', { tekst: 'Stiltes inkorten voor de spraakherkenning in de EU-modus (minder minuten, eerst testen in de spraaktest)' }));
+  }
+
   function instellingenblok() {
     var tarief = el('input', { type: 'number', min: '0', step: '1', waarde: staat.instellingen.tarief_per_fte || '' });
     var server = el('input', { waarde: staat.instellingen.serveradres || location.origin });
@@ -476,6 +495,7 @@
       el('div', { klasse: 'velden' },
         veld('Tarief per huisarts-FTE per jaar (€)', tarief), veld('Serveradres in het bericht', server), veld('Link naar de extensie in de winkel', winkel, true)),
       testgereedschapveld(),
+      stilteveld(),
       el('div', { klasse: 'knoppen' },
         el('button', { klasse: 'hoofd', tekst: 'Instellingen opslaan', klik: async function () {
           try {
