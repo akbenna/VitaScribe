@@ -505,3 +505,5 @@ body.consult-running .dv-balk { border-color: var(--rec); background: #fff5f5; }
 .tk-typ textarea { flex: 1; min-height: 34px; resize: vertical; padding: 6px 8px; font: inherit; font-size: 15px; }
 .tk-typ.nadruk textarea { border-color: var(--brand); min-height: 56px; }
 .tk-noot, .tk-waarschuwing { margin: 0; font-size: 12px; padding: 6px 8px; border-radius: 6px; background: #fff7e6; color: #6b4a00; }
+
+.soep-kosten { white-space: pre-line; }

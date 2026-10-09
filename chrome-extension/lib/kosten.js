@@ -28,6 +28,18 @@ var SVKosten = (function () {
     return uit + ' (' + noot.join(', ') + ')';
   }
 
-  return { tekst: tekst, geld: geld };
+  /** "spraakherkenning $ 0,03 · verslaglegging $ 0,03 · meedenken $ < 0,01", largest first, or ''. */
+  function verdeling(kosten) {
+    var d = (kosten && kosten.per_onderdeel) || {};
+    var som = function (naam) { return Object.keys(d[naam]).reduce(function (t, v) { return t + (d[naam][v] || 0); }, 0); };
+    // Largest first (storage may reorder the keys).
+    var delen = Object.keys(d).sort(function (a, b) { return som(b) - som(a); }).map(function (naam) {
+      var bedragen = Object.keys(d[naam]).map(function (v) { return geld(d[naam][v], v); });
+      return naam + ' ' + bedragen.join(' + ');
+    });
+    return delen.length > 1 ? delen.join(' · ') : '';
+  }
+
+  return { tekst: tekst, verdeling: verdeling, geld: geld };
 })();
 if (typeof module !== 'undefined') module.exports = SVKosten;

@@ -570,6 +570,20 @@
     plek.appendChild(el('div', { klasse: 'knoppen', style: 'justify-content:flex-start;align-items:center' }, keuze,
       el('span', { klasse: 'klein', tekst: 'Totaal: ' + geldregel(k.totaal) + ' · per maand (21 werkdagen): ' + geldregel(k.per_maand) })));
     if (k.opslag !== 'register') plek.appendChild(el('p', { klasse: 'klein', tekst: 'Zonder register telt de server alleen tot hij herstart.' }));
+    // Where the money goes: speech, report, thinking along, ... (for learning what drives the cost).
+    if ((k.per_onderdeel || []).length) {
+      plek.appendChild(el('h4', { tekst: 'Verdeling per onderdeel', style: 'margin:12px 0 4px' }));
+      plek.appendChild(el('table', null, el('tbody', null, k.per_onderdeel.map(function (o) {
+        var balk = el('span', { style: 'display:inline-block;height:8px;border-radius:4px;background:var(--groen, #0f766e);width:'
+          + Math.max(2, Math.round(o.aandeel * 1.6)) + 'px' });
+        return el('tr', null, el('td', { tekst: o.onderdeel.charAt(0).toUpperCase() + o.onderdeel.slice(1) }),
+          el('td', { tekst: geldregel(o.kosten) }),
+          el('td', { klasse: 'klein', tekst: o.aandeel.toLocaleString('nl-NL') + ' %' }),
+          el('td', null, balk),
+          el('td', { klasse: 'klein', tekst: o.aanroepen + (o.aanroepen === 1 ? ' aanroep' : ' aanroepen') }));
+      }))));
+      plek.appendChild(el('h4', { tekst: 'Per dienst en model', style: 'margin:12px 0 4px' }));
+    }
     plek.appendChild(el('table', { style: 'margin-top:8px' },
       el('thead', null, el('tr', null, ['Dienst', 'Model', 'Aanroepen', 'Hoeveelheid', 'Geschat'].map(function (h) { return el('th', { tekst: h }); }))),
       el('tbody', null, k.regels.length ? k.regels.map(function (r) {

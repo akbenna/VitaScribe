@@ -118,6 +118,64 @@ class Teller:
 
 _teller: contextvars.ContextVar[Optional[Teller]] = contextvars.ContextVar("vs_kosten_teller", default=None)
 
+# ── Which part of VitaScribe used it: for the breakdown (speech, thinking along, report, ...) ──
+
+SPRAAKDIENSTEN = {"deepgram", "deepgram_live", "voxtral", "gladia", "speechmatics", "groq", "openai"}
+
+# The request decides the part (main.py sets it per request); within one request
+# a function can name its own part (als / onderdeel), e.g. nazorg within a consult.
+_onderdeel: contextvars.ContextVar[str] = contextvars.ContextVar("vs_onderdeel", default="")
+
+ONDERDEEL_PER_PAD = [
+    ("/api/v1/consult/", "verslaglegging"), ("/api/v1/dictation/", "dicteren"), ("/api/v1/tolk/", "tolk"),
+    ("/api/v1/telefoon/", "tolk"), ("/api/v1/visite/", "visite"), ("/api/v1/dossier/", "dossiervraag"),
+    ("/api/v1/letters", "brieven"), ("/api/v1/post", "post en uitslagen"), ("/api/v1/econsult", "e-consult"),
+    ("/api/v1/soep", "meedenken"), ("/api/v1/patient", "patiëntinformatie"), ("/api/v1/leren", "leren"),
+    ("/api/v1/beheer/", "testen"),
+]
+
+
+def onderdeel_voor_pad(pad: str) -> str:
+    for begin, naam in ONDERDEEL_PER_PAD:
+        if (pad or "").startswith(begin):
+            return naam
+    return "overig"
+
+
+def onderdeel_van(dienst: str) -> str:
+    """Speech and voices by their service; everything else by the part that called it."""
+    if dienst in SPRAAKDIENSTEN:
+        return "spraakherkenning"
+    if dienst.endswith("_tts"):
+        return "voorlezen"
+    return _onderdeel.get() or "overig"
+
+
+class als:
+    """with kosten.als("nazorg en afspraken"): calls inside count for that part."""
+
+    def __init__(self, naam: str) -> None:
+        self.naam = naam
+
+    def __enter__(self) -> None:
+        self._token = _onderdeel.set(self.naam)
+
+    def __exit__(self, *exc) -> None:
+        _onderdeel.reset(self._token)
+
+
+def onderdeel(naam: str):
+    """Decorator for an async function whose AI calls belong to one part."""
+    import functools
+
+    def wrap(fn):
+        @functools.wraps(fn)
+        async def binnen(*args, **kwargs):
+            with als(naam):
+                return await fn(*args, **kwargs)
+        return binnen
+    return wrap
+
 # Without a register: today's and earlier days' totals in memory, until a restart.
 _geheugen: Dict[Tuple[str, str, str, str], Regel] = {}
 _taken: set = set()
@@ -136,7 +194,8 @@ def tel(dienst: str, model: str = "", soort: str = "", *, in_tokens=0, uit_token
     try:
         regel = Regel(aanroepen=1, in_tokens=_int(in_tokens), uit_tokens=_int(uit_tokens), cache_w=_int(cache_w),
                       cache_r=_int(cache_r), seconden=float(seconden or 0), tekens=_int(tekens))
-        sleutel = (dienst, model or "", soort or "")
+        # The stored "soort" is the part of VitaScribe (spraakherkenning, verslaglegging, meedenken, ...).
+        sleutel = (dienst, model or "", onderdeel_van(dienst))
         t = _teller.get()
         if t is not None:
             t.voeg_toe(sleutel, regel)
@@ -225,8 +284,9 @@ def samenvatting(teller: Teller, tabel: Optional[Dict[str, dict]] = None) -> dic
     """For the report: total per currency and what had no price."""
     tabel = tabel if tabel is not None else prijzen(_eigen_cache)
     totaal: Dict[str, float] = {}
+    per_onderdeel: Dict[str, Dict[str, float]] = {}
     onbekend: List[str] = []
-    for (dienst, model, _soort), r in teller.regels.items():
+    for (dienst, model, deel), r in teller.regels.items():
         b = bedrag(dienst, model, r, tabel)
         if b is None:
             naam = f"{dienst} {model}".strip()
@@ -234,7 +294,11 @@ def samenvatting(teller: Teller, tabel: Optional[Dict[str, dict]] = None) -> dic
                 onbekend.append(naam)
             continue
         totaal[b[1]] = totaal.get(b[1], 0.0) + b[0]
+        per_onderdeel.setdefault(deel or "overig", {})
+        per_onderdeel[deel or "overig"][b[1]] = per_onderdeel[deel or "overig"].get(b[1], 0.0) + b[0]
     return {"totaal": {k: round(v, 4) for k, v in totaal.items()}, "onbekend": onbekend,
+            "per_onderdeel": {d: {k: round(v, 4) for k, v in w.items()} for d, w in
+                              sorted(per_onderdeel.items(), key=lambda x: -sum(x[1].values()))},
             "aanroepen": sum(r.aanroepen for r in teller.regels.values()), "prijzen_per": PRIJZEN_PER}
 
 
@@ -296,6 +360,8 @@ async def overzicht(dagen: int) -> dict:
     rijen = await gebruik(dagen)
     per_model: Dict[Tuple[str, str], Regel] = {}
     per_dag: Dict[str, Dict[str, float]] = {}
+    per_deel: Dict[str, Dict[str, float]] = {}
+    aanroepen_deel: Dict[str, int] = {}
     onbekend = set()
     for rij in rijen:
         r = Regel(**{k: rij[k] for k in ("aanroepen", "in_tokens", "uit_tokens", "cache_w", "cache_r", "seconden",
@@ -303,10 +369,14 @@ async def overzicht(dagen: int) -> dict:
         per_model.setdefault((rij["dienst"], rij["model"]), Regel()).tel(r)
         b = bedrag(rij["dienst"], rij["model"], r, tabel)
         dag = per_dag.setdefault(rij["dag"], {})
+        deel = rij.get("soort") or "overig"
+        aanroepen_deel[deel] = aanroepen_deel.get(deel, 0) + r.aanroepen
         if b is None:
             onbekend.add(f"{rij['dienst']} {rij['model']}".strip())
         else:
             dag[b[1]] = dag.get(b[1], 0.0) + b[0]
+            per_deel.setdefault(deel, {})
+            per_deel[deel][b[1]] = per_deel[deel].get(b[1], 0.0) + b[0]
     regels = []
     totaal: Dict[str, float] = {}
     for (dienst, model), r in sorted(per_model.items()):
@@ -318,9 +388,15 @@ async def overzicht(dagen: int) -> dict:
                        "cache_w": r.cache_w, "cache_r": r.cache_r, "minuten": round(r.seconden / 60, 1),
                        "tekens": r.tekens, "kosten": round(b[0], 4) if b else None, "valuta": b[1] if b else None})
     dagen_met_gebruik = max(1, len(per_dag))
+    alles = sum(sum(w.values()) for w in per_deel.values()) or 1.0
+    onderdelen = [{"onderdeel": d, "aanroepen": aanroepen_deel.get(d, 0),
+                   "kosten": {k: round(v, 4) for k, v in w.items()},
+                   "aandeel": round(100 * sum(w.values()) / alles, 1)}
+                  for d, w in sorted(per_deel.items(), key=lambda x: -sum(x[1].values()))]
     return {
         "dagen": dagen, "prijzen_per": PRIJZEN_PER, "opslag": "register" if register.actief() else "geheugen",
         "regels": regels,
+        "per_onderdeel": onderdelen,
         "per_dag": [{"dag": d, **{k: round(v, 4) for k, v in w.items()}} for d, w in sorted(per_dag.items())],
         "totaal": {k: round(v, 2) for k, v in totaal.items()},
         "per_maand": {k: round(v / dagen_met_gebruik * 21, 2) for k, v in totaal.items()},

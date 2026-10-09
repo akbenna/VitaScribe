@@ -200,7 +200,11 @@ merk je of je te veel gaat vertrouwen op het concept (automation bias).
 
 - Onder elk consultverslag staat wat dat consult aan AI kostte, geschat: de
   spraakherkenning en de taalmodellen samen, bijvoorbeeld "± $ 0,04".
-- In *Beheer › AI-gebruik en geschatte kosten* staat per dienst en model wat
+- Daaronder staat de verdeling: spraakherkenning, verslaglegging, meedenken,
+  nazorg en afspraken. Zo zie je wat de kosten drijft.
+- In *Beheer › AI-gebruik en geschatte kosten* staat eerst de verdeling per
+  onderdeel (spraakherkenning, verslaglegging, meedenken, nazorg, tolk,
+  brieven, dossiervraag, post, e-consult, ...) met het aandeel, daarna per dienst en model wat
   VitaScribe afnam (tokens, minuten spraak, tekens voorlezen), per dag en voor
   een gekozen periode, met een schatting per maand.
 - Het rekent met de openbare lijstprijzen van elke dienst (Anthropic, Mistral,

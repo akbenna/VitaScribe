@@ -117,6 +117,8 @@ window.SVConsultUI = (function () {
       renderSoep(data.soep || {});
       gekoppeld = true;
       var kost = SVKosten.tekst(data.kosten);
+      var deel = SVKosten.verdeling ? SVKosten.verdeling(data.kosten) : '';
+      if (kost && deel) kost += '\n' + deel;
       $('soep-kosten').textContent = kost;
       $('soep-kosten').classList.toggle('hidden', !kost);
       var dec = $('soep-decisief');

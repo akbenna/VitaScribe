@@ -16,7 +16,7 @@ from typing import Dict, List, Optional
 
 import structlog
 
-from . import data_policy, llm_service, stt_service, talen
+from . import data_policy, kosten, llm_service, stt_service, talen
 from .medical_vocabulary import correct_transcript_full, CorrectionStats
 from .prompts import (
     SOEP_CONTROLE_JSON_SCHEMA,
@@ -148,6 +148,7 @@ def _parse_json_response(text: str) -> dict:
     return json.loads(text)
 
 
+@kosten.onderdeel("verslaglegging")
 async def genereer_soep(gesprek: str, llm_provider: Optional[str] = None,
                         taal: Optional[str] = None, model: Optional[str] = None,
                         taalregel: Optional[str] = None, huisstijl: bool = True) -> SOEPResult:
@@ -238,6 +239,7 @@ def afspraken_uit(ruw, plan: str) -> List[Dict]:
     return uit
 
 
+@kosten.onderdeel("verslaglegging")
 async def controleer_soep(gesprek: str, soep: SOEPResult, llm_provider: Optional[str] = None,
                           model: Optional[str] = None) -> List[Dict]:
     """Second pass: the report next to the transcript; the model names the
@@ -404,13 +406,14 @@ async def verwerk_transcript(
     # Beide taken werken op de SOEP; samenvoegen scheelt een derde LLM-call.
     logger.info("pipeline.step", step="nazorg")
     try:
-        nazorg_response = await llm_service.complete(
-            system_prompt=NAZORG_SYSTEM_PROMPT,
-            user_prompt=NAZORG_USER_TEMPLATE.format(**_nazorg_velden(result.soep)),
-            provider=llm_provider,
-            json_mode=True,
-            max_tokens=NAZORG_MAX_TOKENS,
-        )
+        with kosten.als("nazorg en afspraken"):
+            nazorg_response = await llm_service.complete(
+                system_prompt=NAZORG_SYSTEM_PROMPT,
+                user_prompt=NAZORG_USER_TEMPLATE.format(**_nazorg_velden(result.soep)),
+                provider=llm_provider,
+                json_mode=True,
+                max_tokens=NAZORG_MAX_TOKENS,
+            )
         nazorg_data = _parse_json_response(nazorg_response)
         result.decisief = str(nazorg_data.get("decisief", "")).strip().strip('"').strip("'")
         result.detection = DetectionResult(

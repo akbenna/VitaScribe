@@ -88,3 +88,42 @@ def test_consult_verslag_bevat_de_kosten(monkeypatch):
     k = r.json()["kosten"]
     assert k["aanroepen"] == 2 and k["totaal"]["USD"] == round(5 * 0.0043 + 0.014 + 0.012, 4)
     get_config.cache_clear()
+
+
+def test_verdeling_per_onderdeel_binnen_een_consult():
+    with kosten.meten() as teller, kosten.als("verslaglegging"):
+        kosten.tel("deepgram_live", "", seconden=240)                                  # speech, by its service
+        with kosten.als("meedenken"):
+            kosten.tel("anthropic", "claude-haiku-5-5", in_tokens=15_000, uit_tokens=3_000)
+        kosten.tel("anthropic", "claude-sonnet-5", in_tokens=9_000, uit_tokens=1_300)  # the report
+        with kosten.als("nazorg en afspraken"):
+            kosten.tel("anthropic", "claude-haiku-5-5", in_tokens=1_700, uit_tokens=800)
+    d = kosten.samenvatting(teller)["per_onderdeel"]
+    assert list(d) == ["verslaglegging", "spraakherkenning", "meedenken", "nazorg en afspraken"]   # largest first
+    assert d["spraakherkenning"] == {"USD": round(4 * 0.0077, 4)}
+    assert d["meedenken"] == {"USD": round(0.0015 + 0.0015, 4)}
+
+
+def test_onderdeel_volgt_het_verzoek(monkeypatch):
+    assert kosten.onderdeel_voor_pad("/api/v1/dossier/vraag") == "dossiervraag"
+    assert kosten.onderdeel_voor_pad("/api/v1/letters/generate") == "brieven"
+    assert kosten.onderdeel_voor_pad("/api/v1/tolk/beurt") == "tolk"
+    assert kosten.onderdeel_voor_pad("/iets/anders") == "overig"
+    assert kosten.onderdeel_van("azure_tts") == "voorlezen" and kosten.onderdeel_van("voxtral") == "spraakherkenning"
+    # Through the app: a dossier question is counted as "dossiervraag".
+    monkeypatch.setenv("API_KEYS", "sleutel-k")
+    from services.cloud_api import llm_service
+    from services.cloud_api.config import get_config
+    get_config.cache_clear()
+
+    async def complete(*a, **k):
+        kosten.tel("anthropic", "claude-sonnet-5", in_tokens=100, uit_tokens=10)
+        return '{"antwoord": "x", "gevonden": false, "zekerheid": "niet_gevonden", "bronnen": [], "let_op": ""}'
+    monkeypatch.setattr(llm_service, "complete", complete)
+    r = TestClient(main.app).post("/api/v1/dossier/vraag", headers={"X-API-Key": "sleutel-k"},
+                                  json={"vraag": "Laatste HbA1c?", "dossier": "Journaal 01-01-2026 HbA1c 53"})
+    assert r.status_code == 200, r.text
+    assert [k[3] for k in kosten._geheugen] == ["dossiervraag"]
+    o = asyncio.run(kosten.overzicht(7))
+    assert o["per_onderdeel"][0]["onderdeel"] == "dossiervraag" and o["per_onderdeel"][0]["aandeel"] == 100.0
+    get_config.cache_clear()
