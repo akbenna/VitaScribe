@@ -31,12 +31,12 @@ def test_per_consult_alleen_wat_erbinnen_gebeurt():
 
 def test_dienst_zonder_prijs_geen_gok():
     with kosten.meten() as teller:
-        kosten.tel("mistral", "mistral-large-latest", "tekst", in_tokens=5000, uit_tokens=300)
+        kosten.tel("mistral", "codestral-latest", "tekst", in_tokens=5000, uit_tokens=300)
         kosten.tel("anthropic", "claude-haiku-4-5-20251001", "tekst", in_tokens=1_000_000)
     s = kosten.samenvatting(teller)
-    assert s["totaal"] == {"USD": 1.0} and s["onbekend"] == ["mistral mistral-large-latest"]
+    assert s["totaal"] == {"USD": 1.0} and s["onbekend"] == ["mistral codestral-latest"]
     # With the administrator's price it counts, in that currency.
-    tabel = kosten.prijzen({"mistral:mistral-large-latest": {"in": 2.0, "uit": 6.0, "valuta": "EUR"}})
+    tabel = kosten.prijzen({"mistral:codestral-latest": {"in": 2.0, "uit": 6.0, "valuta": "EUR"}})
     assert kosten.samenvatting(teller, tabel)["totaal"] == {"USD": 1.0, "EUR": round(0.01 + 0.0018, 4)}
 
 
@@ -48,11 +48,23 @@ def test_tellen_breekt_nooit_het_werk():
 def test_overzicht_per_dienst_en_per_maand():
     kosten.tel("anthropic", "claude-sonnet-5", "tekst", in_tokens=1_000_000, uit_tokens=100_000)
     kosten.tel("gladia", "", "consult", seconden=120)
+    kosten.tel("nieuwe_dienst", "", "consult", seconden=60)
     o = asyncio.run(kosten.overzicht(30))
-    assert o["opslag"] == "geheugen" and o["totaal"] == {"USD": 3.0}
-    assert o["per_maand"] == {"USD": 63.0}   # one day of use, x 21 working days
-    gladia = [r for r in o["regels"] if r["dienst"] == "gladia"][0]
-    assert gladia["kosten"] is None and gladia["minuten"] == 2.0 and "gladia" in o["onbekend"]
+    # Sonnet 5: 2.00 + 1.00; Gladia at its list price: 2 min x 0.0102.
+    assert o["opslag"] == "geheugen" and o["totaal"] == {"USD": round(3.0 + 0.0204, 2)}
+    assert o["per_maand"] == {"USD": round((3.0 + 0.0204) * 21, 2)}   # one day of use, x 21 working days
+    onbekend = [r for r in o["regels"] if r["dienst"] == "nieuwe_dienst"][0]
+    assert onbekend["kosten"] is None and onbekend["minuten"] == 1.0 and o["onbekend"] == ["nieuwe_dienst"]
+
+
+def test_elke_dienst_van_vitascribe_heeft_een_lijstprijs():
+    tabel = kosten.prijzen()
+    for dienst, model in [("anthropic", "claude-sonnet-5"), ("anthropic", "claude-haiku-5-5"),
+                          ("mistral", "mistral-large-latest"), ("mistral", "mistral-small-latest"),
+                          ("deepgram", ""), ("deepgram_live", ""), ("voxtral", ""), ("gladia", ""),
+                          ("speechmatics", ""), ("azure_tts", ""), ("mistral_tts", "")]:
+        p = tabel[kosten.prijssleutel(dienst, model)]
+        assert p.get("bron") and p.get("valuta") == "USD", (dienst, model)
 
 
 def test_consult_verslag_bevat_de_kosten(monkeypatch):
@@ -74,5 +86,5 @@ def test_consult_verslag_bevat_de_kosten(monkeypatch):
                                   files={"audio": ("c.webm", b"x" * 100, "audio/webm")})
     assert r.status_code == 200, r.text
     k = r.json()["kosten"]
-    assert k["aanroepen"] == 2 and k["totaal"]["USD"] == round(5 * 0.0048 + 0.014 + 0.012, 4)
+    assert k["aanroepen"] == 2 and k["totaal"]["USD"] == round(5 * 0.0043 + 0.014 + 0.012, 4)
     get_config.cache_clear()

@@ -13,11 +13,11 @@ inhoud. Twee toepassingen:
      ("kosten"), zodat de arts onderaan ziet wat het consult aan AI kostte.
 
 Het blijft een schatting. De factuur van de aanbieder is leidend: daar staan
-ook kortingen, minimumbedragen, btw en de wisselkoers in. Alleen prijzen die
-vaststaan staan hier standaard in; de rest vult de beheerder in vanuit de
-eigen facturen (vs_instellingen 'kosten_prijzen'), zodat er nergens een
-verzonnen bedrag staat. Waar geen prijs is, toont het overzicht de hoeveelheid
-en "prijs invullen".
+ook kortingen, minimumbedragen, btw en de wisselkoers in. Standaard rekent het
+met de openbare lijstprijzen (STANDAARD_PRIJZEN, met bron en datum), zodat het
+vooraf kan schatten; de beheerder kan elke prijs vervangen door die op de
+factuur (vs_instellingen 'kosten_prijzen'). Een dienst zonder bekende prijs
+toont de hoeveelheid en "prijs onbekend", zonder gok.
 
 Gebruik buiten VitaScribe (Claude.ai, andere apps op dezelfde sleutel) komt
 hier niet in: dat ziet alleen de aanbieder.
@@ -40,22 +40,34 @@ logger = structlog.get_logger()
 PRIJZEN_PER = "2026-10-09"
 
 # Prices per unit. Tokens: per million (in, uit, cache_w, cache_r). Speech:
-# per minute. Voices: per million characters. Only what is known: Anthropic's
-# list prices; cache writes at 1.25x and reads at 0.1x the input price (the
-# usual 5-minute cache). Speech prices as in the speech test (business case,
-# October 2026). Everything else: the administrator fills it in.
+# per minute. Voices: per million characters. Public list prices, looked up on
+# PRIJZEN_PER, so the overview can estimate in advance; where sources
+# disagreed, the higher price (an estimate should not turn out too low). Cache
+# writes at 1.25x and reads at 0.1x the input price (the usual 5-minute cache).
+# The administrator can override any of them with the price on the invoice.
 STANDAARD_PRIJZEN: Dict[str, dict] = {
+    # Anthropic, list prices.
     "anthropic:claude-sonnet-5": {"in": 2.00, "uit": 10.00, "cache_w": 2.50, "cache_r": 0.20, "valuta": "USD",
-                                  "bron": "Anthropic-prijslijst"},
+                                  "bron": "lijstprijs Anthropic"},
     "anthropic:claude-sonnet-5-5": {"in": 2.00, "uit": 10.00, "cache_w": 2.50, "cache_r": 0.20, "valuta": "USD",
-                                    "bron": "Anthropic-prijslijst"},
+                                    "bron": "lijstprijs Anthropic"},
     "anthropic:claude-haiku-5-5": {"in": 0.10, "uit": 0.50, "cache_w": 0.125, "cache_r": 0.01, "valuta": "USD",
-                                   "bron": "Anthropic-prijslijst (tot 100K tokens per vraag)"},
+                                   "bron": "lijstprijs Anthropic (tot 100K tokens per vraag)"},
     "anthropic:claude-haiku-4-5": {"in": 1.00, "uit": 5.00, "cache_w": 1.25, "cache_r": 0.10, "valuta": "USD",
-                                   "bron": "Anthropic-prijslijst"},
-    "deepgram": {"minuut": 0.0048, "valuta": "USD", "bron": "spraaktest (business case okt 2026); controleer"},
-    "deepgram_live": {"minuut": 0.0077, "valuta": "USD", "bron": "spraaktest (business case okt 2026); controleer"},
-    "voxtral": {"minuut": 0.003, "valuta": "USD", "bron": "spraaktest (business case okt 2026); controleer"},
+                                   "bron": "lijstprijs Anthropic"},
+    # Mistral (EU), list prices on mistral.ai/pricing (Large 3, Small 4).
+    "mistral:mistral-large-latest": {"in": 0.50, "uit": 1.50, "valuta": "USD", "bron": "lijstprijs Mistral (Large)"},
+    "mistral:mistral-small-latest": {"in": 0.15, "uit": 0.60, "valuta": "USD", "bron": "lijstprijs Mistral (Small)"},
+    # Speech recognition, per minute.
+    "deepgram": {"minuut": 0.0043, "valuta": "USD", "bron": "lijstprijs Deepgram Nova-3, achteraf"},
+    "deepgram_live": {"minuut": 0.0077, "valuta": "USD", "bron": "lijstprijs Deepgram Nova-3, live (zonder actiekorting)"},
+    "voxtral": {"minuut": 0.003, "valuta": "USD", "bron": "lijstprijs Mistral Voxtral"},
+    "gladia": {"minuut": 0.0102, "valuta": "USD", "bron": "lijstprijs Gladia, pay-as-you-go ($0,61 per uur)"},
+    "speechmatics": {"minuut": 0.0125, "valuta": "USD",
+                     "bron": "Speechmatics Enhanced, achteraf ($0,40–1,04 per uur in bronnen; hier $0,75)"},
+    # Reading aloud, per million characters.
+    "azure_tts": {"tekens": 16.0, "valuta": "USD", "bron": "lijstprijs Azure neurale stem"},
+    "mistral_tts": {"tekens": 16.0, "valuta": "USD", "bron": "lijstprijs Mistral Voxtral TTS"},
 }
 
 # Which price row a usage row belongs to.
