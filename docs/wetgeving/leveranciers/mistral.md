@@ -53,7 +53,7 @@ VitaScribe roept bij Mistral vier endpoints aan, alle vier sinds 9 oktober 2026 
 | `/v1/audio/speech` | voorlezen door de tolk | ja |
 | `/v1/audio/voices` | kloonstem | nee (stateful, ongeveer 30 dagen) |
 
-Geen `/v1/files`, batch, agents of conversations. Mistral bevestigde het EU-endpoint uitdrukkelijk voor transcriptie en chat. Of voorlezen en de kloonstem op het EU-endpoint werken, is niet getest; de kloonstem staat uit. Een eerdere versie van dit stuk noemde `api.mistral.ai` het EU-endpoint; dat was fout.
+Geen `/v1/files`, batch, agents of conversations. Mistral bevestigde het EU-endpoint uitdrukkelijk voor transcriptie en chat. Voorlezen en de stemmenlijst werken via het EU-endpoint, getest op 10 oktober 2026 met de tolk; de kloonstem staat uit. Een eerdere versie van dit stuk noemde `api.mistral.ai` het EU-endpoint; dat was fout.
 
 ## Nog open bij Mistral
 

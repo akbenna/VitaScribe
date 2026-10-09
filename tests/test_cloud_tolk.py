@@ -377,3 +377,46 @@ def test_tigrinya_arts_spreekt_patient_typt(api, monkeypatch):
     r = api.post("/api/v1/tolk/beurt", headers=H, data={"spreker": "auto", "taal": "ti", "consent": "true"},
                  files={"audio": ("beurt.wav", b"RIFF", "audio/wav")})
     assert r.status_code == 400
+
+
+# ── De stemmenlijst van Mistral komt in pagina's ──
+
+def _nep_stemmen_server(monkeypatch, paginas, vragen):
+    import httpx
+
+    def handler(request):
+        vragen.append(dict(request.url.params))
+        nr = int(request.url.params.get("page", 0))
+        items = paginas(nr)
+        return httpx.Response(200, json={"items": items, "total": 12})
+
+    echte = httpx.AsyncClient
+    monkeypatch.setattr(tolk.httpx, "AsyncClient",
+                        lambda **kw: echte(transport=httpx.MockTransport(handler), **{k: v for k, v in kw.items() if k != "transport"}))
+
+
+ENGELS = [{"id": f"en-{i}", "languages": ["en_us"]} for i in range(10)]
+ANDERE = [{"id": "ar-1", "languages": ["ar_sa"]}, {"id": "nl-1", "languages": ["nl_nl"]}]
+
+
+def test_alle_paginas_van_de_stemmenlijst(monkeypatch):
+    # 9 oktober 2026: alleen de eerste pagina kwam binnen (tien Engelse stemmen).
+    vragen = []
+    _nep_stemmen_server(monkeypatch, lambda nr: [ENGELS, ANDERE, []][min(nr, 2)], vragen)
+    tolk._stemmen = None
+    import asyncio
+    stemmen = asyncio.run(tolk._laad_stemmen("m"))
+    assert len(stemmen) == 12
+    assert tolk.kies_stem(stemmen, "ar") == "ar-1"
+    assert tolk.kies_stem(stemmen, "nl") == "nl-1"
+    assert [v["page"] for v in vragen] == ["0", "1", "2"]
+
+
+def test_stemmenlijst_zonder_paginas_stopt(monkeypatch):
+    # Negeert de server de paginaparameter, dan komt steeds dezelfde lijst: na één herhaling stoppen.
+    vragen = []
+    _nep_stemmen_server(monkeypatch, lambda nr: ENGELS, vragen)
+    tolk._stemmen = None
+    import asyncio
+    stemmen = asyncio.run(tolk._laad_stemmen("m"))
+    assert len(stemmen) == 10 and len(vragen) == 2
