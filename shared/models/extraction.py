@@ -1,5 +1,5 @@
 """
-Extraction model — LLM medische extractie uit transcript.
+Extraction model - LLM medische extractie uit transcript.
 """
 
 from __future__ import annotations

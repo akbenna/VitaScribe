@@ -7,7 +7,7 @@ Fine-tunet een klein seq2seq-model (default mT5) om ruwe ASR-output te
 corrigeren naar de door de arts goedgekeurde tekst. Input/target komen uit de
 JSONL van `tools/build_training_data.py` (--only asr).
 
-GEEN audio nodig — past binnen het privacybeleid (audio wordt verwijderd).
+GEEN audio nodig - past binnen het privacybeleid (audio wordt verwijderd).
 
 Vereisten (GPU-machine):
     pip install "transformers>=4.40" datasets accelerate sentencepiece torch

@@ -40,7 +40,7 @@ logger = structlog.get_logger()
 
 # ══════════════════════════════════════════════════════════════════════
 # 1. MEDICATIENAMEN
-# Top 200 huisartsgeneeskunde — veelvoorkomende STT-fouten links
+# Top 200 huisartsgeneeskunde - veelvoorkomende STT-fouten links
 # ══════════════════════════════════════════════════════════════════════
 
 MEDICATION_CORRECTIONS: Dict[str, str] = {
@@ -439,7 +439,7 @@ def get_initial_prompt(extra_terms: Optional[List[str]] = None) -> str:
     De prompt zet de context (Nederlandstalig huisartsconsult) en noemt de
     meest waardevolle termen achteraan, zodat ze binnen het 224-token-venster
     de grootste invloed hebben. Houd bewust kort om hallucinatie/herhaling te
-    voorkomen — valideer wijzigingen tegen de WER-testset.
+    voorkomen - valideer wijzigingen tegen de WER-testset.
 
     Args:
         extra_terms: optionele extra (bijv. geleerde) termen om toe te voegen.

@@ -140,7 +140,7 @@ textarea:focus { outline: 2px solid var(--brand); outline-offset: -1px; }
   white-space: pre-wrap; border: 1px solid transparent; border-radius: 5px; padding: 2px 4px;
 }
 .soep-text:focus { outline: none; border-color: var(--brand); }
-.soep-text:empty::before { content: "—"; color: var(--muted); }
+.soep-text:empty::before { content: "-"; color: var(--muted); }
 .note { margin: 0; font-size: 11px; color: var(--muted); }
 
 .learn { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }

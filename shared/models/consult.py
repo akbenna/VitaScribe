@@ -1,5 +1,5 @@
 """
-Consult model — Een consult met status-tracking.
+Consult model - Een consult met status-tracking.
 """
 
 from __future__ import annotations

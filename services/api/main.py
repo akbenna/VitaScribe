@@ -1,5 +1,5 @@
 """
-AI-Consultassistent — API Gateway
+AI-Consultassistent - API Gateway
 ==================================
 FastAPI applicatie die alle services orkestreert.
 """
@@ -21,7 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 import structlog
 
-# Lokale imports — sys.path nodig voor dev; in Docker werkt PYTHONPATH=/app
+# Lokale imports - sys.path nodig voor dev; in Docker werkt PYTHONPATH=/app
 import sys
 _project_root = str(Path(__file__).parent.parent.parent)
 if _project_root not in sys.path:
@@ -69,7 +69,7 @@ async def lifespan(app: FastAPI):
         await redis_client.connect()
         logger.info("Redis connectie OK")
     except Exception as e:
-        logger.warning("Redis niet beschikbaar — fallback naar DB polling", error=str(e))
+        logger.warning("Redis niet beschikbaar - fallback naar DB polling", error=str(e))
 
     # Pipeline initialiseren: Whisper + PyAnnote modellen laden (kan ~30s duren)
     try:
@@ -78,7 +78,7 @@ async def lifespan(app: FastAPI):
         logger.info("Pipeline modellen geladen (Whisper + diarisatie)")
     except Exception as e:
         logger.warning(
-            "Pipeline modellen niet geladen bij startup — worden geladen bij eerste consult",
+            "Pipeline modellen niet geladen bij startup - worden geladen bij eerste consult",
             error=str(e),
         )
 
@@ -127,7 +127,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Audio opslag pad — fallback naar lokale directory als /data niet beschikbaar is
+# Audio opslag pad - fallback naar lokale directory als /data niet beschikbaar is
 AUDIO_DIR = Path(config.audio.storage_path)
 try:
     AUDIO_DIR.mkdir(parents=True, exist_ok=True)
@@ -210,7 +210,7 @@ async def enqueue_pipeline_job(consult_id: uuid.UUID, audio_path: str):
                     consult_id=str(consult_id))
     except Exception as e:
         # Fallback: draai pipeline direct als Redis niet beschikbaar is
-        logger.warning("Redis queue niet beschikbaar — fallback naar directe verwerking",
+        logger.warning("Redis queue niet beschikbaar - fallback naar directe verwerking",
                        consult_id=str(consult_id), error=str(e))
         from shared.database import async_session
         from services.pipeline.orchestrator import pipeline
@@ -680,7 +680,7 @@ async def list_consults(
 
 
 # ---------------------------------------------------------------------------
-# WebSocket — Real-time pipeline status
+# WebSocket - Real-time pipeline status
 # ---------------------------------------------------------------------------
 
 @app.websocket("/ws/consult/{session_id}")

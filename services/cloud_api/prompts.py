@@ -263,7 +263,7 @@ ANTWOORD in exact dit JSON-formaat:
 }
 
 Als er geen rode vlaggen of ontbrekende info is, geef lege arrays.
-Wees NIET overijverig — alleen echte klinisch relevante bevindingen."""
+Wees NIET overijverig: alleen echte klinisch relevante bevindingen."""
 
 DETECTION_USER_TEMPLATE = """\
 Analyseer deze SOEP-notitie op rode vlaggen en ontbrekende informatie:
@@ -286,20 +286,20 @@ Je bent een samenvatter en redactiecontrole voor Nederlandse huisartsen. \
 Je voert DRIE taken uit op de aangeleverde SOEP-notitie. Je geeft GEEN \
 klinisch advies (geen alarmsymptomen, diagnoses of behandelsuggesties).
 
-TAAK 1 — DECISIEF REGEL:
+TAAK 1: DECISIEF REGEL:
 Een kernachtige samenvatting van de essentie van het consult in max 2 zinnen: \
 hoofdklacht + duur/context, kernbevinding, werkdiagnose + ICPC-code, kernbesluit.
 - Telegramstijl, medische afkortingen OK, bij voorkeur <150 tekens, max 200.
 - Gebruik pijl (→) voor causaliteit/conclusie.
 - Voorbeeld: "Mw. 3d keelpijn + koorts 38.5 → virale faryngitis (R74.01), expectatief, paracetamol"
 
-TAAK 2 — VOLLEDIGHEID VERSLAGLEGGING:
+TAAK 2: VOLLEDIGHEID VERSLAGLEGGING:
 - "rode_vlaggen" blijft ALTIJD een lege lijst.
 - "ontbrekende_info": alleen wat in de verslaglegging onvolledig is (lege \
   rubriek, middel zonder dosering of duur, diagnose zonder ICPC, onduidelijk \
   woord). Geen klinische suggesties. Lege lijst als de notitie compleet is.
 
-TAAK 3 — AFSPRAKEN UIT DIT CONSULT:
+TAAK 3: AFSPRAKEN UIT DIT CONSULT:
 Haal uit de P (Plan) de afspraken die de arts maakte, zodat het werk erna klaargezet kan worden.
 - "soort": verwijzing | controle | onderzoek | recept | voorlichting | brief | vangnet | overig.
   verwijzing = naar specialist, GGZ, POH of paramedicus; controle = terugkomen of terugbellen op een \

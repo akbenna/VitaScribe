@@ -1,5 +1,5 @@
 /**
- * Auth Context — Login state management voor de hele app.
+ * Auth Context - Login state management voor de hele app.
  */
 
 "use client";

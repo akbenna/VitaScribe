@@ -7,11 +7,11 @@ Zonder meetlat is elke upgrade een gok; met deze metrieken wordt elke wijziging
 (hotwords, ander model, fine-tune) een gemeten, terugdraaibare beslissing.
 
 Drie metrieken:
-1. word_error_rate           — algemene transcriptiekwaliteit (WER)
-2. medical_term_error_rate   — domeinspecifiek: hoe vaak gaat een medische term
+1. word_error_rate           - algemene transcriptiekwaliteit (WER)
+2. medical_term_error_rate   - domeinspecifiek: hoe vaak gaat een medische term
                                of medicatienaam mis (weegt zwaarder dan een
                                fout lidwoord)
-3. soep_edit_distance        — genormaliseerde afstand tussen gegenereerde en
+3. soep_edit_distance        - genormaliseerde afstand tussen gegenereerde en
                                door de arts goedgekeurde SOEP. Daalt naarmate
                                het systeem leert -> KPI voor de zelflerende laag.
 
@@ -139,7 +139,7 @@ def medical_term_error_rate(
 
     Voor elke term die in de referentie voorkomt, controleer of die ook in de
     hypothese staat. Eén foute medicatienaam weegt hier net zo zwaar als elke
-    andere — anders dan bij WER, waar lidwoorden meetellen.
+    andere - anders dan bij WER, waar lidwoorden meetellen.
     """
     ref_tokens = tokenize(reference)
     hyp_tokens = tokenize(hypothesis)

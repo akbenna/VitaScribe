@@ -304,7 +304,7 @@ export default function Home() {
       {/* Footer */}
       <footer className="border-t border-gray-200 mt-auto">
         <div className="max-w-7xl mx-auto px-4 py-3 text-center text-xs text-gray-400">
-          AI-Consultassistent v0.1.0 — Volledig lokale verwerking — NEN 7510/7513 conform
+          AI-Consultassistent v0.1.0 - Volledig lokale verwerking - NEN 7510/7513 conform
         </div>
       </footer>
     </>

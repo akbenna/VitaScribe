@@ -1,7 +1,7 @@
 # AI-Consultassistent
 
 **Privacy-first AI-systeem voor Nederlandse huisartsenpraktijken.**
-Zet consultaudio om in gestructureerde SOEP-dossiervoering — volledig lokaal.
+Zet consultaudio om in gestructureerde SOEP-dossiervoering - volledig lokaal.
 
 ## Architectuur
 

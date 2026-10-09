@@ -1,5 +1,5 @@
 """
-SQLAlchemy Base — Gedeelde basis voor alle ORM models.
+SQLAlchemy Base - Gedeelde basis voor alle ORM models.
 """
 
 from __future__ import annotations

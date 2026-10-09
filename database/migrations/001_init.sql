@@ -1,5 +1,5 @@
 -- =============================================================================
--- AI-Consultassistent — Database Initialisatie
+-- AI-Consultassistent - Database Initialisatie
 -- =============================================================================
 -- PostgreSQL 16 + pgcrypto
 -- Conform NEN 7513 logging-eisen

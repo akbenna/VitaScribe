@@ -112,7 +112,7 @@ export function useAudioRecorder(options?: UseAudioRecorderOptions): UseAudioRec
       source.connect(analyser);
       setAnalyserNode(analyser);
 
-      // MediaRecorder — probeer webm/opus, fallback naar wat beschikbaar is
+      // MediaRecorder - probeer webm/opus, fallback naar wat beschikbaar is
       const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
         ? "audio/webm;codecs=opus"
         : MediaRecorder.isTypeSupported("audio/webm")

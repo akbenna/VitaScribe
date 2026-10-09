@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# AI-Consultassistent — Setup Script
+# AI-Consultassistent - Setup Script
 # =============================================================================
 # Gebruik: bash scripts/setup.sh
 # Vereist: Ubuntu 24.04, NVIDIA GPU, Docker
@@ -9,7 +9,7 @@
 set -euo pipefail
 
 echo "============================================"
-echo " AI-Consultassistent — Setup"
+echo " AI-Consultassistent - Setup"
 echo "============================================"
 
 # --- Checks ---

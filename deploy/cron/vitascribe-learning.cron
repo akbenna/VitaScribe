@@ -1,4 +1,4 @@
-# VitaScribe — zelflerende jobs (alternatief voor de systemd-timer)
+# VitaScribe - zelflerende jobs (alternatief voor de systemd-timer)
 # Installeren:  crontab -e   en onderstaande regel plakken (pas pad/gebruiker aan)
 # Of plaats dit bestand in /etc/cron.d/vitascribe-learning (dan met gebruikersveld).
 #

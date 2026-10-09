@@ -24,6 +24,26 @@ from .config import get_config
 
 logger = structlog.get_logger()
 
+# De praktijk wil geen gedachtestreepjes in tekst die VitaScribe schrijft. De
+# schrijfregel gaat mee in elke system-prompt; zonder_gedachtestreepje() vangt
+# op wat het model toch schrijft.
+SCHRIJFREGEL = (
+    "\n\nSchrijfstijl: gebruik nooit een gedachtestreepje (\u2014 of \u2013 als "
+    "gedachtestreep). Gebruik een komma, dubbele punt, haakjes of een nieuwe zin."
+)
+
+
+def zonder_gedachtestreepje(text: str) -> str:
+    """Replace em dashes: ' \u2014 ' becomes ', ', any other one a hyphen."""
+    if not text or "\u2014" not in text:
+        return text
+    return text.replace(" \u2014 ", ", ").replace("\u2014", "-")
+
+
+async def _zonder_streepje_stream(stream):
+    async for piece in stream:
+        yield zonder_gedachtestreepje(piece)
+
 
 async def complete(
     system_prompt: str,
@@ -49,11 +69,22 @@ async def complete(
     Args:
         max_tokens: Override the configured output budget for this single call.
             Tuning this per call type (kort voor decisief, ruimer voor SOEP)
-            voorkomt onnodige output-tokens — de duurste tokensoort bij Claude.
+            voorkomt onnodige output-tokens - de duurste tokensoort bij Claude.
         cache_system: Markeer de system-prompt als cachebaar (Anthropic prompt
             caching). Levert pas korting op zodra de system-prompt boven de
             modeldrempel komt (~2048 tokens voor Haiku); kleiner wordt genegeerd.
     """
+    return zonder_gedachtestreepje(await _complete(
+        system_prompt + SCHRIJFREGEL, user_prompt, provider, json_mode, max_tokens,
+        cache_system, quality, json_schema, model,
+    ))
+
+
+async def _complete(
+    system_prompt: str, user_prompt: str, provider: Optional[str], json_mode: bool,
+    max_tokens: Optional[int], cache_system: bool, quality: bool,
+    json_schema: Optional[dict], model: Optional[str],
+) -> str:
     config = get_config()
     provider = provider or config.llm.default_provider
     max_tokens = max_tokens or config.llm.max_tokens
@@ -668,6 +699,12 @@ def stream_llm(provider: str, system_prompt: str, user_content, max_tokens: int,
     """
     if provider in ("mistral", "bedrock") and api_key:
         raise ValueError("Voor het EU-model geldt alleen de sleutel van de server.")
+    return _zonder_streepje_stream(
+        _stream_llm(provider, system_prompt + SCHRIJFREGEL, user_content, max_tokens, quality, api_key))
+
+
+def _stream_llm(provider: str, system_prompt: str, user_content, max_tokens: int, quality: bool,
+                api_key: Optional[str]):
     if provider == "mistral":
         return stream_mistral(system_prompt, user_content, max_tokens=max_tokens, quality=quality)
     if provider == "bedrock":

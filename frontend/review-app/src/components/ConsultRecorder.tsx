@@ -219,7 +219,7 @@ export default function ConsultRecorder({ onComplete }: ConsultRecorderProps) {
         message.includes("NetworkError")
       ) {
         setUploadError(
-          "Backend niet bereikbaar. De opname is lokaal opgeslagen — je kunt het bestand downloaden of later opnieuw proberen."
+          "Backend niet bereikbaar. De opname is lokaal opgeslagen - je kunt het bestand downloaden of later opnieuw proberen."
         );
       } else {
         setUploadError(message);
@@ -337,9 +337,9 @@ export default function ConsultRecorder({ onComplete }: ConsultRecorderProps) {
           {duration > 0 && state !== "idle" && (
             <p className="text-xs text-gray-400 mt-1">
               {state === "recording" && "Spreek duidelijk in de microfoon"}
-              {state === "paused" && "Opname gepauzeerd — druk op hervat"}
+              {state === "paused" && "Opname gepauzeerd - druk op hervat"}
               {state === "stopped" &&
-                "Opname voltooid — klaar voor verwerking"}
+                "Opname voltooid - klaar voor verwerking"}
             </p>
           )}
         </div>

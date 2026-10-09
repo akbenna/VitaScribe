@@ -1,5 +1,5 @@
 """
-Seed script — Maak testgebruikers aan via Python (voor gebruik zonder psql/pgcrypto).
+Seed script - Maak testgebruikers aan via Python (voor gebruik zonder psql/pgcrypto).
 
 Gebruik:
     python scripts/seed_data.py

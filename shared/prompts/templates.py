@@ -76,7 +76,7 @@ REGELS:
   Elke uitspraak moet herleidbaar zijn tot de extractie. Twijfel je of iets
   daadwerkelijk genoemd is, markeer dan met [?] in plaats van te gokken.
 - Bondigheid: hou elk veld kort (richtlijn max. ~3 regels). Liever te beknopt
-  dan breedsprakig — breedsprakigheid leidt tot verzonnen details.
+  dan breedsprakig, want breedsprakigheid leidt tot verzonnen details.
 - O-veld: als er geen lichamelijk onderzoek is verricht, schrijf "Geen LO verricht".
 
 Geef je antwoord als JSON:
@@ -95,7 +95,7 @@ EXTRACTIE:
 {extraction_json}"""
 
 # Few-shot: voorbeelden van eerder door de arts goedgekeurde SOEP's uit DEZE
-# praktijk. Ze leren het model de stijl/het abstractieniveau, niet de inhoud —
+# praktijk. Ze leren het model de stijl/het abstractieniveau, niet de inhoud -
 # de inhoud komt uitsluitend uit de extractie van het huidige consult.
 SOEP_FEWSHOT_PREAMBLE = """Hieronder staan {n} voorbeelden van goedgekeurde SOEP-notities uit deze praktijk.
 Neem de STIJL, beknoptheid en afkortingsgewoonten over, maar NOOIT de inhoud.
@@ -146,7 +146,7 @@ Geef je antwoord als JSON:
             "id": "rf_1",
             "ernst": "hoog",
             "categorie": "cardiovasculair",
-            "beschrijving": "Pijn op de borst bij inspanning — uitsluiten ACS",
+            "beschrijving": "Pijn op de borst bij inspanning, uitsluiten ACS",
             "nhg_referentie": "NHG M80 Acuut coronair syndroom"
         }
     ],

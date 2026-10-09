@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "BriefAssistent",
-  "description": "Huisarts informatiebrief assistent — Bricks HIS integratie, AVG-conform",
+  "description": "Huisarts informatiebrief assistent - Bricks HIS integratie, AVG-conform",
   "version": "4.0",
   "permissions": [
     "activeTab",

@@ -252,7 +252,7 @@
       var t = el('table');
       [['S', p.s], ['O', p.o], ['E', p.e], ['P', p.p],
        ['ICPC', [p.icpc_code, p.icpc_titel].filter(Boolean).join(' ')]].forEach(function (rij) {
-        var tr = el('tr'); tr.appendChild(el('td', '', rij[0])); tr.appendChild(el('td', 'soep', rij[1] || '—')); t.appendChild(tr);
+        var tr = el('tr'); tr.appendChild(el('td', '', rij[0])); tr.appendChild(el('td', 'soep', rij[1] || '-')); t.appendChild(tr);
       });
       k.appendChild(t);
     });
@@ -476,7 +476,7 @@
       var b = await vergelijk(deel.blob, 'filmpje-' + deel.nummer + '.webm');
       var sp = function (x) { return x.fout ? 'fout' : String(x.sprekers); };
       deel.cellen.sprekers.textContent = sp(b.deepgram) + ' / ' + sp(b.voxtral);
-      deel.cellen.overeenkomst.textContent = b.overeenkomst === null ? '—' : b.overeenkomst + '%';
+      deel.cellen.overeenkomst.textContent = b.overeenkomst === null ? '-' : b.overeenkomst + '%';
       var tijd = function (x) { return x.seconden + ' s'; };
       deel.cellen.tijd.textContent = tijd(b.deepgram) + ' / ' + tijd(b.voxtral);
       deel.cellen.actie.textContent = '';
@@ -651,7 +651,7 @@
     var detail = el('div');
     uit.appendChild(detail);
     var aantal = function (x) { return x.fout ? 'fout' : String((x.verdacht || []).length); };
-    var valk = function (x) { return x.fout || !x.valkuilen ? '—' : x.valkuilen.gehaald + '/' + x.valkuilen.totaal; };
+    var valk = function (x) { return x.fout || !x.valkuilen ? '-' : x.valkuilen.gehaald + '/' + x.valkuilen.totaal; };
     var som = { claude: [0, 0], eu: [0, 0], eu_gecontroleerd: [0, 0] };
     var herhaal = Number($('soepherhaal').value) || 1;
     var run = 'run-' + new Date().toISOString().replace(/[^0-9T]/g, '').slice(0, 15);
@@ -667,13 +667,13 @@
         var g = d.eu_gecontroleerd;
         tr.appendChild(el('td', '', valk(d.claude)));
         tr.appendChild(el('td', '', valk(d.eu)));
-        if (metControle) tr.appendChild(el('td', '', g ? valk(g) : '—'));
+        if (metControle) tr.appendChild(el('td', '', g ? valk(g) : '-'));
         ['claude', 'eu', 'eu_gecontroleerd'].forEach(function (k) {
           if (d[k] && d[k].valkuilen) { som[k][0] += d[k].valkuilen.gehaald; som[k][1] += d[k].valkuilen.totaal; }
         });
         tr.appendChild(el('td', '', aantal(d.claude)));
         tr.appendChild(el('td', '', aantal(d.eu)));
-        if (metControle) tr.appendChild(el('td', '', g ? aantal(g) : '—'));
+        if (metControle) tr.appendChild(el('td', '', g ? aantal(g) : '-'));
         tr.appendChild(el('td', '', d.claude.seconden + ' s / ' + d.eu.seconden + ' s'));
         var toonKnop = el('button', '', 'Toon');
         (function (d, titel) {

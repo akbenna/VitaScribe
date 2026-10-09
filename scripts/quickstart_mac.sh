@@ -1,6 +1,6 @@
 #!/bin/bash
 # =============================================================================
-# VitaScribe — Quickstart voor macOS (Development)
+# VitaScribe - Quickstart voor macOS (Development)
 # =============================================================================
 # Dit script:
 #   1. Checkt of Ollama geïnstalleerd is
@@ -24,7 +24,7 @@ NC='\033[0m'
 
 cd "$(dirname "$0")/.."
 echo "========================================"
-echo " VitaScribe — macOS Quickstart"
+echo " VitaScribe - macOS Quickstart"
 echo " $(pwd)"
 echo "========================================"
 echo ""
@@ -58,7 +58,7 @@ if command -v ollama &>/dev/null; then
     if ollama list 2>/dev/null | grep -q "llama3.1:8b"; then
         echo -e "      Model llama3.1 ${GREEN}aanwezig${NC}"
     else
-        echo -e "      ${YELLOW}Model niet gevonden — nu pullen...${NC}"
+        echo -e "      ${YELLOW}Model niet gevonden - nu pullen...${NC}"
         echo "      Dit duurt ~5 minuten (download ~4.7GB)"
         ollama pull llama3.1:8b
     fi

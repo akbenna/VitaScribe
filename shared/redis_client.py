@@ -1,5 +1,5 @@
 """
-Redis Client — Event bus en status caching.
+Redis Client - Event bus en status caching.
 
 Gebruik:
     from shared.redis_client import redis_client

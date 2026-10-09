@@ -46,7 +46,7 @@ export function useMicrophoneDevices() {
         setSelectedDeviceId(savedId);
       }
     } catch {
-      // Geen toestemming of geen apparaten — laat lijst leeg
+      // Geen toestemming of geen apparaten - laat lijst leeg
     } finally {
       setLoading(false);
     }

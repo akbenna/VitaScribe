@@ -9,7 +9,7 @@ segment), waardoor de S/O-toewijzing in de SOEP vervuilt.
 Aanpak: wijs elk WOORD toe aan de spreker met de grootste temporele overlap,
 en hergroepeer aaneengesloten woorden van dezelfde spreker tot nette segmenten.
 
-Pure stdlib, geen pyannote/torch — volledig deterministisch en unit-testbaar.
+Pure stdlib, geen pyannote/torch - volledig deterministisch en unit-testbaar.
 """
 
 from __future__ import annotations

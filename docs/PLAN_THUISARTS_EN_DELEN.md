@@ -23,7 +23,7 @@ hoofd invullen zou hier de ene onvergeeflijke fout zijn: hij opent, en de
 patiënt leest met hetzelfde vertrouwen over de verkeerde aandoening. De module
 toont daarom alleen regels die én een adres én een controledatum hebben. Zolang
 de tabel leeg is, staat er bij elke code "Geen Thuisarts-pagina bij deze code"
-met een zoekveld — zichtbaar onaf, niet stil verkeerd.
+met een zoekveld - zichtbaar onaf, niet stil verkeerd.
 
 Het invullen is daarmee een afgebakende klus van één zitting: `python3
 scripts/thuisarts_tabel.py` zegt welke codes nog wachten, en wie een adres
@@ -203,11 +203,11 @@ als mail, met minder controle.
 Fase 1 is klaar als:
 
 1. bij de 43 seed-codes een Thuisarts-link verschijnt, of de melding dat er geen
-   pagina is — **nu de tweede helft; de eerste helft wacht op de ingevulde tabel**;
+   pagina is - **nu de tweede helft; de eerste helft wacht op de ingevulde tabel**;
 2. de link in de B1-uitleg en op de afdruk staat, met een QR-code die in de
-   browser is gemaakt — **gedaan**;
-3. er geen patiëntgegevens de browser uitgaan voor het opzoeken — **gedaan**;
-4. de linkcontrole wekelijks draait en afwijkingen meldt — **gedaan**.
+   browser is gemaakt - **gedaan**;
+3. er geen patiëntgegevens de browser uitgaan voor het opzoeken - **gedaan**;
+4. de linkcontrole wekelijks draait en afwijkingen meldt - **gedaan**.
 
 Fase 2 is klaar als route 2 werkt (**gedaan**) en route 3 alleen verschijnt als
 de praktijk hem aanzet, zonder ontvanger en zonder identificerende gegevens

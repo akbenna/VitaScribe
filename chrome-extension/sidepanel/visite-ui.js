@@ -253,8 +253,8 @@ window.SVVisiteUI = (function () {
         data.fotos.forEach(function (f) { window.SVTelefoon.toonFoto(f); });
       }
       geopend = id;
-      setStatus(p ? 'Visiteverslag voor ' + p.naam + (zelfde === 'zelfde' ? ' — deze patiënt staat open in Bricks ✓' :
-          zelfde === 'anders' ? ' — LET OP: in Bricks staat een andere patiënt open' : ' — controleer of deze patiënt open staat in Bricks') +
+      setStatus(p ? 'Visiteverslag voor ' + p.naam + (zelfde === 'zelfde' ? '. Deze patiënt staat open in Bricks ✓' :
+          zelfde === 'anders' ? '. LET OP: in Bricks staat een andere patiënt open' : '. Controleer of deze patiënt open staat in Bricks') +
           '. Controleer en voeg in; "Consult afsluiten" haalt de visite daarna van de server.'
         : 'Visiteverslag' + (labels[id] ? ' (' + labels[id] + ')' : '') +
           ' staat klaar. Open de patiënt in Bricks, controleer en voeg in. "Consult afsluiten" haalt de visite daarna van de server.', zelfde === 'anders');
@@ -273,7 +273,7 @@ window.SVVisiteUI = (function () {
     ronde.plekken.forEach(function (p) {
       var li = document.createElement('li');
       li.className = p.gedaan ? 'gedaan' : '';
-      li.textContent = p.naam + (p.geboren ? ' (' + p.geboren + ')' : '') + ' — telefoon: ' + p.aanduiding + ' ';
+      li.textContent = p.naam + (p.geboren ? ' (' + p.geboren + ')' : '') + ', telefoon: ' + p.aanduiding + ' ';
       var weg = document.createElement('button');
       weg.type = 'button'; weg.className = 'icon-btn'; weg.textContent = '✕'; weg.title = 'Uit de ronde halen';
       weg.addEventListener('click', async function () {

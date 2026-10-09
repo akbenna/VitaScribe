@@ -160,7 +160,7 @@
     kop.appendChild(el('span', 'dv-zeker ' + zeker, { expliciet: 'Staat erin', indirect: 'Alleen aanwijzingen', niet_gevonden: 'Niet gevonden' }[zeker]));
     kop.appendChild(sluitKnop(kaart, tekst));
     kaart.appendChild(kop);
-    kaart.appendChild(el('p', 'dv-antwoord', a.antwoord || '—'));
+    kaart.appendChild(el('p', 'dv-antwoord', a.antwoord || '-'));
     if (a.let_op) kaart.appendChild(el('p', 'dv-letop', a.let_op));
     if (a.bronnen && a.bronnen.length) {
       var lijst = el('ul', 'dv-bronnen');
@@ -170,7 +170,7 @@
         mark.title = b.geverifieerd ? 'Letterlijk teruggevonden in het dossier' : 'Niet letterlijk teruggevonden: controleer in Bricks';
         var tekstEl = el('span');
         var meta = [b.datum, b.onderdeel].filter(Boolean).join(' · ');
-        if (meta) tekstEl.append(meta + ' — ');
+        if (meta) tekstEl.append(meta + ': ');
         tekstEl.appendChild(el('q', '', b.citaat));
         li.append(mark, tekstEl);
         lijst.appendChild(li);
@@ -269,7 +269,7 @@
     if ((lab.bevindingen || []).length) {
       var ul = el('ul', 'dv-md-waarden');
       lab.bevindingen.forEach(function (b) {
-        ul.appendChild(el('li', '', (PIJL[b.richting] ? PIJL[b.richting] + ' ' : '') + b.bepaling + ' ' + b.waarde + (b.duiding ? ' — ' + b.duiding : '')));
+        ul.appendChild(el('li', '', (PIJL[b.richting] ? PIJL[b.richting] + ' ' : '') + b.bepaling + ' ' + b.waarde + (b.duiding ? ': ' + b.duiding : '')));
       });
       kaart.appendChild(ul);
     }

@@ -4,7 +4,7 @@ SOEP-voorkeursdataset (DPO)
 
 Bouwt voorkeursparen voor Direct Preference Optimization uit de SOEP-feedback:
 de door de arts goedgekeurde SOEP is 'chosen', de oorspronkelijk gegenereerde
-SOEP is 'rejected'. Daarmee leert het model de praktijkstijl te prefereren —
+SOEP is 'rejected'. Daarmee leert het model de praktijkstijl te prefereren -
 exact het materiaal dat consultation_feedback opslaat.
 
 Pure builder (`build_dpo_pairs`) + DB-export (`SoepDPODatasetBuilder`).

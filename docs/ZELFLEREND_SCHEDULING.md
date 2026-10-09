@@ -2,7 +2,7 @@
 
 De zelflerende laag bestaat uit twee jobs die de woordenlijst en de SOEP-stijl
 automatisch met de praktijk laten meegroeien. Beide horen **periodiek** te
-draaien op de praktijkserver — niet eenmalig. Dit document beschrijft de
+draaien op de praktijkserver - niet eenmalig. Dit document beschrijft de
 installatie.
 
 ## Koude start: kennis vanaf dag 1 (vóór er feedback is)
@@ -13,7 +13,7 @@ niveau:
 
 1. **Medische woordenlijst** (`shared/vocabulary.py`): een gecureerde lijst van
    honderden NL medicatie-/diagnosetermen + lokale verwijslocaties. Deze voedt
-   vanaf de eerste opname de Whisper-hotwords en de naberekening — geen actie
+   vanaf de eerste opname de Whisper-hotwords en de naberekening - geen actie
    nodig, staat standaard aan.
 
 2. **Seed-few-shot-bank** (gecureerde, synthetische SOEP-voorbeelden): laad
@@ -27,14 +27,14 @@ niveau:
 
    De voorbeelden bevatten **geen patiëntdata** en sturen alleen de *stijl* (de
    prompt zegt expliciet: stijl overnemen, nooit de inhoud). Ze staan in
-   `services/learning/seed_data/soep_seed_examples.json` — **review ze als arts**
+   `services/learning/seed_data/soep_seed_examples.json` - **review ze als arts**
    en pas ze aan je eigen voorkeuren aan vóór go-live. Zodra echte goedgekeurde
    SOEP's binnenkomen, vult `tools/build_fewshot_bank.py` de bank met
    praktijkeigen voorbeelden; die komen náást de seed-voorbeelden te staan
    (seed-id's beginnen met `seed_`).
 
 Wat een koude start NIET kan: model-fine-tuning/DPO (Fase 3) en de akoestische
-verbeteringen vergen echte, verzamelde feedback en blijven dus voor later — zie
+verbeteringen vergen echte, verzamelde feedback en blijven dus voor later - zie
 `docs/FASE3_FINETUNING.md`.
 
 ## Wat er draait
@@ -59,7 +59,7 @@ laadt `.env`, kiest de juiste Python (venv heeft voorkeur) en logt naar
   **eerstvolgende (her)start**; de few-shot-bank wordt per SOEP-generatie
   opnieuw ingelezen.
 
-## Optie A — systemd-timer (aanbevolen)
+## Optie A - systemd-timer (aanbevolen)
 
 ```bash
 # 1. Kopieer de units (pas WorkingDirectory/User in de .service aan je install aan)
@@ -79,7 +79,7 @@ journalctl -u vitascribe-learning.service -n 50    # logs bekijken
 Standaard draait de timer **elke maandag om 03:00** (`OnCalendar` in de
 `.timer`). `Persistent=true` haalt een gemiste run in als de server uit stond.
 
-## Optie B — cron
+## Optie B - cron
 
 ```bash
 # Systeembrede cron (met gebruikersveld):
@@ -101,12 +101,12 @@ python tools/build_fewshot_bank.py --max-examples 300
 ## Afstelknoppen (in `.env`)
 
 ```
-# Vocabulaire-job — afweging leersnelheid vs. zuiverheid
+# Vocabulaire-job - afweging leersnelheid vs. zuiverheid
 VOCAB_LEARN_MIN_CONFIRMATIONS=3   # onafhankelijke consulten voor activatie
 VOCAB_LEARN_MIN_DOMINANCE=0.6     # consistentie-eis dominante variant
 VOCAB_LEARN_PERSIST_FLOOR=2       # vanaf hier bewaren (zichtbaarheid)
 
-# Few-shot — aantal voorbeelden per SOEP en bankgrootte
+# Few-shot - aantal voorbeelden per SOEP en bankgrootte
 FEWSHOT_ENABLED=true
 FEWSHOT_K=3
 FEWSHOT_MAX_EXAMPLES=500

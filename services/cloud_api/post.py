@@ -100,7 +100,7 @@ LAB (bij soort "lab"; anders lege velden)
   waarden die niet in beeld zijn).
 - "beleid": kort voorstel conform NHG (bijv. "Herhalen over 3 mnd; \
   alcoholanamnese."). Bij "niet_beoordeelbaar": "Beoordelen via aanvrager \
-  (kliniek, vorige waarden)." — dat is de afspraak in deze praktijk.
+  (kliniek, vorige waarden)." Dat is de afspraak in deze praktijk.
 - Kweek (urine, wond, feces, keel): als bevindingen de verwekker met \
   kiemgetal, en per relevant middel gevoelig of resistent (richting \
   "afwijkend"). "beleid": het passende middel volgens de NHG-Standaard, \

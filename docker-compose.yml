@@ -1,5 +1,5 @@
 # =============================================================================
-# AI-Consultassistent — Docker Compose (Schaalbare Productie)
+# AI-Consultassistent - Docker Compose (Schaalbare Productie)
 # =============================================================================
 #
 # CPU-modus (macOS / testen zonder GPU):
@@ -57,7 +57,7 @@ services:
       retries: 5
 
   # ---------------------------------------------------------------------------
-  # Ollama — Lokale LLM runtime (GPU — productie)
+  # Ollama - Lokale LLM runtime (GPU - productie)
   # ---------------------------------------------------------------------------
   ollama:
     image: ollama/ollama:latest
@@ -82,7 +82,7 @@ services:
       retries: 5
       start_period: 30s
 
-  # Ollama zonder GPU (CPU — macOS / testen)
+  # Ollama zonder GPU (CPU - macOS / testen)
   ollama-cpu:
     image: ollama/ollama:latest
     container_name: ca-ollama-cpu
@@ -102,7 +102,7 @@ services:
       start_period: 30s
 
   # ---------------------------------------------------------------------------
-  # API Gateway (FastAPI) — CPU build voor macOS
+  # API Gateway (FastAPI) - CPU build voor macOS
   # ---------------------------------------------------------------------------
   api-cpu:
     build:
@@ -133,7 +133,7 @@ services:
       retries: 3
       start_period: 60s
 
-  # API Gateway (GPU — productie)
+  # API Gateway (GPU - productie)
   api:
     build:
       context: .
@@ -164,7 +164,7 @@ services:
       start_period: 60s
 
   # ---------------------------------------------------------------------------
-  # Pipeline Worker (CPU — macOS / testen)
+  # Pipeline Worker (CPU - macOS / testen)
   # ---------------------------------------------------------------------------
   worker-cpu:
     build:
@@ -194,7 +194,7 @@ services:
       ollama-cpu:
         condition: service_healthy
 
-  # Pipeline Worker (GPU — productie, schaalbaar)
+  # Pipeline Worker (GPU - productie, schaalbaar)
   worker:
     build:
       context: .
@@ -226,7 +226,7 @@ services:
               capabilities: [gpu]
 
   # ---------------------------------------------------------------------------
-  # Cloud API — Chrome Extension Backend (geen GPU nodig)
+  # Cloud API - Chrome Extension Backend (geen GPU nodig)
   # ---------------------------------------------------------------------------
   cloud-api:
     build:
@@ -260,7 +260,7 @@ services:
       - "3000:3000"
 
   # ---------------------------------------------------------------------------
-  # Cloud API (Chrome Extension Backend — geen GPU nodig)
+  # Cloud API (Chrome Extension Backend - geen GPU nodig)
   # ---------------------------------------------------------------------------
   cloud-api:
     build:

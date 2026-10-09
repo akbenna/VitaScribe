@@ -1,6 +1,6 @@
 #!/bin/bash
 # =============================================================================
-# Railway Start Script — Database initialisatie + API server
+# Railway Start Script - Database initialisatie + API server
 # =============================================================================
 set -e
 

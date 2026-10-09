@@ -84,7 +84,7 @@ class PipelineWorker:
             )
             logger.info("Consumer group aangemaakt", group=CONSUMER_GROUP)
         except Exception:
-            # Groep bestaat al — prima
+            # Groep bestaat al - prima
             pass
 
         # Laad ML-modellen
@@ -161,7 +161,7 @@ class PipelineWorker:
                     db, uuid.UUID(consult_id), audio_path
                 )
 
-            # Job succesvol — acknowledge
+            # Job succesvol - acknowledge
             await redis_client.client.xack(
                 STREAM_NAME, CONSUMER_GROUP, message_id
             )

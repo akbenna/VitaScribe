@@ -1,5 +1,5 @@
 """
-Transcript model — Whisper STT output.
+Transcript model - Whisper STT output.
 """
 
 from __future__ import annotations

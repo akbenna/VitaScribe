@@ -1,5 +1,5 @@
 # =============================================================================
-# AI-Consultassistent — Backend Services (CPU / Apple Silicon)
+# AI-Consultassistent - Backend Services (CPU / Apple Silicon)
 # =============================================================================
 # Voor testen op macOS (ARM64) of servers zonder GPU.
 # Gebruik: docker compose --profile cpu up -d

@@ -141,7 +141,7 @@ class SecurityConfig:
                 )
             self.secret_key = secrets.token_urlsafe(32)
             warnings.warn(
-                "APP_SECRET_KEY niet ingesteld — gegenereerde tijdelijke sleutel. "
+                "APP_SECRET_KEY niet ingesteld - gegenereerde tijdelijke sleutel. "
                 "Stel een vaste sleutel in voor productie.",
                 stacklevel=2,
             )

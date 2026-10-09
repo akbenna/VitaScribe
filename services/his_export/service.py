@@ -106,7 +106,7 @@ class ClipboardExporter(HISExporter):
 
         if data.icpc_code:
             lines.append("")
-            lines.append(f"ICPC: {data.icpc_code} — {data.icpc_titel or ''}")
+            lines.append(f"ICPC: {data.icpc_code} - {data.icpc_titel or ''}")
 
         return "\n".join(lines)
 
@@ -194,7 +194,7 @@ class CGMExporter(HISExporter):
             return ExportResult(
                 success=False,
                 target=self.his_type,
-                message="CGM API timeout — probeer later opnieuw",
+                message="CGM API timeout - probeer later opnieuw",
             )
         except httpx.HTTPStatusError as e:
             logger.error("CGM export HTTP fout", status=e.response.status_code)
@@ -423,7 +423,7 @@ class HISExportService:
         self._exporters[HISType.CLIPBOARD] = ClipboardExporter()
         self._exporters[HISType.FHIR] = FHIRExporter()
 
-        # CGM — configureerbaar
+        # CGM - configureerbaar
         cgm_url = ""
         cgm_key = ""
         if self.config:
@@ -431,7 +431,7 @@ class HISExportService:
             cgm_key = getattr(self.config, "cgm_api_key", "") if hasattr(self.config, "cgm_api_key") else ""
         self._exporters[HISType.CGM_HUISARTS] = CGMExporter(api_url=cgm_url, api_key=cgm_key)
 
-        # Medicom — configureerbaar
+        # Medicom - configureerbaar
         medicom_url = ""
         medicom_key = ""
         if self.config:

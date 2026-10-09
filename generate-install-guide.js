@@ -88,11 +88,11 @@ const doc = new Document({
         new Paragraph({
           alignment: AlignmentType.CENTER,
           spacing: { before: 1200 },
-          children: [new TextRun({ text: "Versie 1.1.0  \u2014  April 2026", font: "Arial", size: 20, color: "9CA3AF" })]
+          children: [new TextRun({ text: "Versie 1.1.0  -  April 2026", font: "Arial", size: 20, color: "9CA3AF" })]
         }),
         new Paragraph({
           alignment: AlignmentType.CENTER,
-          children: [new TextRun({ text: "Vertrouwelijk \u2014 Alleen voor intern gebruik", font: "Arial", size: 18, italics: true, color: "9CA3AF" })]
+          children: [new TextRun({ text: "Vertrouwelijk - Alleen voor intern gebruik", font: "Arial", size: 18, italics: true, color: "9CA3AF" })]
         }),
       ]
     },
@@ -109,7 +109,7 @@ const doc = new Document({
         default: new Header({
           children: [new Paragraph({
             border: { bottom: { style: BorderStyle.SINGLE, size: 4, color: "059669", space: 4 } },
-            children: [new TextRun({ text: "VitaScribe \u2014 Installatiehandleiding", font: "Arial", size: 16, color: "9CA3AF" })]
+            children: [new TextRun({ text: "VitaScribe - Installatiehandleiding", font: "Arial", size: 16, color: "9CA3AF" })]
           })]
         })
       },
@@ -138,7 +138,7 @@ const doc = new Document({
         new Paragraph({
           spacing: { after: 200 },
           children: [new TextRun({
-            text: "De extensie werkt in Google Chrome en Microsoft Edge. Alle AI-verwerking gebeurt via een beveiligde cloud API \u2014 er hoeft niets lokaal ge\u00EFnstalleerd te worden behalve de extensie zelf.",
+            text: "De extensie werkt in Google Chrome en Microsoft Edge. Alle AI-verwerking gebeurt via een beveiligde cloud API - er hoeft niets lokaal ge\u00EFnstalleerd te worden behalve de extensie zelf.",
             font: "Arial", size: 22
           })]
         }),
@@ -300,7 +300,7 @@ const doc = new Document({
         new Paragraph({
           numbering: { reference: "steps", level: 0 },
           spacing: { after: 120 },
-          children: [new TextRun({ text: "Klik op de groene knop \u2014 het VitaScribe-paneel opent", font: "Arial", size: 22 })]
+          children: [new TextRun({ text: "Klik op de groene knop - het VitaScribe-paneel opent", font: "Arial", size: 22 })]
         }),
         new Paragraph({
           numbering: { reference: "steps", level: 0 },
@@ -325,7 +325,7 @@ const doc = new Document({
         new Paragraph({
           numbering: { reference: "steps", level: 0 },
           spacing: { after: 200 },
-          children: [new TextRun({ text: "Klik Invoegen in Bricks \u2014 de velden worden automatisch gevuld", font: "Arial", size: 22 })]
+          children: [new TextRun({ text: "Klik Invoegen in Bricks - de velden worden automatisch gevuld", font: "Arial", size: 22 })]
         }),
 
         new Paragraph({ heading: HeadingLevel.HEADING_2, children: [new TextRun("Via de popup (overal)")] }),
@@ -343,7 +343,7 @@ const doc = new Document({
         new Paragraph({
           numbering: { reference: "bullets", level: 0 },
           spacing: { after: 100 },
-          children: [new TextRun({ text: "Audio wordt na verwerking direct verwijderd \u2014 niets wordt opgeslagen", font: "Arial", size: 22 })]
+          children: [new TextRun({ text: "Audio wordt na verwerking direct verwijderd - niets wordt opgeslagen", font: "Arial", size: 22 })]
         }),
         new Paragraph({
           numbering: { reference: "bullets", level: 0 },

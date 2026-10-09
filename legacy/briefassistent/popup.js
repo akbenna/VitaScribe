@@ -1,4 +1,4 @@
-// popup.js v5 — Geoptimaliseerd: streaming, privacy fix, XSS-bescherming, responsive
+// popup.js v5 - Geoptimaliseerd: streaming, privacy fix, XSS-bescherming, responsive
 
 // ── PDF.js worker via extensie URL ───────────────────────────
 if (typeof pdfjsLib !== 'undefined') {
@@ -44,7 +44,7 @@ function getApiKey() {
 
 // ── Init ──────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
-  // Alle event listeners (geen inline handlers — CSP MV3)
+  // Alle event listeners (geen inline handlers - CSP MV3)
   $('avgBtn').addEventListener('click', () => chrome.tabs.create({ url: chrome.runtime.getURL('avg-verantwoording.html') }));
 
   // Hoofdtabs (Brief / Verwijzing)
@@ -121,7 +121,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   setupDropZones();
 });
 
-// ── Drop zones — JS event listeners (robuuster dan inline) ───
+// ── Drop zones - JS event listeners (robuuster dan inline) ───
 function setupDropZones() {
   // Dossier PDF drop zone
   const dropDossier = $('dropDossier');
@@ -350,12 +350,12 @@ function setupScreenshotPaste() {
   area.setAttribute('tabindex', '0');
 
   document.addEventListener('paste', (e) => {
-    // Dossier screenshot — alleen als dat pane zichtbaar is
+    // Dossier screenshot - alleen als dat pane zichtbaar is
     if ($('pane-screenshot').style.display !== 'none') {
       handleScreenshotPaste(e, 'dossier');
       return;
     }
-    // Vraag screenshot — alleen als dat pane zichtbaar is
+    // Vraag screenshot - alleen als dat pane zichtbaar is
     if ($('vpane-screenshot').style.display !== 'none') {
       handleScreenshotPaste(e, 'vraag');
       return;
@@ -383,7 +383,7 @@ function handleScreenshotPaste(e, type) {
           preview.appendChild(img);
           $('analyseScreenshotBtn').style.display = 'block';
           $('clearScreenshotBtn').style.display = 'block';
-          $('screenshotStatus').textContent = '✓ Screenshot geplakt — klik Analyseer';
+          $('screenshotStatus').textContent = '✓ Screenshot geplakt - klik Analyseer';
         } else {
           state.vraagScreenshotDataUrl = ev.target.result;
           state.vraagScreenshotAnalysed = false;
@@ -395,7 +395,7 @@ function handleScreenshotPaste(e, type) {
           preview.appendChild(img);
           $('analyseVraagScreenshotBtn').style.display = 'block';
           $('clearVraagScreenshotBtn').style.display = 'block';
-          $('vraagScreenshotStatus').textContent = '✓ Screenshot geplakt — klik Analyseer';
+          $('vraagScreenshotStatus').textContent = '✓ Screenshot geplakt - klik Analyseer';
         }
       };
       reader.readAsDataURL(blob);
@@ -690,14 +690,14 @@ async function loadVraagPDF(event) {
     $('vraagPill').style.display = 'flex';
   } catch(e) {
     showError('PDF leesfout: ' + e.message);
-    $('dropVraagLabel').innerHTML = '📩 Sleep vraag-PDF hier<br><small>Advocaat / SMA / Gemeente / UWV — of klik</small>';
+    $('dropVraagLabel').innerHTML = '📩 Sleep vraag-PDF hier<br><small>Advocaat / SMA / Gemeente / UWV - of klik</small>';
   }
 }
 
 function clearVraag() {
   state.vraagText = null; state.vraagFileName = null;
   $('dropVraag').classList.remove('loaded');
-  $('dropVraagLabel').innerHTML = '📩 Sleep vraag-PDF hier<br><small>Advocaat / SMA / Gemeente / UWV — of klik</small>';
+  $('dropVraagLabel').innerHTML = '📩 Sleep vraag-PDF hier<br><small>Advocaat / SMA / Gemeente / UWV - of klik</small>';
   $('vraagPill').style.display = 'none';
   $('fileVraag').value = '';
 }
@@ -713,7 +713,7 @@ function berekenInitialen(naam) {
     .join('') || 'P.X.';
 }
 
-// Patronen zonder /g flag — worden per aanroep via replaceAll-achtig gedrag gebruikt
+// Patronen zonder /g flag - worden per aanroep via replaceAll-achtig gedrag gebruikt
 const PRIVACY_PATRONEN = [
   [/\b\d{9}\b/g,                                                                    '[BSN]'],
   [/\b\d{1,2}[-/]\d{1,2}[-/]\d{2,4}\b/g,                                           '[DATUM]'],
@@ -744,7 +744,7 @@ function bouwTransparantiePaneel() {
 
   const naamHtml = state.patiëntNaamRauw
     ? `<span class="naam-gevonden">✕ ${escapeHtml(state.patiëntNaamRauw)}</span> → <span class="naam-initialen">${escapeHtml(state.initialen)}</span>`
-    : `<span style="color:var(--muted);font-size:10px">Geen naam gevonden — initialen: </span><span class="naam-initialen">${escapeHtml(state.initialen)}</span>`;
+    : `<span style="color:var(--muted);font-size:10px">Geen naam gevonden - initialen: </span><span class="naam-initialen">${escapeHtml(state.initialen)}</span>`;
   $('tpNaam').innerHTML = '👤 Naam: ' + naamHtml;
 
   const container = $('sectieToggles');
@@ -871,8 +871,8 @@ async function generate() {
   const sep = '─'.repeat(40);
 
   const userPrompt = vraagTekst
-    ? `INFORMATIEVRAAG VAN DE AANVRAGER (${typeLabel}):\n${sep}\n${vraagTekst}\n${sep}\n\nPATIËNTDOSSIER (gefilterd — initialen: ${state.initialen}):\n${sep}\n${dossierTekst}\n${sep}\n\nBeantwoord elke vraag concreet vanuit het dossier. Schrijf een formele informatiebrief als huisarts.${extra?'\n\nEXTRA INSTRUCTIE: '+extra:''}`
-    : `PATIËNTDOSSIER (gefilterd — initialen: ${state.initialen}):\n${sep}\n${dossierTekst}\n${sep}\n\nSchrijf een informatiebrief aan de ${typeLabel}.${extra?'\n\nINSTRUCTIE: '+extra:' Geef samenvatting van diagnose, behandelstatus en prognose.'}`;
+    ? `INFORMATIEVRAAG VAN DE AANVRAGER (${typeLabel}):\n${sep}\n${vraagTekst}\n${sep}\n\nPATIËNTDOSSIER (gefilterd - initialen: ${state.initialen}):\n${sep}\n${dossierTekst}\n${sep}\n\nBeantwoord elke vraag concreet vanuit het dossier. Schrijf een formele informatiebrief als huisarts.${extra?'\n\nEXTRA INSTRUCTIE: '+extra:''}`
+    : `PATIËNTDOSSIER (gefilterd - initialen: ${state.initialen}):\n${sep}\n${dossierTekst}\n${sep}\n\nSchrijf een informatiebrief aan de ${typeLabel}.${extra?'\n\nINSTRUCTIE: '+extra:' Geef samenvatting van diagnose, behandelstatus en prognose.'}`;
 
   btn.disabled = true;
   btn.textContent = 'Bezig...';
@@ -972,7 +972,7 @@ function updateVerwDossierStatus() {
   if (heeftDossier) {
     const totChars = Object.values(state.rawSecties).join('').length;
     $('verwDossierMeta').textContent =
-      Object.keys(state.rawSecties).join(' · ') + ' — ' + Math.round(totChars/1000) + 'k tekens';
+      Object.keys(state.rawSecties).join(' · ') + ' - ' + Math.round(totChars/1000) + 'k tekens';
   }
 }
 
@@ -990,7 +990,7 @@ function selectUrgentie(el) {
   state.selectedUrgentie = el.dataset.urg;
 }
 
-// ── VERWIJZING: GENEREER (met Haiku — goedkoop) ─────────────
+// ── VERWIJZING: GENEREER (met Haiku - goedkoop) ─────────────
 const VERWIJZING_SYSTEM = `Je bent een Nederlandse huisarts die een verwijsbrief schrijft naar een medisch specialist.
 Schrijf een professionele, bondige verwijsbrief in het standaard Nederlandse verwijsformaat:
 - Geachte collega
@@ -1039,7 +1039,7 @@ async function generateVerwijzing() {
 URGENTIE: ${urgentie}
 VERWIJSREDEN: ${reden}${extra ? '\nEXTRA CONTEXT: ' + extra : ''}
 
-PATIËNTDOSSIER (gefilterd — initialen: ${state.initialen}):
+PATIËNTDOSSIER (gefilterd - initialen: ${state.initialen}):
 ${sep}
 ${dossierTekst}
 ${sep}

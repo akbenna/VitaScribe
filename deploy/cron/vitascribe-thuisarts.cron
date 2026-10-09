@@ -1,4 +1,4 @@
-# VitaScribe — wekelijkse controle van de Thuisarts-koppeltabel
+# VitaScribe - wekelijkse controle van de Thuisarts-koppeltabel
 #
 # Links verlopen. Een pagina die is hernoemd of weggehaald stuurt de patiënt
 # naar een 404, en dat hoort niet stil te gebeuren. Deze controle draait vanaf

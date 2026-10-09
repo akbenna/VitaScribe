@@ -1,5 +1,5 @@
 """
-User model — Gebruikers (arts, poh, beheerder).
+User model - Gebruikers (arts, poh, beheerder).
 """
 
 from __future__ import annotations

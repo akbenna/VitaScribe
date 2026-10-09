@@ -1,6 +1,6 @@
 #!/bin/bash
 # =============================================================================
-# VitaScribe — Start Alles (dubbelklik om te starten)
+# VitaScribe - Start Alles (dubbelklik om te starten)
 # =============================================================================
 clear
 GREEN='\033[0;32m'

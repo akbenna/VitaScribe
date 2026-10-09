@@ -1,5 +1,5 @@
 """
-AuditLog model — Immutable audit trail (NEN 7513).
+AuditLog model - Immutable audit trail (NEN 7513).
 """
 
 from __future__ import annotations

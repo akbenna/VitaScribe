@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
-  "name": "VitaScribe — AI Consultassistent",
-  "version": "2.37.0",
+  "name": "VitaScribe AI Consultassistent",
+  "version": "2.38.0",
   "description": "Dicteren, SOEP, tolk, brieven en dossiervragen voor Bricks Huisarts",
   "icons": {
     "16": "icons/icon16.png",
@@ -34,7 +34,7 @@
     "https://*.up.railway.app/*"
   ],
   "action": {
-    "default_title": "VitaScribe — AI Consultassistent",
+    "default_title": "VitaScribe AI Consultassistent",
     "default_icon": {
       "16": "icons/icon16.png",
       "32": "icons/icon32.png",

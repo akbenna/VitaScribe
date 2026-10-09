@@ -31,7 +31,7 @@ logger = structlog.get_logger()
 
 # ══════════════════════════════════════════════════════════════════════
 # 1. MEDICATIENAMEN
-# Top 200 huisartsgeneeskunde — veelvoorkomende STT-fouten links
+# Top 200 huisartsgeneeskunde - veelvoorkomende STT-fouten links
 # ══════════════════════════════════════════════════════════════════════
 
 MEDICATION_CORRECTIONS: Dict[str, str] = {

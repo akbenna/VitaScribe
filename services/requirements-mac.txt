@@ -1,5 +1,5 @@
 # =============================================================================
-# AI-Consultassistent — macOS Development Dependencies
+# AI-Consultassistent - macOS Development Dependencies
 # =============================================================================
 # Geen CUDA, geen PyAnnote (diarisatie uit voor dev).
 # Whisper draait op CPU via faster-whisper.

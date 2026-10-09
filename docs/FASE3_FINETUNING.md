@@ -1,9 +1,9 @@
-# Fase 3 — Forced-alignment & model-fine-tuning (runbook)
+# Fase 3 - Forced-alignment & model-fine-tuning (runbook)
 
 Dit is de zwaarste laag: preciezere timestamps en getrainde modellen. Het draait
 **niet** in de standaard VitaScribe-omgeving maar op een aparte GPU-machine, en
 het is pas zinvol als je voldoende artsfeedback hebt verzameld. Dit document is
-het runbook: vereisten, datadrempels, procedure en — cruciaal — evaluatie en
+het runbook: vereisten, datadrempels, procedure en - cruciaal - evaluatie en
 rollback via de meetlat.
 
 ## Overzicht en kernkeuze
@@ -18,12 +18,12 @@ rollback via de meetlat.
 **Belangrijk:** het privacybeleid verwijdert audio na goedkeuring. Daarom is de
 primaire STT-verbetering de **tekstgebaseerde ASR-postcorrectie** (geen audio).
 Akoestische Whisper-fine-tuning is alleen mogelijk als je apart, met toestemming
-en DPIA, audio-retentie inricht — het script blokkeert zichzelf anders.
+en DPIA, audio-retentie inricht - het script blokkeert zichzelf anders.
 
 ## 1. WhisperX forced-alignment (preciezere timestamps)
 
 Verfijnt woord-timestamps via wav2vec2, zodat sprekergrenzen midden in een
-segment exacter vallen — dat voedt de woord-niveau diarisatie.
+segment exacter vallen - dat voedt de woord-niveau diarisatie.
 
 ```bash
 pip install whisperx
@@ -118,4 +118,4 @@ voor een one-command rollback (vorige model/adapter terugzetten).
   bijwerken, bewaartermijn vastleggen, en "vergeten" mogelijk maken (hertrainen
   zonder ingetrokken data).
 - Akoestische FT vereist expliciete, gedocumenteerde toestemming voor
-  audio-retentie — anders niet doen.
+  audio-retentie - anders niet doen.

@@ -100,7 +100,7 @@ def test_sonnet_json_without_structured_outputs(fake):
     # Bedrock has no structured outputs: the schema is an instruction in the
     # question, so the cached system prompt stays the same per patient.
     assert "format" not in call["output_config"] and call["output_config"]["effort"]
-    assert call["system"] == [{"type": "text", "text": "SYSTEEM",
+    assert call["system"] == [{"type": "text", "text": "SYSTEEM" + llm_service.SCHRIJFREGEL,
                                "cache_control": {"type": "ephemeral"}}]
     user = call["messages"][0]["content"]
     assert user.startswith("VRAAG") and '"required": ["a"]' in user
@@ -192,3 +192,12 @@ def test_letters_in_eu_follow_bedrock(monkeypatch):
         assert run(praktijk_sleutels.kies_brieven(ident)) == ("mistral", None)
     finally:
         data_policy.herstel_modus(t)
+
+
+def test_geen_gedachtestreepje():
+    """De praktijk wil geen gedachtestreepjes: wat het model toch schrijft, vervalt."""
+    f = llm_service.zonder_gedachtestreepje
+    assert f("Hoesten — al twee weken") == "Hoesten, al twee weken"
+    assert f("Medicatie:—") == "Medicatie:-"
+    assert f("geen streep") == "geen streep"
+    assert "gedachtestreepje" in llm_service.SCHRIJFREGEL

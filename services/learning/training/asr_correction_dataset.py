@@ -3,7 +3,7 @@ ASR-postcorrectie dataset (SFT)
 ===============================
 
 Bouwt een supervised-fine-tuning dataset uit de transcriptcorrecties van de
-arts: (ruw transcript -> gecorrigeerd transcript). GEEN audio nodig — werkt dus
+arts: (ruw transcript -> gecorrigeerd transcript). GEEN audio nodig - werkt dus
 ook binnen het privacybeleid dat audio na goedkeuring verwijdert.
 
 Het getrainde model is een *contextuele* ASR-corrector, complementair aan de

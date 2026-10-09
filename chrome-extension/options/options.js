@@ -166,7 +166,7 @@ async function testConnection() {
       }
     } catch (e) { /* older server */ }
 
-    // Server bereikbaar — test nu of de API-sleutel geaccepteerd wordt.
+    // Server bereikbaar: test nu of de API-sleutel geaccepteerd wordt.
     var apiKey = document.getElementById('apiKey').value.trim();
     var headers = {};
     if (apiKey) headers['X-API-Key'] = apiKey;
@@ -184,7 +184,7 @@ async function testConnection() {
         showToast('Verbinding OK, maar de server heeft geen ' + names[llm] + '. Voeg die toe in Railway ' +
           '(en klik daar op Deploy), of kies een ander taalmodel.', 9000);
       } else {
-        showToast('Verbinding, API-sleutel en taalmodel OK — opgeslagen.');
+        showToast('Verbinding, API-sleutel en taalmodel OK, opgeslagen.');
       }
     } else if (auth.status === 403) {
       // De server zegt waarom: onbekende sleutel, uitgezet, licentie verlopen of andere praktijk.
@@ -276,7 +276,7 @@ async function testMicrophone() {
     statusEl.style.color = 'var(--primary)';
     statusEl.textContent = hasSignal
       ? 'Microfoon werkt! Audiosignaal gedetecteerd.'
-      : 'Microfoon verbonden (stil — spreek in de microfoon om te testen).';
+      : 'Microfoon verbonden (stil: spreek in de microfoon om te testen).';
   } catch (e) {
     statusEl.style.color = '#dc2626';
     if (e.name === 'NotFoundError') {

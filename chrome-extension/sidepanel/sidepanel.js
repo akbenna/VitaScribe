@@ -830,7 +830,7 @@ async function runDiagnose() {
 
   var stored = await chrome.storage.session.get('svTarget');
   var lines = [
-    'VitaScribe ' + chrome.runtime.getManifest().version + ' — diagnose',
+    'VitaScribe ' + chrome.runtime.getManifest().version + ', diagnose',
     'Tabblad: ' + (tab.url || '').split('?')[0],
     'Doelveld bekend: ' + (stored.svTarget ? stored.svTarget.label + ' (tab ' + (stored.svTarget.tabId === tab.id ? 'dit' : 'ander') + ')' : 'nee'),
     'Frames met VitaScribe-script: ' + reports.length,
@@ -841,7 +841,7 @@ async function runDiagnose() {
     lines.push('  Actief element: ' + (r.active.join(' > ') || '-'));
     lines.push('  Actief is tekstveld: ' + (r.activeIsEditable ? 'ja' : 'nee'));
     lines.push('  Onthouden veld: ' + (r.target || '-'));
-    lines.push('  Tekstvelden gevonden: ' + r.editableCount + (r.firstEditables.length ? ' — ' + r.firstEditables.join(' | ') : ''));
+    lines.push('  Tekstvelden gevonden: ' + r.editableCount + (r.firstEditables.length ? ': ' + r.firstEditables.join(' | ') : ''));
   });
   if (!reports.length) {
     lines.push('Geen enkel frame antwoordde: het script draait niet op deze pagina. Ververs de pagina (F5).');

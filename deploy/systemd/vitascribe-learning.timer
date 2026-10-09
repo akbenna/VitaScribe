@@ -1,5 +1,5 @@
 [Unit]
-Description=VitaScribe zelflerende jobs — wekelijkse trigger
+Description=VitaScribe zelflerende jobs - wekelijkse trigger
 
 [Timer]
 # Elke maandag 03:00 (rustig moment, buiten spreekuren)

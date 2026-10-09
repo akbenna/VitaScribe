@@ -1,5 +1,5 @@
 /**
- * Login Pagina — Inloggen voor artsen en medewerkers.
+ * Login Pagina - Inloggen voor artsen en medewerkers.
  */
 
 "use client";
@@ -93,7 +93,7 @@ export default function LoginPage() {
 
         {/* Privacy notice */}
         <p className="text-xs text-gray-400 text-center mt-4">
-          Volledig lokale verwerking — NEN 7510/7513 conform
+          Volledig lokale verwerking - NEN 7510/7513 conform
         </p>
       </div>
     </div>

@@ -1,6 +1,6 @@
 #!/bin/bash
 # =============================================================================
-# VitaScribe — End-to-End Test
+# VitaScribe - End-to-End Test
 # =============================================================================
 # Test de volledige pipeline: upload audio → transcriptie → SOEP
 #
@@ -60,7 +60,7 @@ TOKEN=$(echo "$LOGIN_RESP" | python3 -c "import sys,json; print(json.load(sys.st
 if [ -n "$TOKEN" ] && [ "$TOKEN" != "" ]; then
     echo -e "${GREEN}OK${NC} (token ontvangen)"
 else
-    echo -e "${YELLOW}GEEN TOKEN${NC} — probeer met ADMIN_PASSWORD env var"
+    echo -e "${YELLOW}GEEN TOKEN${NC} - probeer met ADMIN_PASSWORD env var"
     echo "      Response: $LOGIN_RESP"
     TOKEN=""
 fi
@@ -83,7 +83,7 @@ print('OK')
 if [ -f "$TEST_AUDIO" ]; then
     echo -e "${GREEN}OK${NC} (${TEST_AUDIO})"
 else
-    echo -e "${RED}FAILED${NC} — kan geen test audio maken"
+    echo -e "${RED}FAILED${NC} - kan geen test audio maken"
     exit 1
 fi
 echo ""
@@ -119,7 +119,7 @@ d=json.load(sys.stdin).get('steps',{})
 print(' | '.join(f'{k}:{v}' for k,v in d.items()))
 " 2>/dev/null || echo "?")
 
-    echo "      [${i}/${MAX_POLLS}] Status: ${CURRENT} — ${STEPS}"
+    echo "      [${i}/${MAX_POLLS}] Status: ${CURRENT} - ${STEPS}"
 
     if [ "$CURRENT" = "reviewing" ] || [ "$CURRENT" = "approved" ] || [ "$CURRENT" = "exported" ]; then
         echo -e "      ${GREEN}Pipeline voltooid!${NC}"
@@ -152,7 +152,7 @@ if [ "$CURRENT" = "reviewing" ] || [ "$CURRENT" = "approved" ]; then
     echo "========================================"
     echo "$DET_RESP" | python3 -m json.tool 2>/dev/null || echo "$DET_RESP"
 else
-    echo -e "${YELLOW}OVERGESLAGEN${NC} — pipeline niet afgerond (status: ${CURRENT})"
+    echo -e "${YELLOW}OVERGESLAGEN${NC} - pipeline niet afgerond (status: ${CURRENT})"
 fi
 
 echo ""

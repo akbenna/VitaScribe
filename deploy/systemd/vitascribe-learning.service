@@ -1,5 +1,5 @@
 [Unit]
-# VitaScribe — zelflerende jobs (vocabulaire + few-shot)
+# VitaScribe - zelflerende jobs (vocabulaire + few-shot)
 Description=VitaScribe zelflerende jobs (vocabulaire + few-shot)
 After=network-online.target postgresql.service
 Wants=network-online.target

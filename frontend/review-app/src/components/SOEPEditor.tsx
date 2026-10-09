@@ -61,7 +61,7 @@ export default function SOEPEditor({ soep, onChange, onApprove }: SOEPEditorProp
           {soep.confidence && (
             <p className="text-xs text-gray-500 mt-1">
               Confidence: {(soep.confidence * 100).toFixed(0)}%
-              {soep.icpc_code && ` | ICPC: ${soep.icpc_code} — ${soep.icpc_titel}`}
+              {soep.icpc_code && ` | ICPC: ${soep.icpc_code} - ${soep.icpc_titel}`}
             </p>
           )}
         </div>

@@ -1,5 +1,5 @@
 -- =============================================================================
--- AI-Consultassistent — Feedbackloop & Vocabulaire
+-- AI-Consultassistent - Feedbackloop & Vocabulaire
 -- =============================================================================
 -- Migratie 002: tabellen voor de zelflerend-laag
 -- - consultation_feedback: artscorrecties op transcripten en SOEP
@@ -39,7 +39,7 @@ CREATE INDEX idx_feedback_consultation ON consultation_feedback(consultation_id)
 CREATE INDEX idx_feedback_created ON consultation_feedback(created_at);
 
 COMMENT ON TABLE consultation_feedback IS
-    'Artscorrecties op transcripten en SOEP — trainingsdata voor de zelflerend-laag';
+    'Artscorrecties op transcripten en SOEP - trainingsdata voor de zelflerend-laag';
 
 
 -- =============================================================================
@@ -75,7 +75,7 @@ CREATE INDEX idx_vocab_active ON vocabulary_corrections(is_active) WHERE is_acti
 CREATE INDEX idx_vocab_category ON vocabulary_corrections(category);
 
 COMMENT ON TABLE vocabulary_corrections IS
-    'Geleerde woordenlijstcorrecties uit artsfeedback — groeit mee met gebruik';
+    'Geleerde woordenlijstcorrecties uit artsfeedback - groeit mee met gebruik';
 
 
 -- =============================================================================
