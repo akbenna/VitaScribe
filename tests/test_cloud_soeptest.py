@@ -454,3 +454,41 @@ def test_version_header_is_logged_and_min_version_published(monkeypatch):
     t = data_policy.zet_versie("2.15.3; drop")
     assert data_policy.versie() == ""
     data_policy.herstel_versie(t)
+
+
+def test_structuur_en_diagnose_die_niemand_uitsprak():
+    """A played shoulder consult (oktober 2026): the doctor pressed "hier" and drew
+    no conclusion yet; the EU model wrote "drukpijn subacromiaal" and "passend
+    bij subacromiaal pijnsyndroom", the other run "geen aanwijzingen voor
+    radiculaire uitstraling". None of it was said; all of it is flagged."""
+    gesprek = ("Spreker 1: Pijn in mijn linkerschouder, het straalt soms naar de pols. "
+               "Spreker 2: En als ik hier druk? Spreker 1: Ja, dat is heel erg.")
+    v = soeptest.verdacht([{"o": "drukpijn subacromiaal li", "e": "passend bij subacromiaal pijnsyndroom",
+                            "icpc_code": "L92", "icpc_titel": "Schouderklachten"}], gesprek)
+    assert "structuur of diagnose niet in het gesprek: subacromiaal" in v
+    assert "structuur of diagnose niet in het gesprek: pijnsyndroom" in v
+    assert any(x.startswith("ICPC L92 is schoudersyndroom") for x in v)
+    v = soeptest.verdacht([{"e": "Geen aanwijzingen voor radiculaire uitstraling."}], gesprek)
+    assert v == ["structuur of diagnose niet in het gesprek: radiculaire"]
+    # said by the doctor: not flagged
+    gezegd = gesprek + " Spreker 2: Dit past bij een subacromiaal pijnsyndroom, geen hernia."
+    assert soeptest.verdacht([{"e": "Subacromiaal pijnsyndroom li, geen aanwijzingen voor hernia",
+                               "icpc_code": "L92", "icpc_titel": "Subacromiaal pijnsyndroom"}], gezegd) == []
+    # a complaint stays a complaint
+    assert soeptest.verdacht([{"e": "Schouderklachten li", "icpc_code": "L08", "icpc_titel": "Schouderklachten"}], gesprek) == []
+
+
+def test_icpc_diagnosecode_vraagt_de_diagnose_in_de_titel():
+    from services.cloud_api import icpc_controle
+    assert "L92 is schoudersyndroom" in icpc_controle.controleer("L92", "Schouderklachten")
+    for titel in ("Schoudersyndroom", "Subacromiaal pijnsyndroom", "Frozen shoulder", "Tendinopathie rotatorcuff"):
+        assert icpc_controle.controleer("L92", titel) is None, titel
+    assert "L90 is artrose knie" in icpc_controle.controleer("L90", "Knieklachten")
+    assert icpc_controle.controleer("L90", "Gonartrose") is None
+
+
+def test_de_vaste_testset_geeft_geen_valse_structuren():
+    """The new list may not flag anything in the fixed played consults' own words."""
+    for c in soeptest.index():
+        gesprek = soeptest.gesprek_uit_testset(c["id"])
+        assert not [x for x in soeptest.verdacht([{"s": gesprek}], gesprek) if x.startswith("structuur")], c["id"]

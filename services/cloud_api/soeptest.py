@@ -12,6 +12,8 @@ niet in het gesprek. Dat is een eenvoudige, strenge controle, geen oordeel:
 - een bloeddruk (145/90) die niet in het gesprek staat;
 - een plaatsaanduiding (lateraal, mediaal, ...) of zijde (links, rechts) die
   het gesprek niet noemt;
+- een structuur of diagnose (subacromiaal, bursitis, radiculair, ...) die
+  niemand uitsprak;
 - "uitgesloten": in een verslag hoort "geen aanwijzingen voor".
 
 Endpoints (beheerder):
@@ -59,6 +61,16 @@ _EENHEID = re.compile(r"(?<![\d.,])(\d+(?:[.,]\d+)?)\s?(mg|mcg|µg|microgram|gra
 _BLOEDDRUK = re.compile(r"\b(\d{2,3})\s?/\s?(\d{2,3})\b")
 _PLAATS = ("lateraal", "laterale", "lateralis", "mediaal", "mediale", "medialis", "dorsaal", "dorsale",
            "volair", "volaire", "plantair", "plantaire", "proximaal", "distaal")
+# Structures and diagnoses a model likes to fill in when the doctor only said
+# "hier" or drew no conclusion yet ("drukpijn subacromiaal", "passend bij
+# subacromiaal pijnsyndroom", "geen aanwijzingen voor radiculaire
+# uitstraling"). Stems: the report may use any form, the conversation must
+# contain the stem.
+_STRUCTUUR = ("subacromia", "acromioclavic", "ac-gewricht", "glenohumera", "supraspinat", "infraspinat",
+              "subscapula", "rotatorcuff", "rotator cuff", "bicepspees", "bursa", "bursitis", "tuberculum",
+              "epicondyl", "olecranon", "impingement", "pijnsyndroom", "tendinopath", "tendinitis", "tendinose",
+              "capsulitis", "frozen shoulder", "meniscus", "kruisband", "collaterale band", "achillespees",
+              "fasciitis", "radiculair", "radiculaire", "hernia", "ischias", "artrose", "neuropath")
 # Topics a report may only mention (also as a denial: "geen suïcidegedachten") if they were discussed.
 _ONDERWERPEN = (
     ("suïcidaliteit", r"suïcid|suicid|doodswens|zelfmoord", r"suïcid|suicid|zelfmoord|dood (willen|wil)|doodswens|leven (niet meer|beëindigen)"),
@@ -145,6 +157,10 @@ def verdacht(problemen: List[dict], gesprek: str) -> List[str]:
     for woord in _PLAATS:
         if re.search(rf"\b{woord}\b", laag) and woord[:5] not in bron:
             uit.append(f"plaats niet in het gesprek: {woord}")
+    for stam in _STRUCTUUR:
+        m = re.search(rf"\b{re.escape(stam)}[\w-]*", laag)
+        if m and stam not in bron:
+            uit.append(f"structuur of diagnose niet in het gesprek: {m.group(0)}")
     for m in _KRACHT.finditer(soep):
         if m.group(0).replace(" ", "") not in bron_kort:
             uit.append(f"kracht of score niet in het gesprek: {m.group(0)}")

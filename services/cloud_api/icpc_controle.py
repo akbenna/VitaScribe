@@ -39,8 +39,11 @@ TABEL: Dict[str, Tuple[str, Tuple[str, ...]]] = {
     "L16": ("enkelklachten", ("enkel",)),
     "L77": ("verstuiking/distorsie enkel", ("enkel", "distorsie", "verstuik", "verzwik")),
     "L86": ("lumbosacraal radiculair syndroom/hernia", ("hernia", "radiculair", "uitstraling")),
-    "L90": ("artrose knie", ("artrose", "gonartrose", "knie")),
-    "L92": ("schoudersyndroom", ("schouder",)),
+    # Diagnosis codes need the diagnosis in the title, not just the body part:
+    # "L92 Schouderklachten" is a complaint (L08) dressed up as a syndrome.
+    "L90": ("artrose knie", ("artrose", "gonartrose")),
+    "L92": ("schoudersyndroom", ("syndroom", "subacromia", "impingement", "tendinopath", "tendinitis",
+                                 "tendinose", "bursitis", "capsulitis", "frozen", "rotator", "cuff", "periartr")),
     "N01": ("hoofdpijn", ("hoofdpijn",)),
     "N89": ("migraine", ("migraine",)),
     "P03": ("depressief gevoel", ("depressie", "somber")),
