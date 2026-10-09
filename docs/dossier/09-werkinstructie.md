@@ -203,9 +203,10 @@ merk je of je te veel gaat vertrouwen op het concept (automation bias).
 - In *Beheer › AI-gebruik en geschatte kosten* staat per dienst en model wat
   VitaScribe afnam (tokens, minuten spraak, tekens voorlezen), per dag en voor
   een gekozen periode, met een schatting per maand.
-- Alleen de prijzen die vaststaan zijn ingevuld (Anthropic, en de spraakprijzen
-  uit de spraaktest). Vul de andere in vanuit je eigen facturen, onder
-  *Prijzen*; tot die tijd staat er "prijs invullen" en telt dat deel niet mee.
+- Het rekent met de openbare lijstprijzen van elke dienst (Anthropic, Mistral,
+  Deepgram, Voxtral, Gladia, Speechmatics, Azure), met bron en datum erbij, zodat
+  je vooraf kunt schatten. Spreken bronnen elkaar tegen, dan staat de hogere
+  prijs erin. Wijkt je factuur af, vul dan onder *Prijzen* je eigen prijs in.
 - Het blijft een schatting: leidend is de factuur van elke aanbieder (kortingen,
   btw, wisselkoers). Ander gebruik op dezelfde sleutels, zoals Claude.ai, staat
   er niet in.

@@ -575,7 +575,7 @@
       el('tbody', null, k.regels.length ? k.regels.map(function (r) {
         return el('tr', null, el('td', { tekst: DIENST[r.dienst] || r.dienst }), el('td', { klasse: 'klein', tekst: r.model || '' }),
           el('td', { tekst: String(r.aanroepen) }), el('td', { klasse: 'klein', tekst: hoeveel(r) }),
-          el('td', { tekst: r.kosten === null ? 'prijs invullen' : geld(r.kosten, r.valuta) }));
+          el('td', { tekst: r.kosten === null ? 'prijs onbekend' : geld(r.kosten, r.valuta) }));
       }) : [el('tr', null, el('td', { tekst: 'Nog geen gebruik in deze periode.' }))])));
     if (k.per_dag.length) {
       plek.appendChild(el('p', { klasse: 'klein', style: 'margin-top:8px', tekst: 'Per dag: ' + k.per_dag.slice(-14).map(function (d) {
@@ -585,7 +585,8 @@
     }
     plek.appendChild(prijsblok(k));
     plek.appendChild(el('p', { klasse: 'klein', tekst: 'Een schatting van wat VitaScribe zelf afnam (tokens, minuten spraak, tekens voorlezen), '
-      + 'met de prijzen hieronder (stand ' + k.prijzen_per + '). Leidend is de factuur van elke aanbieder: daar staan ook kortingen, '
+      + 'met de openbare lijstprijzen hieronder (stand ' + k.prijzen_per + '). Wijkt je factuur af, vul dan daar je eigen prijs in. '
+      + 'Leidend is de factuur van elke aanbieder: daar staan ook kortingen, '
       + 'btw en de wisselkoers in. Ander gebruik op dezelfde sleutels (bijvoorbeeld Claude.ai) staat hier niet in.' }));
   }
 
