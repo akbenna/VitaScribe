@@ -774,6 +774,8 @@ function check(name, cond, extra) {
   check('handsfree uit: de knoppen komen terug', await panel.isVisible('#tk-arts') && await panel.isVisible('#tk-patient')
     && (await panel.textContent('#tk-patient-taal')).includes('Turks'));
   await panel.click('#tk-arts');
+  // Each turn opens its own (fake) microphone: wait until it is open, or the sound goes to the previous one.
+  for (let i = 0; i < 40 && !(await panel.getAttribute('#tk-arts', 'class')).includes('luistert'); i++) await sleep(100);
   await panel.evaluate(() => window.__geluid(0.3));
   await sleep(700);
   check('knop van de arts luistert', (await panel.getAttribute('#tk-arts', 'class')).includes('luistert'));
@@ -791,7 +793,7 @@ function check(name, cond, extra) {
     && (await panel.textContent('#tk-scherm-tekst')) === 'Ateşiniz var mı?' && (await panel.textContent('#tk-status')).includes('Stemmen toevoegen'));
   await panel.click('#tk-scherm-dicht');
   await panel.keyboard.press('Enter');
-  await sleep(300);
+  for (let i = 0; i < 40 && !(await panel.getAttribute('#tk-patient', 'class')).includes('luistert'); i++) await sleep(100);
   await panel.evaluate(() => window.__geluid(0.3));   // each turn opens its own microphone
   await sleep(500);
   check('Enter: de patiënt spreekt', (await panel.getAttribute('#tk-patient', 'class')).includes('luistert'));
