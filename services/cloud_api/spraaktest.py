@@ -47,6 +47,7 @@ from pydantic import BaseModel, Field
 
 from . import data_policy, leren, pipeline, register, stilte, stt_service
 from .medical_vocabulary import correct_transcript_full
+from .soeptest import verdacht
 from .beheer import CSP, _pagina, vereis_beheerder, vereis_testgereedschap
 
 logger = structlog.get_logger()
@@ -245,7 +246,16 @@ async def _soep(gesprek: str, aanbieder: str, taal: Optional[str]) -> dict:
         detail = str(exc) if isinstance(exc, ValueError) else type(exc).__name__
         return {"fout": detail[:300], "seconden": round(time.monotonic() - start, 1)}
     delen = soep.problemen or [{k: getattr(soep, k) for k in pipeline.SOEP_VELDEN}]
-    return {"seconden": round(time.monotonic() - start, 1), "problemen": delen}
+    uit = {"seconden": round(time.monotonic() - start, 1), "problemen": delen,
+           # What the doctor would see under a real consult: the fixed check, and
+           # with the EU model also the control pass (pipeline.verwerk_transcript).
+           "verdacht": verdacht(delen, verbeterd)}
+    if aanbieder in data_policy.EU_PROVIDERS:
+        try:
+            uit["markeringen"] = await pipeline.controleer_soep(verbeterd, soep, aanbieder)
+        except Exception as exc:  # the report stands without these markings
+            logger.warning("spraaktest.controle_fout", error=type(exc).__name__)
+    return uit
 
 
 @router.post("/api/v1/beheer/spraaktest/soep")

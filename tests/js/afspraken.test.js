@@ -32,3 +32,10 @@ test('kopieertekst: de termijn erbij als die er nog niet in staat', () => {
   assert.strictEqual(A.label({ soort: 'vangnet' }), 'Vangnet');
   assert.strictEqual(A.label({ soort: 'raar' }), 'Afspraak');
 });
+
+test('zijpaneel laadt de afsprakenkaart vóór consult-ui (die tekent een wachtend verslag meteen)', () => {
+  const html = require('fs').readFileSync(require('path').join(__dirname, '../../chrome-extension/sidepanel/sidepanel.html'), 'utf8');
+  const afs = html.indexOf('src="afspraken-ui.js"');
+  const consult = html.indexOf('src="consult-ui.js"');
+  assert.ok(afs > 0 && consult > 0 && afs < consult);
+});

@@ -165,7 +165,11 @@ def test_spraaktest_soep(monkeypatch):
     async def log(door, handeling, praktijk_id=None, **details):
         logs.append((door, handeling, details))
 
+    async def geen_controle(gesprek, soep, aanbieder=None, model=None):
+        return []
+
     monkeypatch.setattr(pipeline, "genereer_soep", fake_soep)
+    monkeypatch.setattr(pipeline, "controleer_soep", geen_controle)   # no network in the test
     monkeypatch.setattr(register, "log", log)
     main.app.dependency_overrides[beheer.vereis_beheerder] = lambda: "test-beheerder"
     try:
@@ -221,3 +225,33 @@ def test_voxtral_from_memory_and_fillers(monkeypatch):
     assert res.segments[0].text == "Ja." and res.raw_text == "Ja. Keelpijn."
     with pytest.raises(ValueError):
         asyncio.run(stt_service.transcribe_bytes(b"x", "deepgram"))
+
+
+def test_spraaktest_soep_toont_wat_de_arts_zou_zien(monkeypatch):
+    """With the EU model: the fixed check and the control pass under each report,
+    as under a real consult in the EU mode."""
+    async def fake_soep(gesprek, aanbieder=None, taal=None):
+        return pipeline.SOEPResult(o="drukpijn subacromiaal li", problemen=[
+            {"s": "Schouderpijn li.", "o": "drukpijn subacromiaal li", "e": "Schouderklachten li", "p": "",
+             "icpc_code": "L08", "icpc_titel": "Schouderklachten"}])
+
+    async def fake_controle(gesprek, soep, aanbieder=None, model=None):
+        return [{"veld": "o", "tekst": "subacromiaal", "reden": "niet gezegd", "geknipt": False}]
+
+    async def log(door, handeling, praktijk_id=None, **details):
+        pass
+    monkeypatch.setattr(pipeline, "genereer_soep", fake_soep)
+    monkeypatch.setattr(pipeline, "controleer_soep", fake_controle)
+    monkeypatch.setattr(register, "log", log)
+    monkeypatch.setenv("PHI_LLM_PROVIDER", "mistral")
+    get_config.cache_clear()
+    main.app.dependency_overrides[beheer.vereis_beheerder] = lambda: "test-beheerder"
+    try:
+        r = TestClient(main.app).post("/api/v1/beheer/spraaktest/soep", json={
+            "deepgram": "Spreker 1: Pijn in mijn linkerschouder.\nSpreker 2: En als ik hier druk?", "voxtral": "", "taal": "nl"})
+        assert r.status_code == 200, r.text
+        d = r.json()["deepgram"]
+        assert "structuur of diagnose niet in het gesprek: subacromiaal" in d["verdacht"]
+        assert d["markeringen"][0]["tekst"] == "subacromiaal"
+    finally:
+        main.app.dependency_overrides.clear()
