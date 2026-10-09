@@ -62,7 +62,7 @@ import structlog
 from fastapi import WebSocket, WebSocketDisconnect
 
 from . import kosten
-from . import audit, data_policy, pipeline, stt_service, talen, vraagsuggesties
+from . import audit, data_policy, pipeline, stilte, stt_service, talen, vraagsuggesties
 from .config import AppConfig, get_config
 from .dictation import (
     KEYTERM_RETRY_BUDGETS,
@@ -81,12 +81,14 @@ UPSTREAM_CLOSE_TIMEOUT_SECS = 10.0
 MAX_OPNAME_BYTES = 200 * 1024 * 1024   # Voxtral-stand: ruim 45 minuten webm/opus
 VOORTGANG_ELKE_SECS = 5.0
 # Voxtral mode has no live text. So that a doctor does not find out after a
-# quarter of an hour that nothing was recorded, the recording so far goes to
-# Voxtral at these moments; the side panel shows only whether speech was heard
-# (a word count, never the text). Each check transcribes the recording from
-# the start (a webm piece cut from the middle cannot be read on its own).
-CONTROLE_OP_SECS = (30.0, 120.0, 300.0)
-CONTROLE_MIN_WOORDEN = {30.0: 3, 120.0: 15, 300.0: 30}
+# quarter of an hour that nothing was recorded, the first 30 seconds go to
+# Voxtral once; the side panel shows only whether speech was heard (a word
+# count, never the text). A check transcribes the recording from the start (a
+# webm piece cut from the middle cannot be read on its own), so later checks
+# would bill most of the consult again; after this one the side panel's own
+# sound meter watches the microphone, at no cost.
+CONTROLE_OP_SECS = (30.0,)
+CONTROLE_MIN_WOORDEN = {30.0: 3}
 
 
 async def _controleer_opname(ws: WebSocket, opname: bytes, seconden: float, taal_code: Optional[str],
@@ -457,7 +459,12 @@ async def _volg_met_voxtral(ws: WebSocket, auth: Dict[str, Any], ident: Any,
             taak.cancel()
         await _send_json(ws, {"type": "verwerken"})
         if opname:
-            transcript = await transcribeer(bytes(opname), dienst, language=taal.deepgram)
+            ingekort = await stilte.kort_in(bytes(opname)) if await stilte.aan() else None
+            if ingekort:
+                transcript = await transcribeer(ingekort.audio, dienst, language=taal.deepgram, naam=ingekort.naam)
+                nadictaat = ingekort.verschuif(nadictaat)
+            else:
+                transcript = await transcribeer(bytes(opname), dienst, language=taal.deepgram)
         else:
             transcript = TranscriptResult(raw_text="", segments=[], language=taal.code,
                                           duration_secs=0.0, provider=dienst)

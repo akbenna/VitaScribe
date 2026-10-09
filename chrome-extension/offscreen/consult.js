@@ -121,10 +121,11 @@ function consultStartLive(c) {
         if (c.controle) return consultEmit('label', c.controle);   // keep the result of the last check visible
         consultEmit('label', { label: sprekers > 1 ? 'Luistert mee · ' + sprekers + ' stemmen' : 'Luistert mee' });
       },
-      // EU mode has no live text: at 30 s, 2 min and 5 min the server lets the
-      // speech service read the recording so far and says whether it heard a
-      // conversation. Heard nothing: red, so the doctor can act now and not
-      // after a quarter of an hour.
+      // EU mode has no live text: after 30 s the server lets the speech
+      // service read the recording so far and says whether it heard a
+      // conversation (once; later checks would bill the consult twice).
+      // Heard nothing: red, so the doctor can act now and not after a
+      // quarter of an hour.
       onControle: function (r) {
         if (c.nadictaatVanaf !== null) return;
         var min = r.seconden >= 60 ? Math.round(r.seconden / 60) + ' min' : Math.round(r.seconden) + ' s';

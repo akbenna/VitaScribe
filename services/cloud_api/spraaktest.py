@@ -23,6 +23,9 @@ verschil zichtbaar worden.
 Endpoints (beheerder):
   POST /api/v1/beheer/spraaktest        multipart: audio, taal?, tegen? (voxtral | gladia |
                                         speechmatics; the EU service next to Deepgram, stap 6)
+  POST /api/v1/beheer/spraaktest/stilte multipart: audio, taal?, tegen?: the same EU service on
+                                        the whole recording and with long silences shortened
+                                        (stilte.py), in the same shape, so the SOEP step compares them too
   POST /api/v1/beheer/spraaktest/soep   json: deepgram, voxtral, taal?
   GET  /beheer/spraaktest          de pagina
 """
@@ -32,6 +35,7 @@ from __future__ import annotations
 import asyncio
 import difflib
 import re
+import shutil
 import tempfile
 import time
 from pathlib import Path
@@ -41,7 +45,7 @@ import structlog
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel, Field
 
-from . import data_policy, leren, pipeline, register, stt_service
+from . import data_policy, leren, pipeline, register, stilte, stt_service
 from .medical_vocabulary import correct_transcript_full
 from .beheer import CSP, _pagina, vereis_beheerder, vereis_testgereedschap
 
@@ -136,12 +140,17 @@ async def spraaktest_script():
     return _pagina("spraaktest.js")
 
 
-@router.post("/api/v1/beheer/spraaktest")
-async def spraaktest(audio: UploadFile = File(...), taal: Optional[str] = Form("nl"),
-                     tegen: Optional[str] = Form("voxtral"), door: str = Depends(vereis_beheerder)):
-    """Run the same recording through Deepgram and an EU service, side by side.
-    The EU column keeps the key "voxtral" (the page and the SOEP step read it);
-    "eu_dienst" and "eu_naam" say which service it was."""
+def _vergelijking(links: dict, rechts: dict) -> dict:
+    beide = "tekst" in links and "tekst" in rechts
+    return {
+        "overeenkomst": overeenkomst(links["tekst"], rechts["tekst"]) if beide else None,
+        "alleen_deepgram": sorted(set(links.get("vaktermen", [])) - set(rechts.get("vaktermen", [])), key=str.lower),
+        "alleen_voxtral": sorted(set(rechts.get("vaktermen", [])) - set(links.get("vaktermen", [])), key=str.lower),
+    }
+
+
+async def _invoer(audio: UploadFile, taal: Optional[str], tegen: Optional[str]) -> "tuple[bytes, str, str, str]":
+    """The checks both tests share: service, key, file type and size."""
     tegen = (tegen or "voxtral").strip().lower()
     if tegen not in stt_service.BATCH_EU:
         raise HTTPException(status_code=400, detail="Kies Voxtral, Gladia of Speechmatics.")
@@ -156,28 +165,63 @@ async def spraaktest(audio: UploadFile = File(...), taal: Optional[str] = Form("
         raise HTTPException(status_code=400, detail="De opname is leeg of te kort.")
     if len(inhoud) > MAX_BYTES:
         raise HTTPException(status_code=413, detail="De opname is te groot (maximaal 60 MB).")
-    taal = (taal or "nl").strip()[:8]
+    return inhoud, ext, (taal or "nl").strip()[:8], tegen
+
+
+@router.post("/api/v1/beheer/spraaktest")
+async def spraaktest(audio: UploadFile = File(...), taal: Optional[str] = Form("nl"),
+                     tegen: Optional[str] = Form("voxtral"), door: str = Depends(vereis_beheerder)):
+    """Run the same recording through Deepgram and an EU service, side by side.
+    The EU column keeps the key "voxtral" (the page and the SOEP step read it);
+    "eu_dienst" and "eu_naam" say which service it was."""
+    inhoud, ext, taal, tegen = await _invoer(audio, taal, tegen)
 
     with tempfile.TemporaryDirectory() as tmp:
         pad = Path(tmp) / f"spraaktest{ext}"
         pad.write_bytes(inhoud)
         deepgram, voxtral = await asyncio.gather(_een("deepgram", pad, taal), _een(tegen, pad, taal))
 
-    beide = "tekst" in deepgram and "tekst" in voxtral
-    uit = {
-        "eu_dienst": tegen,
-        "eu_naam": EU_NAAM[tegen],
-        "deepgram": deepgram,
-        "voxtral": voxtral,
-        "overeenkomst": overeenkomst(deepgram["tekst"], voxtral["tekst"]) if beide else None,
-        "alleen_deepgram": sorted(set(deepgram.get("vaktermen", [])) - set(voxtral.get("vaktermen", [])), key=str.lower),
-        "alleen_voxtral": sorted(set(voxtral.get("vaktermen", [])) - set(deepgram.get("vaktermen", [])), key=str.lower),
-    }
+    uit = {"eu_dienst": tegen, "eu_naam": EU_NAAM[tegen], "deepgram": deepgram, "voxtral": voxtral,
+           **_vergelijking(deepgram, voxtral)}
     # Content-free: who, how long, and how it went.
     await register.log(door, "beheer.spraaktest", bytes=len(inhoud),
                        duur=deepgram.get("duur_audio") or voxtral.get("duur_audio"),
                        deepgram_ok="tekst" in deepgram, eu_ok="tekst" in voxtral, eu_dienst=tegen,
                        overeenkomst=uit["overeenkomst"])
+    return uit
+
+
+@router.post("/api/v1/beheer/spraaktest/stilte")
+async def spraaktest_stilte(audio: UploadFile = File(...), taal: Optional[str] = Form("nl"),
+                            tegen: Optional[str] = Form("voxtral"), door: str = Depends(vereis_beheerder)):
+    """The EU service on the whole recording and on the recording with long
+    silences shortened: does the transcript (and then the SOEP) stay the same,
+    and how many minutes does it save? Same shape as the comparison above; the
+    left column is the whole recording, "namen" says so."""
+    inhoud, ext, taal, tegen = await _invoer(audio, taal, tegen)
+    if not shutil.which("ffmpeg"):
+        raise HTTPException(status_code=503, detail="Op de server ontbreekt ffmpeg; stiltes inkorten kan niet.")
+    ingekort = await stilte.kort_in(inhoud)
+    if ingekort is None:
+        raise HTTPException(status_code=400, detail=(
+            f"Er valt niets in te korten: geen stiltes van {stilte.MIN_STILTE:g} seconden of langer "
+            f"(onder {stilte.drempel_db():g} dB) in deze opname."))
+    with tempfile.TemporaryDirectory() as tmp:
+        heel = Path(tmp) / f"spraaktest{ext}"
+        heel.write_bytes(inhoud)
+        kort = Path(tmp) / ingekort.naam
+        kort.write_bytes(ingekort.audio)
+        links, rechts = await asyncio.gather(_een(tegen, heel, taal), _een(tegen, kort, taal))
+    kort_naam = EU_NAAM[tegen].split(" (")[0]
+    uit = {"eu_dienst": tegen, "eu_naam": f"{kort_naam}, stiltes ingekort", "deepgram": links, "voxtral": rechts,
+           "namen": [f"{kort_naam}, hele opname", f"{kort_naam}, stiltes ingekort"],
+           "korte_namen": ["hele opname", "ingekort"],
+           "stilte": {"voor": ingekort.voor, "na": ingekort.na, "knippen": len(ingekort.knippen),
+                      "minder_pct": round(100 * (1 - ingekort.na / ingekort.voor), 1) if ingekort.voor else 0.0,
+                      "drempel_db": stilte.drempel_db(), "min_stilte": stilte.MIN_STILTE, "bewaar": stilte.BEWAAR},
+           **_vergelijking(links, rechts)}
+    await register.log(door, "beheer.spraaktest_stilte", bytes=len(inhoud), voor=ingekort.voor, na=ingekort.na,
+                       eu_dienst=tegen, overeenkomst=uit["overeenkomst"])
     return uit
 
 

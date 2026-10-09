@@ -21,7 +21,7 @@
     if (tekst !== undefined) n.textContent = tekst;
     return n;
   }
-  function klaar() { $('vergelijk').disabled = !opname; }
+  function klaar() { $('vergelijk').disabled = !opname; $('stiltetest').disabled = !opname; }
 
   if (!sessie()) status('Log eerst in op de beheerpagina in dit tabblad, en kom dan terug via "Spraaktest".', true);
 
@@ -109,12 +109,12 @@
   });
 
   // ── Vergelijken ──
-  async function vergelijk(blob, naam) {
+  async function vergelijk(blob, naam, pad) {
     var form = new FormData();
     form.append('audio', blob, naam);
     form.append('taal', $('taal').value);
     form.append('tegen', $('tegen').value);
-    var r = await fetch('/api/v1/beheer/spraaktest', { method: 'POST', headers: { 'X-Beheer-Sessie': sessie() }, body: form });
+    var r = await fetch('/api/v1/beheer/spraaktest' + (pad || ''), { method: 'POST', headers: { 'X-Beheer-Sessie': sessie() }, body: form });
     var body = await r.json().catch(function () { return {}; });
     if (r.status === 401 || r.status === 403) throw new Error('Niet ingelogd. Log in op /beheer in dit tabblad.');
     if (!r.ok) throw new Error(body.detail || ('Fout ' + r.status));
@@ -139,6 +139,30 @@
       knop.disabled = false;
     }
   });
+
+  // Silence test: the EU service on the whole recording and with long
+  // silences shortened. Same shape as the comparison, so the SOEP step below
+  // shows whether the report stays the same. Not saved to the test set.
+  $('stiltetest').addEventListener('click', async function () {
+    if (!opname) return;
+    var knop = this;
+    knop.disabled = true;
+    status('Bezig: stiltes inkorten en de opname twee keer laten uitschrijven…');
+    $('uitkomst').textContent = '';
+    try {
+      laatste = await vergelijk(opname.blob, opname.naam, '/stilte');
+      toon(laatste);
+      status('Klaar.');
+    } catch (e) {
+      status(e.message, true);
+    } finally {
+      knop.disabled = false;
+    }
+  });
+
+  // Column names: Deepgram and the EU service, or (silence test) whole and shortened.
+  function namen(b) { return b.namen || ['Deepgram (VS, EU-endpoint)', b.eu_naam || 'Voxtral (Mistral, Frankrijk)']; }
+  function korteNamen(b) { return b.korte_namen || ['Deepgram', euKort(b)]; }
 
   // The EU column (key "voxtral" for every EU service) by its own name.
   function euKort(b) { return { gladia: 'Gladia', speechmatics: 'Speechmatics' }[(b && b.eu_dienst) || ''] || 'Voxtral'; }
@@ -188,12 +212,17 @@
       lijst.forEach(function (w) { p.appendChild(el('span', 'term mist', w)); });
       return p;
     }
-    samen.appendChild(verschil('Vaktermen alleen door Deepgram herkend: ', b.alleen_deepgram || []));
-    samen.appendChild(verschil('Vaktermen alleen door ' + euKort(b) + ' herkend: ', b.alleen_voxtral || []));
+    if (b.stilte) {
+      samen.appendChild(el('p', '', 'Stiltes ingekort: ' + b.stilte.knippen + ' pauzes van ' + b.stilte.min_stilte +
+        ' s of langer, de opname van ' + b.stilte.voor + ' s naar ' + b.stilte.na + ' s (' + b.stilte.minder_pct +
+        '% minder minuten). Lees of beide transcripten hetzelfde gesprek vertellen, en laat hieronder van beide een verslag maken.'));
+    }
+    samen.appendChild(verschil('Vaktermen alleen in ' + korteNamen(b)[0] + ': ', b.alleen_deepgram || []));
+    samen.appendChild(verschil('Vaktermen alleen in ' + korteNamen(b)[1] + ': ', b.alleen_voxtral || []));
     u.appendChild(samen);
     var naast = el('div', 'naast');
-    naast.appendChild(kolom('Deepgram (VS, EU-endpoint)', b.deepgram, b.alleen_deepgram || []));
-    naast.appendChild(kolom(b.eu_naam || 'Voxtral (Mistral, Frankrijk)', b.voxtral, b.alleen_voxtral || []));
+    naast.appendChild(kolom(namen(b)[0], b.deepgram, b.alleen_deepgram || []));
+    naast.appendChild(kolom(namen(b)[1], b.voxtral, b.alleen_voxtral || []));
     u.appendChild(naast);
     if (b.deepgram.met_sprekers || b.voxtral.met_sprekers) u.appendChild(soepKaart());
   }
@@ -230,7 +259,7 @@
         var body = await r.json().catch(function () { return {}; });
         if (r.status === 401 || r.status === 403) throw new Error('Niet ingelogd. Log in op /beheer in dit tabblad.');
         if (!r.ok) throw new Error(body.detail || ('Fout ' + r.status));
-        toonSoep(uit, [['Deepgram', body.deepgram], [euKort(laatste), body.voxtral]], blind.checked);
+        toonSoep(uit, [[korteNamen(laatste)[0], body.deepgram], [korteNamen(laatste)[1], body.voxtral]], blind.checked);
         stat.textContent = 'Klaar. Taalmodel: ' + body.taalmodel + '.';
       } catch (e) {
         stat.className = 'status klein fout';
