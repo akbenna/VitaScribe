@@ -236,6 +236,22 @@ def test_relay_streams_audio_and_returns_transcript():
     assert transcripts[-1]["text"] == "patiënt heeft hoofdpijn"
 
 
+def test_relay_logs_streamed_seconds_without_text():
+    from structlog.testing import capture_logs
+    upstream = FakeUpstream([_results("patiënt heeft hoofdpijn", speech_final=True), json.dumps({"type": "Metadata"})])
+    client = TestClient(_relay_app(upstream, []))
+    with capture_logs() as logs:
+        with client.websocket_connect("/ws") as ws:
+            ws.send_text(json.dumps(AUTH_CLAUDE))
+            assert ws.receive_json() == {"type": "ready"}
+            ws.send_bytes(b"chunk-1")
+            ws.send_text(json.dumps({"type": "stop"}))
+            _receive_until_closed(ws)
+    [regel] = [l for l in logs if l["event"] == "stt.usage"]
+    assert regel["provider"] == "deepgram_live" and regel["soort"] == "dictaat" and regel["seconden"] >= 0
+    assert "hoofdpijn" not in str(logs)
+
+
 def test_relay_rejects_wrong_api_key():
     seen = []
     client = TestClient(_relay_app(FakeUpstream([]), seen))
