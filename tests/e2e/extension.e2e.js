@@ -67,11 +67,18 @@ function check(name, cond, extra) {
       modus: modusKop || 'eu', nl_stem: 'mistral', talen: [
         { code: 'tr', naam: 'Turks', eigen: 'Türkçe', verstaat: modusKop !== 'eu', stem: 'computer',
           waarom: modusKop === 'eu' ? 'In de EU-modus verstaat de spraakherkenning (Voxtral, Mistral) geen Turks.' : '' },
-        { code: 'ar-MA', naam: 'Marokkaans-Arabisch (Darija)', eigen: 'الدارجة', verstaat: true, stem: 'mistral', waarom: '' }] }) });
+        { code: 'ar-MA', naam: 'Marokkaans-Arabisch (Darija)', eigen: 'الدارجة', verstaat: true, stem: 'mistral', waarom: '' },
+        { code: 'ti', naam: 'Tigrinya', eigen: 'ትግርኛ', verstaat: false, stem: 'computer',
+          waarom: 'Geen spraakherkenning verstaat Tigrinya; de patiënt kan zijn antwoord typen.',
+          noot: 'Tigrinya: de vertaling is van matige kwaliteit, de patiënt kan niet worden verstaan.' }] }) });
     if (url.endsWith('/tolk/beurt')) {
       const patient = raw.includes('name="spreker"\r\n\r\npatient');
       if (raw.includes('name="spreker"\r\n\r\nauto')) return r.fulfill({ contentType: 'application/json', body: JSON.stringify(
-        { spreker: 'patient', origineel: 'Başım ağrıyor.', vertaling: 'Ik heb hoofdpijn.', terugvertaling: '', onzeker: false, twijfel: '', leeg: false }) });
+        { spreker: 'patient', origineel: 'Başım ağrıyor.', vertaling: 'Ik heb hoofdpijn.', terugvertaling: '', onzeker: false, twijfel: '', leeg: false,
+          alternatief: { spreker: 'arts', origineel: 'Basim aar je jor.' } }) });
+      if (raw.includes('name="taal"\r\n\r\nti')) return r.fulfill({ contentType: 'application/json', body: JSON.stringify(patient
+        ? { spreker: 'patient', origineel: 'ርእሰይ የሕመኒ ኣሎ', vertaling: 'Ik heb hoofdpijn.', terugvertaling: '', onzeker: false, twijfel: '', leeg: false }
+        : { spreker: 'arts', origineel: 'Sinds wanneer?', vertaling: 'ካብ መዓስ?', terugvertaling: 'Sinds wanneer?', onzeker: false, twijfel: '', leeg: false }) });
       return r.fulfill({ contentType: 'application/json', body: JSON.stringify(patient
         ? { spreker: 'patient', origineel: 'Üç gündür ateşim var.', vertaling: 'Ik heb al drie dagen koorts.', terugvertaling: '',
             onzeker: true, twijfel: '"Üç" kan ook "iki" (twee) zijn.', leeg: false }
@@ -740,7 +747,7 @@ function check(name, cond, extra) {
   });
   await panel.click('.view-tab[data-view="tolk"]');
   await sleep(500);
-  check('talen van de server in de keuzelijst', (await panel.$$eval('#tk-taal option', (o) => o.map((x) => x.value))).join() === 'tr,ar-MA');
+  check('talen van de server in de keuzelijst', (await panel.$$eval('#tk-taal option', (o) => o.map((x) => x.value))).join() === 'tr,ar-MA,ti');
   await panel.selectOption('#tk-taal', 'tr');
   check('uitleg: voorlezen met een stem op de computer', (await panel.textContent('#tk-taal-uitleg')).includes('stem op deze computer'));
   await panel.click('#tk-begin');
@@ -812,6 +819,49 @@ function check(name, cond, extra) {
   await panel.click('.view-tab[data-view="tolk"]');
   check('consult afsluiten wist ook het tolkgesprek', await panel.isVisible('#tk-start') && (await panel.$$('.tk-beurt')).length === 0
     && !(await sw.evaluate(async () => (await chrome.storage.session.get('svTolk')).svTolk)));
+
+  console.log('Tolk: andere spreker, en typen (Tigrinya)');
+  await panel.selectOption('#tk-taal', 'tr');
+  await panel.click('#tk-begin');
+  await sleep(600);
+  const voorAndere = tb().length;
+  await panel.evaluate(() => window.__geluid(0.3));
+  await sleep(1200);
+  await panel.evaluate(() => window.__geluid(0));
+  for (let i = 0; i < 40 && !(await panel.$('.tk-beurt:first-child button:has-text("Andere spreker")')); i++) await sleep(100);
+  for (let i = 0; i < 50 && (await panel.textContent('.tk-hf-status')) !== 'luistert'; i++) await sleep(100);
+  await panel.click('.tk-beurt:first-child button:has-text("Andere spreker")');
+  for (let i = 0; i < 30 && tb().length < voorAndere + 2; i++) await sleep(100);
+  await sleep(300);
+  const bw = tb()[voorAndere + 1] ? tb()[voorAndere + 1].raw : '';
+  check('⇄ andere spreker: de andere lezing, als arts, zonder opnieuw te spreken', /name="spreker"\r\n\r\narts/.test(bw)
+    && bw.includes('Basim aar je jor.') && !bw.includes('filename='), bw.slice(0, 300));
+  check('⇄ andere spreker: dezelfde beurt is nu van de arts', (await panel.$$('.tk-beurt')).length === 1
+    && (await panel.textContent('.tk-beurt:first-child .tk-wie')).startsWith('Arts'), await panel.textContent('.tk-beurt:first-child .tk-wie'));
+  await panel.click('#tk-handsfree');
+  panel.once('dialog', (d) => d.accept());
+  await panel.click('#tk-stop');
+  await sleep(300);
+  await panel.selectOption('#tk-taal', 'ti');
+  check('Tigrinya: waarschuwing over de kwaliteit vóór de start', (await panel.textContent('#tk-taal-uitleg')).includes('matige kwaliteit'));
+  await panel.click('#tk-begin');
+  await sleep(500);
+  check('Tigrinya: geen handsfree, patiënt kan niet spreken, typveld met nadruk',
+    !(await panel.getAttribute('#tk-handsfree', 'class')).includes('aan') && await panel.isDisabled('#tk-patient')
+    && (await panel.getAttribute('#tk-typ', 'class')).includes('nadruk') && (await panel.textContent('#tk-noot')).includes('matige kwaliteit'));
+  const voorTi = tb().length;
+  await panel.fill('#tk-typ-tekst', 'ርእሰይ የሕመኒ ኣሎ');
+  await panel.click('#tk-typ-patient');
+  for (let i = 0; i < 30 && tb().length <= voorTi; i++) await sleep(100);
+  await sleep(400);
+  const bt = tb()[voorTi] ? tb()[voorTi].raw : '';
+  check('Tigrinya: getypt antwoord van de patiënt gaat als tekst, zonder opname', /name="spreker"\r\n\r\npatient/.test(bt)
+    && /name="taal"\r\n\r\nti/.test(bt) && bt.includes('ርእሰይ') && !bt.includes('filename='), bt.slice(0, 300));
+  check('Tigrinya: vertaling getoond, beurt gemarkeerd als getypt', (await panel.textContent('.tk-beurt:first-child .tk-vert')) === 'Ik heb hoofdpijn.'
+    && (await panel.textContent('.tk-beurt:first-child .tk-wie')).includes('getypt') && (await panel.inputValue('#tk-typ-tekst')) === '');
+  panel.once('dialog', (d) => d.accept());
+  await panel.click('#tk-stop');
+  await sleep(300);
   await panel.click('.view-tab[data-view="dictate"]');
 
   console.log('Telefoon of iPad');

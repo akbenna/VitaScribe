@@ -101,3 +101,56 @@ test('WAV-kop klopt', () => {
   assert.strictEqual(v.getUint32(40, true), 8);
   assert.deepStrictEqual([v.getInt16(44, true), v.getInt16(46, true), v.getInt16(48, true)], [0, 32767, -32768]);
 });
+
+test('handsfree: ruisen en klikken (hoge nuldoorgang) tellen niet als spraak', () => {
+  const stil = new Float32Array(1024);
+  const ruis = Float32Array.from({ length: 1024 }, (_, i) => (i % 2 ? 0.3 : -0.3));   // flips every sample
+  const stem = Float32Array.from({ length: 1024 }, (_, i) => 0.3 * Math.sin(i / 8));  // ~200 Hz at 16 kHz
+  assert.strictEqual(T.zcr(stil), 0);
+  assert.ok(T.zcr(ruis) > 0.9 && T.zcr(stem) < 0.05);
+  let st = null, t = 0;
+  const stap = (rms, z) => { t += 64; const r = T.vadStap(st, rms, t, {}, z); st = r.st; return r.gebeurtenis; };
+  for (let i = 0; i < 10; i++) stap(0.005, 0.1);
+  const bij = [];
+  for (let i = 0; i < 20; i++) bij.push(stap(0.3, 0.9));     // loud hiss: never a turn
+  assert.ok(bij.every((g) => g === null));
+  for (let i = 0; i < 10; i++) bij.push(stap(0.3, 0.08));    // speech
+  assert.ok(bij.includes('begin'));
+});
+
+test('handsfree: een kort "ja" is snel klaar, een lang verhaal mag even pauzeren', () => {
+  const stilteTotEinde = (spraakFrames) => {
+    let st = null, t = 0;
+    const stap = (rms) => { t += 64; const r = T.vadStap(st, rms, t); st = r.st; return r; };
+    for (let i = 0; i < 10; i++) stap(0.005);
+    for (let i = 0; i < spraakFrames; i++) stap(0.3);
+    for (let i = 1; i < 60; i++) { if (stap(0.005).gebeurtenis === 'einde') return i * 64; }
+    return Infinity;
+  };
+  const kort = stilteTotEinde(12);    // ~0.8 s "ja, dat klopt"
+  const lang = stilteTotEinde(90);    // ~6 s of telling
+  assert.ok(kort <= 1000 && kort < lang - 300, kort);
+  assert.ok(lang >= 1300 && lang <= 1500, lang);
+  // A 1.2 s thinking pause in a long story does not cut it.
+  assert.ok(lang > 1200);
+});
+
+test('handsfree: een kuch of een deur (te weinig spraak) wordt als kort gemeld', () => {
+  let st = null, t = 0, laatste = null;
+  const stap = (rms) => { t += 64; const r = T.vadStap(st, rms, t); st = r.st; if (r.gebeurtenis) laatste = r; };
+  for (let i = 0; i < 10; i++) stap(0.005);
+  for (let i = 0; i < 6; i++) stap(0.3);       // ~380 ms loud, just enough to begin
+  for (let i = 0; i < 30; i++) stap(0.005);
+  assert.strictEqual(laatste.gebeurtenis, 'einde');
+  assert.strictEqual(laatste.kort, true);
+  for (let i = 0; i < 20; i++) stap(0.3);      // a real sentence
+  for (let i = 0; i < 30; i++) stap(0.005);
+  assert.strictEqual(laatste.kort, false);
+});
+
+test('Tigrinya: geen stem nergens, de patiënt leest mee', () => {
+  assert.match(T.stemHint('Tigrinya', 'ti'), /geen stem/);
+  assert.doesNotMatch(T.stemHint('Tigrinya', 'ti'), /Windows/);
+  assert.match(T.stemHint('Turks', 'tr'), /Windows/);
+  assert.strictEqual(T.kiesStem([{ lang: 'ti-ER', localService: true }], 'ti').lang, 'ti-ER');
+});

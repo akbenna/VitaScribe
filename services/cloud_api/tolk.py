@@ -22,7 +22,13 @@ Welke talen kunnen, hangt af van de modus. In de EU-modus verstaat de
 Europese spraakdienst (EU_STT_PROVIDER) de spraak. Voxtral (Mistral, de
 standaard) kent geen Turks, Pools of Oekraïens; Gladia en Speechmatics
 (werkplan stap 6) verstaan alle talen hieronder. In de Claude-modus verstaat Deepgram (EU-eindpunt) alle talen
-hieronder, ook Marokkaans- en Syrisch-Arabisch als eigen dialect.
+hieronder, ook Marokkaans- en Syrisch-Arabisch als eigen dialect. Tigrinya
+verstaat geen enkele dienst: daar typt de patiënt (tekst in /beurt).
+
+Handsfree (spreker=auto): de beurt wordt in twee vaste talen verstaan
+(Nederlands en die van de patiënt); het taalmodel kiest, met de beurtwisseling
+als doorslag bij twijfel. De andere lezing gaat mee terug ("alternatief"), zodat
+de arts een verkeerd gekozen spreker met één klik rechtzet.
 
 Endpoints (API-sleutel verplicht):
   GET  /api/v1/tolk/talen                    -> talen en wat er per taal kan
@@ -65,10 +71,11 @@ class Taal(NamedTuple):
     code: str
     naam: str                 # Nederlands, voor de arts
     eigen: str                # in de taal zelf, voor de patiënt
-    deepgram: str             # Deepgram "language"
+    deepgram: Optional[str]   # Deepgram "language" (also Gladia/Speechmatics); None = no speech recognition knows it
     voxtral: Optional[str]    # Voxtral Transcribe; None = verstaat Voxtral niet
     tts: Optional[str]        # Voxtral TTS; None = alleen een stem op de computer
     prompt: str               # hoe het taalmodel de taal moet schrijven
+    noot: str = ""            # beperking die de arts vooraf moet weten (kwaliteit, geen spraak)
 
 
 TALEN: Dict[str, Taal] = {t.code: t for t in [
@@ -86,6 +93,13 @@ TALEN: Dict[str, Taal] = {t.code: t for t in [
     Taal("de", "Duits", "Deutsch", "de", "de", "de", "Duits"),
     Taal("fr", "Frans", "Français", "fr", "fr", "fr", "Frans"),
     Taal("en", "Engels", "English", "en", "en", "en", "Engels"),
+    # Geen spraakdienst kent Tigrinya, en geen stem leest het voor: de arts spreekt, de patiënt
+    # leest de vertaling (Ge'ez-schrift) en typt zijn antwoord. De vertaling zelf is matig.
+    Taal("ti", "Tigrinya", "ትግርኛ", None, None, None,
+         "Tigrinya zoals in Eritrea gesproken, in Ge'ez-schrift (ፊደል); korte zinnen en de eenvoudigste woorden",
+         noot="Tigrinya: de vertaling is van matige kwaliteit, de patiënt kan niet worden verstaan en er is geen "
+              "stem om voor te lezen. De patiënt leest mee en typt zijn antwoord. Bij iets belangrijks: een "
+              "professionele tolk."),
 ]}
 ARTS_TAAL = TALEN["nl"]
 
@@ -99,7 +113,9 @@ def kies(code: Optional[str]) -> Taal:
 
 def verstaat(taal: Taal) -> bool:
     """Kan de spraakherkenning van deze modus deze taal verstaan? Gladia en
-    Speechmatics (werkplan stap 6) verstaan alle talen hier; Voxtral niet."""
+    Speechmatics (werkplan stap 6) verstaan de talen die Deepgram kent; Voxtral minder."""
+    if taal.deepgram is None:
+        return False
     if data_policy.eu_modus() and data_policy.eu_stt_provider() == "voxtral":
         return taal.voxtral is not None
     return True
@@ -115,8 +131,10 @@ async def talen_overzicht() -> List[dict]:
             "verstaat": verstaat(t),
             "stem": await stem_bron(t),
             "waarom": "" if verstaat(t) else
+                      f"Geen spraakherkenning verstaat {t.naam}; de patiënt kan zijn antwoord typen." if t.deepgram is None else
                       f"In de EU-modus verstaat de spraakherkenning (Voxtral, Mistral) geen {t.naam}. "
                       "Met Gladia of Speechmatics op de server wel.",
+            "noot": t.noot,
         })
     return uit
 
@@ -154,8 +172,9 @@ async def spraak_naar_tekst(audio: bytes, taal: Taal, deepgram_sleutel: Optional
     """Vervangbaar in tests."""
     if data_policy.eu_modus():
         dienst = data_policy.eu_stt_provider()
+        naam = "beurt.wav" if "wav" in (content_type or "") else "beurt.webm"
         res = await stt_service.transcribe_eu(audio, taal.voxtral if dienst == "voxtral" else taal.deepgram,
-                                              naam="beurt.webm", diarize=False, provider=dienst)
+                                              naam=naam, diarize=False, provider=dienst)
         tekst = res.raw_text.strip()
         return stt_service.nederlandse_vulwoorden(tekst) if taal.code == "nl" else tekst
     return await _deepgram_beurt(audio, taal, deepgram_sleutel or "", content_type)
@@ -270,11 +289,13 @@ VERTAAL_AUTO_SCHEMA = {
 
 async def kandidaten(audio: bytes, patient: Taal, sleutel: Optional[str],
                      content_type: str = "audio/webm") -> List["tuple[str, str]"]:
-    """Hands-free: who spoke is not known. EU: Voxtral detects the language
-    itself (one call; Gladia and Speechmatics as well). Otherwise Deepgram hears the turn twice, as Dutch and
-    as the patient's language, at the same time; the language model then sees
-    which of the two is a sensible utterance. Replaceable in tests."""
-    if data_policy.eu_modus():
+    """Hands-free: who spoke is not known. Only two languages are possible: Dutch
+    (the doctor) and the patient's. The speech service hears the turn twice, as
+    each of the two, at the same time; the language model then sees which of the
+    two is a sensible utterance. Choosing from two instead of a hundred is what
+    makes it reliable. Only when the EU service cannot be told the patient's
+    language does it detect the language itself (one call). Replaceable in tests."""
+    if data_policy.eu_modus() and not verstaat(patient):
         res = await stt_service.transcribe_eu(audio, None, naam="beurt.wav", diarize=False)
         return [("automatisch herkend", res.raw_text.strip())]
     import asyncio
@@ -283,7 +304,7 @@ async def kandidaten(audio: bytes, patient: Taal, sleutel: Optional[str],
         spraak_naar_tekst(audio, patient, sleutel, content_type),
         return_exceptions=True)
     uit = []
-    for naam, r in (("verstaan als Nederlands", nl), (f"verstaan als {patient.naam}", ander)):
+    for naam, r in ((NL_KANDIDAAT, nl), (f"verstaan als {patient.naam}", ander)):
         if isinstance(r, Exception):
             logger.warning("tolk.stt_fout", error=type(r).__name__, taal=naam)
             continue
@@ -301,9 +322,30 @@ def vertaal_auto_prompts(kand: List["tuple[str, str]"], patient: Taal, eerder: L
     if eerder:
         regels = [f"{'Arts' if e.spreker == 'arts' else 'Patiënt'}: {e.nl.strip()}" for e in eerder[-MAX_EERDER:]]
         delen.append("EERDER IN HET GESPREK (Nederlands, alleen als context; niet vertalen):\n" + "\n".join(regels))
+    if eerder:
+        # Turn-taking: in a conversation the speakers alternate. Only a tie-breaker.
+        vorige, ander = ("de arts", "de patiënt") if eerder[-1].spreker == "arts" else ("de patiënt", "de arts")
+        delen.append(f"BEURTWISSELING: de vorige beurt was van {vorige}. Meestal is nu {ander} aan de beurt; "
+                     "laat dit alleen de doorslag geven als de herkenning zelf het niet uitmaakt.")
     for naam, tekst in kand:
         delen.append(f"HERKENNING ({naam}):\n{tekst or '(niets)'}")
     return system, "\n\n".join(delen)
+
+
+NL_KANDIDAAT = "verstaan als Nederlands"
+
+
+def alternatief(kand: List["tuple[str, str]"], spreker: str) -> Optional[dict]:
+    """The other reading of a hands-free turn: what the speech service heard in
+    the other language. With it, the doctor can fix a wrong choice of speaker
+    with one click, without speaking again."""
+    if len(kand) != 2:
+        return None
+    ander = "patient" if spreker == "arts" else "arts"
+    for naam, tekst in kand:
+        if (naam == NL_KANDIDAAT) == (ander == "arts") and tekst.strip():
+            return {"spreker": ander, "origineel": tekst.strip()}
+    return None
 
 
 async def vertaal_auto(kand: List["tuple[str, str]"], patient: Taal, eerder: List[Eerder]) -> dict:
@@ -401,10 +443,12 @@ async def beurt(
         audit.log_event(user, "tolk.beurt", spreker=spreker, taal=patient.code, status="leeg", bytes=grootte)
         return {"spreker": spreker, "origineel": "", "vertaling": "", "terugvertaling": "",
                 "onzeker": False, "twijfel": "", "leeg": True}
+    anders = None
     try:
         if auto:
             uit = await vertaal_auto(kand, patient, context)
             spreker, origineel = uit.pop("spreker"), uit.pop("origineel")
+            anders = alternatief(kand, spreker)
         else:
             uit = await vertaal(origineel, spreker, patient, context, eenvoudiger)
     except ValueError as exc:   # includes json.JSONDecodeError
@@ -418,7 +462,7 @@ async def beurt(
                 onzeker=uit["onzeker"], seconden=round(time.time() - begin, 1), modus=data_policy.modus())
     audit.log_event(user, "tolk.beurt", spreker=spreker, taal=patient.code, chars=len(origineel),
                     provider=data_policy.phi_llm_provider())
-    return {"spreker": spreker, "origineel": origineel, **uit, "leeg": False}
+    return {"spreker": spreker, "origineel": origineel, **uit, "leeg": False, "alternatief": anders}
 
 
 # ── 3 Voorlezen ──

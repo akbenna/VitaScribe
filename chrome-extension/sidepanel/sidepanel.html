@@ -336,6 +336,13 @@
         <button id="tk-patient" class="tk-knop patient" type="button" title="Enter">
           <span class="tk-knop-wie" id="tk-patient-wie">Patiënt spreekt</span><span class="tk-knop-taal" id="tk-patient-taal">· Enter</span></button>
       </div>
+      <p id="tk-noot" class="tk-noot hidden"></p>
+      <div id="tk-typ" class="tk-typ">
+        <textarea id="tk-typ-tekst" rows="1" dir="auto" maxlength="2000" placeholder="Of typ een beurt…"
+                  title="Voor een patiënt die schrijft, of een taal die de spraakherkenning niet kent"></textarea>
+        <button id="tk-typ-arts" class="btn small" type="button" title="Getypt door de arts (Nederlands)">Arts</button>
+        <button id="tk-typ-patient" class="btn small" type="button" title="Getypt door de patiënt, in zijn eigen taal">Patiënt</button>
+      </div>
       <p id="tk-status" class="status tk-status" role="status" aria-live="polite"></p>
       <div id="tk-beurten" class="tk-beurten" aria-live="polite"></div>
       <div class="lt-row tk-eind">
