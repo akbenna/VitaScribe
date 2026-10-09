@@ -28,6 +28,7 @@ from __future__ import annotations
 import asyncio
 import json
 import re
+import time
 from typing import Any, Callable, Dict, List, Optional
 from urllib.parse import urlencode
 
@@ -363,6 +364,7 @@ async def relay_dictation(
 
     sender = asyncio.create_task(client_to_upstream())
     receiver = asyncio.create_task(upstream_to_client())
+    start = time.time()
     try:
         try:
             await asyncio.wait_for(asyncio.shield(sender), timeout=cfg.dictation.max_seconds)
@@ -379,6 +381,8 @@ async def relay_dictation(
         except asyncio.TimeoutError:
             receiver.cancel()
     finally:
+        # Billed per second streamed: content-free, for the quarterly cost check (filter "usage").
+        logger.info("stt.usage", provider="deepgram_live", seconden=round(time.time() - start, 1), soort="dictaat")
         if meedenker is not None:
             meedenker.stop()
         try:

@@ -481,3 +481,28 @@ def test_eu_modus_met_gladia_stuurt_opname_naar_gladia(monkeypatch):
         events = _tot_gesloten(ws)
     assert [e["type"] for e in events] == ["verwerken", "result", "closed"]
     assert ontvangen == [(b"\x1aE\xdf\xa3kop", "gladia", "tr")]
+
+
+def test_live_spraak_logt_seconden_ook_bij_wegvallen():
+    from structlog.testing import capture_logs
+    upstream = FakeUpstream([_final((0, "Keelpijn.", 0.0, 0.8)), json.dumps({"type": "Metadata", "duration": 2.0})])
+    client = TestClient(_app(upstream, [], []))
+    with capture_logs() as logs:
+        with client.websocket_connect("/ws") as ws:
+            ws.send_text(json.dumps(AUTH_CLAUDE))
+            assert ws.receive_json() == {"type": "ready"}
+            ws.send_bytes(b"stuk-1")
+            ws.send_text(json.dumps({"type": "stop"}))
+            _tot_gesloten(ws)
+    [regel] = [l for l in logs if l["event"] == "stt.usage"]
+    # How long, never what: the cost check counts these.
+    assert regel["provider"] == "deepgram_live" and regel["audio"] == 2.0 and regel["soort"] == "consult"
+    assert "Keelpijn" not in str(logs)
+    # A connection that broke off is billed too, so it is counted too.
+    client = TestClient(_app(FakeUpstream([], valt_weg=True), [], []))
+    with capture_logs() as logs:
+        with client.websocket_connect("/ws") as ws:
+            ws.send_text(json.dumps(AUTH_CLAUDE))
+            assert ws.receive_json() == {"type": "ready"}
+            _tot_gesloten(ws)
+    assert [l["provider"] for l in logs if l["event"] == "stt.usage"] == ["deepgram_live"]

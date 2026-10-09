@@ -351,6 +351,10 @@ async def volg_consult(
         await _send_json(ws, {"type": "error", "terugval": True,
                               "message": "Het verslag kon niet worden gemaakt."})
     finally:
+        # Live speech is billed per second streamed, also when the connection broke off.
+        # Content-free: only how long, for the quarterly cost check (filter "usage").
+        logger.info("stt.usage", provider="deepgram_live", seconden=round(time.time() - start, 1),
+                    audio=round(gesprek.seconden, 1), soort="consult")
         if meedenker is not None:
             meedenker.stop()
         for taak in (zender, ontvanger):
