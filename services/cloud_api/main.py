@@ -33,6 +33,7 @@ from fastapi.responses import JSONResponse, Response
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 
+from .mistral_adres import MISTRAL_API
 from .auth import huidige_identiteit, verify_api_key
 from .config import get_config
 from .dictation import relay_dictation
@@ -265,7 +266,7 @@ async def health_deep(token: str = ""):
 
     await run("deepgram_eu", check_deepgram())
     if cfg.llm.mistral_api_key:
-        await run("mistral", check_http("https://api.mistral.ai/v1/models",
+        await run("mistral", check_http(f"{MISTRAL_API}/v1/models",
                                         {"Authorization": f"Bearer {cfg.llm.mistral_api_key}"}))
     else:
         checks["mistral"] = "geen sleutel"

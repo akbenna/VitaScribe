@@ -52,6 +52,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
+from .mistral_adres import MISTRAL_API
 from . import audit, data_policy, llm_service, stt_service
 from .auth import huidige_identiteit, verify_api_key
 from .config import get_config
@@ -485,8 +486,8 @@ async def beurt(
 #                  in practice still better than the voices of Windows.
 # Otherwise the extension reads aloud with a voice on the computer itself.
 
-TTS_URL = "https://api.mistral.ai/v1/audio/speech"
-STEMMEN_URL = "https://api.mistral.ai/v1/audio/voices"
+TTS_URL = f"{MISTRAL_API}/v1/audio/speech"
+STEMMEN_URL = f"{MISTRAL_API}/v1/audio/voices"
 _stemmen: Optional[List[dict]] = None
 
 # Azure neural voices: (female, male). TOLK_AZURE_STEM_<CODE> overrides, e.g.

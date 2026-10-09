@@ -1,6 +1,6 @@
 # Mistral AI (La Plateforme / Studio): Voxtral transcriptie en Mistral Large
 
-Status per 8 oktober 2026. Bron: supportticket #37361256, antwoord van Anna (Mistral AI Support) op 6 oktober 2026, 10:50, aan a.bennaghmouch@gmail.com. Aanvraag op naam van Groepspraktijk het Roosendael, organisatie-ID 2f99df70-61c2-4851-8b16-1b22132c9b95.
+Status per 9 oktober 2026. Bron: supportticket #37361256, antwoord van Anna (Mistral AI Support) op 6 oktober 2026, 10:50, aan a.bennaghmouch@gmail.com. Aanvraag op naam van Groepspraktijk het Roosendael, organisatie-ID 2f99df70-61c2-4851-8b16-1b22132c9b95.
 
 ## Wat Mistral schriftelijk heeft bevestigd
 
@@ -24,13 +24,27 @@ Op de vervolgvragen van 7 oktober antwoordde Anna (Mistral AI Support) dezelfde 
 
 Wat dat betekent:
 
-1. **Het endpoint in de code.** VitaScribe roept `api.mistral.ai` aan, niet het EU-endpoint dat Mistral noemt. Mistral zei op 6 oktober dat de producten standaard in de EER draaien zolang het Amerikaanse endpoint niet wordt aangeroepen, maar de subverwerkers zijn alleen voor `api.eu.mistral.ai` opgegeven. Besluit voor het compliance-spoor: de code op het EU-endpoint zetten, als instelling, na een proef met de sleutel (spraak, tekst, voorlezen en stemmen).
+1. **Het endpoint in de code.** De subverwerkers zijn alleen voor `api.eu.mistral.ai` opgegeven. Op 9 oktober bevestigde Mistral dat alleen dat adres verwerking in de EER garandeert; zie hieronder.
 2. **Woorden.** De EU-modus gebruikt Europese aanbieders, maar niet zonder Amerikaanse partijen in de keten. Register en DPIA noemen Azure, Google, CoreWeave en Cloudflare bij naam, met de doorgiftegrond.
 3. **Kloonstem.** Blijft uit, tot de code de stem na gebruik zelf verwijdert met het DELETE-verzoek. Ook dan ligt de stem tot dat moment bij Mistral, buiten ZDR, en hoort hij met toestemming van de collega in het register.
 
-## Welke endpoints de code aanroept (gecontroleerd 8 oktober 2026)
+## Het endpoint (antwoord van Mistral, 9 oktober 2026)
 
-VitaScribe roept bij Mistral vier endpoints aan, alle vier op `api.mistral.ai`:
+Op de vraag van 8 oktober antwoordde Anna (Mistral AI Support) op 9 oktober, ticket #37361256:
+
+- `api.mistral.ai` is het **wereldwijde** endpoint en garandeert **geen** verwerking binnen de EER. Verzoeken kunnen naar infrastructuur buiten de EER gaan, ook naar subverwerkers in de VS.
+- `api.eu.mistral.ai` stuurt de inferentie uitdrukkelijk naar infrastructuur in de EER (Azure in Noorwegen en Zweden, Google Cloud in Nederland, CoreWeave in Spanje).
+- Wie verwerking alleen in de EER nodig heeft, zoals een zorgaanbieder, moet `api.eu.mistral.ai` uitdrukkelijk gebruiken.
+
+Dit spreekt het antwoord van 6 oktober tegen ("standaard binnen de EER, tenzij het Amerikaanse endpoint expliciet wordt aangeroepen", tabel bovenaan). Het antwoord van 9 oktober is specifieker en gaat voor.
+
+**Gevolg.** Tot 9 oktober 2026 riep de code `api.mistral.ai` aan, in VitaScribe en in ConsultSpiegel. Verzoeken in de EU-modus hadden in die periode dus geen EER-garantie. Dat hoort zo in de DPIA en het register. Sinds 9 oktober 2026 gebruiken beide uitsluitend `api.eu.mistral.ai`; een proef in elke repo valt om als het wereldwijde adres terugkomt.
+
+Vraag 4 (subverwerkers bij voorlezen) en vraag 5 (toegang van buiten de EER tot de inhoud) heeft Anna doorgezet naar het juridische team van Mistral. Antwoord volgt.
+
+## Welke endpoints de code aanroept (bijgewerkt 9 oktober 2026)
+
+VitaScribe roept bij Mistral vier endpoints aan, alle vier sinds 9 oktober 2026 op `api.eu.mistral.ai` (`services/cloud_api/mistral_adres.py`). ConsultSpiegel gebruikt de eerste twee, ook op het EU-endpoint (`backend/app/config.py`, een ander adres uit de omgeving wordt niet gebruikt):
 
 | Endpoint | Waarvoor | ZDR |
 |---|---|---|
@@ -39,15 +53,15 @@ VitaScribe roept bij Mistral vier endpoints aan, alle vier op `api.mistral.ai`:
 | `/v1/audio/speech` | voorlezen door de tolk | ja |
 | `/v1/audio/voices` | kloonstem | nee (stateful, ongeveer 30 dagen) |
 
-Geen `/v1/files`, batch, agents of conversations. Het EU-endpoint `api.eu.mistral.ai` wordt nog nergens aangeroepen. Een eerdere versie van dit stuk noemde `api.mistral.ai` het EU-endpoint; dat was fout.
+Geen `/v1/files`, batch, agents of conversations. Mistral bevestigde het EU-endpoint uitdrukkelijk voor transcriptie en chat. Of voorlezen en de kloonstem op het EU-endpoint werken, is niet getest; de kloonstem staat uit. Een eerdere versie van dit stuk noemde `api.mistral.ai` het EU-endpoint; dat was fout.
 
 ## Nog open bij Mistral
 
 1. De subverwerkerslijst met locaties: Mistral verwijst naar het Trust Center en noemde op 7 oktober alleen de subverwerkers van het EU-endpoint. De volledige lijst ophalen en vastleggen met datum.
 2. De DPA: versie en datum noteren via de knop "versions" op `legal.mistral.ai`, PDF bewaren.
-3. Het endpoint: draait `api.mistral.ai` op dezelfde infrastructuur in de EER en met dezelfde subverwerkers als `api.eu.mistral.ai`? Gevraagd op 8 oktober 2026 (ticket #37361256). Tot het antwoord er is, geldt het besluit hierboven: overstappen op `api.eu.mistral.ai`.
-4. Voorlezen: gelden dezelfde subverwerkers ook voor `/v1/audio/speech`? Gevraagd op 8 oktober 2026.
-5. Doorgifte voor onderhoud: kan toegang op afstand van buiten de EER ook de inhoud raken (audio, transcript, prompt, uitvoer), ook met ZDR aan? Zo ja, welke subverwerkers en met welk doorgiftemechanisme (SCC's of het EU-VS-gegevensprivacykader)? Gevraagd op 8 oktober 2026.
+3. ~~Het endpoint.~~ Beantwoord op 9 oktober 2026: alleen `api.eu.mistral.ai` garandeert de EER. De code is dezelfde dag omgezet.
+4. Voorlezen: gelden dezelfde subverwerkers ook voor `/v1/audio/speech`? Gevraagd op 8 oktober 2026; op 9 oktober doorgezet naar het juridische team van Mistral.
+5. Doorgifte voor onderhoud: kan toegang op afstand van buiten de EER ook de inhoud raken (audio, transcript, prompt, uitvoer), ook met ZDR aan? Zo ja, welke subverwerkers en met welk doorgiftemechanisme (SCC's of het EU-VS-gegevensprivacykader)? Gevraagd op 8 oktober 2026; op 9 oktober doorgezet naar het juridische team van Mistral.
 6. Schermafdruk van de ZDR-instelling in de Admin console (Privacy) bij het dossier.
 
 ## Wat dit betekent voor de DPIA
