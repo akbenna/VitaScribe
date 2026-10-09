@@ -128,14 +128,16 @@ async def maak_suggesties(gesprek_tekst: str, provider: Optional[str] = None,
     from .pipeline import _parse_json_response
 
     sjabloon = DICTAAT_TEMPLATE if bron == "dictaat" else USER_TEMPLATE
-    raw = await llm_service.complete(
-        system_prompt=SYSTEM_PROMPT,
-        user_prompt=sjabloon.format(gesprek=gesprek_tekst[-MAX_TRANSCRIPT_TEKENS:]),
-        provider=data_policy.phi_llm_provider(provider),
-        json_mode=True,
-        max_tokens=SUGGESTIE_MAX_TOKENS,
-        json_schema=JSON_SCHEMA,
-    )
+    from . import kosten
+    with kosten.als("meedenken"):   # the cost breakdown: questions during the consult
+        raw = await llm_service.complete(
+            system_prompt=SYSTEM_PROMPT,
+            user_prompt=sjabloon.format(gesprek=gesprek_tekst[-MAX_TRANSCRIPT_TEKENS:]),
+            provider=data_policy.phi_llm_provider(provider),
+            json_mode=True,
+            max_tokens=SUGGESTIE_MAX_TOKENS,
+            json_schema=JSON_SCHEMA,
+        )
     return schoon(_parse_json_response(raw))
 
 

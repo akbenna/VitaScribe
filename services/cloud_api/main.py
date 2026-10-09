@@ -110,6 +110,26 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ── Which part of VitaScribe a request is (kosten.py: the cost breakdown) ──
+# Pure ASGI, so it also covers the live websockets (consult, dictation).
+class OnderdeelPerAanvraag:
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope.get("type") not in ("http", "websocket"):
+            return await self.app(scope, receive, send)
+        from . import kosten
+        token = kosten._onderdeel.set(kosten.onderdeel_voor_pad(scope.get("path", "")))
+        try:
+            await self.app(scope, receive, send)
+        finally:
+            kosten._onderdeel.reset(token)
+
+
+app.add_middleware(OnderdeelPerAanvraag)
+
+
 # ── Mode per request (claude | eu), chosen by the doctor in the extension ──
 # The server follows the choice and never changes it; the answer repeats it.
 @app.middleware("http")
