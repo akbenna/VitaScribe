@@ -869,8 +869,8 @@ els.copy.addEventListener('click', function () {
 });
 els.clean.addEventListener('click', function () { processText('clean'); });
 els.soepBtn.addEventListener('click', function () { processText('soep'); });
-// Empty the SOEP block: report, parts, markings, checks, thinking along and
-// patient instruction. Used when a consult is closed or a new one starts.
+// Empty the SOEP block: report, parts, markings, checks, thinking along,
+// agreements and patient instruction. Used when a consult is closed or a new one starts.
 function wisSoepBlok() {
   soepConcept = [];
   setTimeout(verversAfsluiten, 0);
@@ -881,6 +881,7 @@ function wisSoepBlok() {
   soepAlgemeen = {};
   lastSoep = null;
   document.getElementById('soep-delen').textContent = '';
+  if (window.SVAfsprakenUI) window.SVAfsprakenUI.toon([]);   // the agreements belong to this patient too
   ['soep-delen', 'soep-delen-hint', 'soep-decisief', 'soep-mark', 'soep-check', 'soep-kosten', 'md', 'pi', 'ta', 'bt'].forEach(function (id) {
     var n = document.getElementById(id);
     if (n) n.classList.add('hidden');
