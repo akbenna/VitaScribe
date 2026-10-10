@@ -483,6 +483,7 @@ async def process_dictation(
                 provider=data_policy.phi_llm_provider(body.llm_provider),
                 json_mode=True,
                 max_tokens=DICTAAT_SOEP_MAX_TOKENS,
+                cache_system=True,
                 quality=True,
                 json_schema=DICTAAT_SOEP_JSON_SCHEMA,
             )

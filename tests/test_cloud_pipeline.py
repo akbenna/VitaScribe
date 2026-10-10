@@ -436,3 +436,90 @@ async def test_pipeline_geeft_afspraken_mee_in_dezelfde_aanroep():
     assert complete_mock.await_count == 2                                 # no extra call
     assert out["afspraken"] == [{"soort": "verwijzing", "tekst": "Verwijzing KNO-arts", "naar": "KNO-arts", "wanneer": ""}]
     assert "AFSPRAKEN" in complete_mock.await_args_list[1].kwargs["system_prompt"]
+
+
+# ── Prompt caching: het vaste deel is voor elk consult byte-gelijk ──
+
+@pytest.mark.asyncio
+async def test_soep_aanroep_cachet_alleen_het_vaste_systeemdeel(monkeypatch):
+    """De SOEP-aanroep markeert de system-prompt als cachebaar, en die
+    system-prompt bevat niets van het consult: twee consulten met een ander
+    gesprek en een andere huisstijl sturen exact hetzelfde vaste deel."""
+    from services.cloud_api import leren
+
+    soep_json = json.dumps({"s": "klacht", "o": "", "e": "", "p": "",
+                            "icpc_code": "R74", "icpc_titel": "x"})
+    fake_response = MagicMock()
+    fake_response.status_code = 200
+    fake_response.raise_for_status = MagicMock()
+    fake_response.json = MagicMock(return_value={
+        "content": [{"type": "text", "text": soep_json}],
+        "usage": {"input_tokens": 100, "output_tokens": 20,
+                  "cache_creation_input_tokens": 3000, "cache_read_input_tokens": 0},
+    })
+    client = AsyncMock()
+    client.post = AsyncMock(return_value=fake_response)
+    client.__aenter__ = AsyncMock(return_value=client)
+    client.__aexit__ = AsyncMock(return_value=False)
+
+    cfg = MagicMock()
+    cfg.llm.default_provider = "anthropic"
+    cfg.llm.anthropic_api_key = "test-key"
+    cfg.llm.anthropic_soep_model = "claude-sonnet-5"
+    cfg.llm.anthropic_effort = "medium"
+    cfg.llm.anthropic_fallback_model = ""
+    cfg.llm.max_tokens = 2048
+
+    stijlen = iter(["HUISSTIJL VAN DEZE ARTS:\n- schrijf pt voor patiënt\n\n",
+                    "HUISSTIJL VAN DEZE ARTS:\n- korte zinnen\n\n"])
+
+    async def huisstijl():
+        return next(stijlen)
+
+    monkeypatch.setattr(leren, "huisstijl_prompt", huisstijl)
+    gesprekken = ["Spreker 1: Ik heb al drie dagen keelpijn, mevrouw Jansen.",
+                  "Spreker 1: Mijn knie is dik sinds het voetballen op 3 maart."]
+
+    from services.cloud_api import kosten
+    with patch.object(llm_service, "get_config", return_value=cfg), \
+         patch.object(llm_service.httpx, "AsyncClient", return_value=client), \
+         patch.object(kosten, "tel") as tel:
+        for gesprek in gesprekken:
+            await pipeline.genereer_soep(gesprek, "anthropic")
+
+    # De kostenteller krijgt de cachetokens uit response.usage.
+    assert tel.call_args.kwargs["cache_w"] == 3000
+    assert tel.call_args.kwargs["cache_r"] == 0
+
+    bodies = [c.kwargs["json"] for c in client.post.call_args_list]
+    assert len(bodies) == 2
+    systemen = [b["system"] for b in bodies]
+    for systeem, body, gesprek in zip(systemen, bodies, gesprekken):
+        assert len(systeem) == 1
+        assert systeem[0]["cache_control"] == {"type": "ephemeral"}
+        vast = systeem[0]["text"]
+        assert vast == pipeline.SOEP_SYSTEM_PROMPT + llm_service.SCHRIJFREGEL
+        # Niets consultspecifieks in het gecachte deel; het staat in de vraag.
+        for variabel in (gesprek, "Jansen", "knie", "HUISSTIJL VAN DEZE ARTS"):
+            assert variabel not in vast
+        assert gesprek in body["messages"][0]["content"]
+        # Automatische caching zou het breekpunt achter het gesprek leggen.
+        assert "cache_control" not in body
+    assert systemen[0] == systemen[1]
+
+
+@pytest.mark.asyncio
+async def test_controle_en_dictaat_markeren_hun_vaste_systeemdeel():
+    soep = pipeline.SOEPResult(s="keelpijn", o="", e="", p="", icpc_code="R74", icpc_titel="x")
+    complete_mock = AsyncMock(return_value=json.dumps({"schrappen": [], "hulpvraag": ""}))
+    with patch.object(pipeline.llm_service, "complete", new=complete_mock):
+        await pipeline.controleer_soep("Spreker 1: keelpijn", soep, "anthropic")
+    kwargs = complete_mock.await_args.kwargs
+    assert kwargs["cache_system"] is True
+    assert kwargs["system_prompt"] == pipeline.SOEP_CONTROLE_SYSTEM_PROMPT
+
+    from services.cloud_api import main
+    import inspect
+    bron = inspect.getsource(main)
+    blok = bron[bron.index("system_prompt=DICTAAT_SOEP_SYSTEM_PROMPT"):][:600]
+    assert "cache_system=True" in blok
