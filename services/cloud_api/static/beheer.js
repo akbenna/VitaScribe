@@ -554,7 +554,8 @@
     var d = [];
     if (r.in_tokens || r.uit_tokens) d.push(Math.round(r.in_tokens / 1000).toLocaleString('nl-NL') + 'k in · '
       + Math.round(r.uit_tokens / 1000).toLocaleString('nl-NL') + 'k uit');
-    if (r.cache_r || r.cache_w) d.push('cache ' + Math.round(r.cache_w / 1000) + 'k gezet, ' + Math.round(r.cache_r / 1000) + 'k gelezen');
+    if (r.cache_r || r.cache_w || r.cache_w1h) d.push('cache ' + Math.round(r.cache_w / 1000) + 'k gezet'
+      + (r.cache_w1h ? ' (+' + Math.round(r.cache_w1h / 1000) + 'k voor een uur)' : '') + ', ' + Math.round(r.cache_r / 1000) + 'k gelezen');
     if (r.minuten) d.push(r.minuten.toLocaleString('nl-NL') + ' min');
     if (r.tekens) d.push(r.tekens.toLocaleString('nl-NL') + ' tekens');
     return d.join(' · ') || '-';

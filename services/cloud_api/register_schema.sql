@@ -220,3 +220,5 @@ CREATE TABLE IF NOT EXISTS vs_ai_gebruik (
     tekens     BIGINT NOT NULL DEFAULT 0,
     PRIMARY KEY (dag, dienst, model, soort)
 );
+-- 1-uurs cacheschrijvingen apart: die kosten 2x de invoerprijs, cache_w (5 minuten) 1,25x.
+ALTER TABLE vs_ai_gebruik ADD COLUMN IF NOT EXISTS cache_w1h BIGINT NOT NULL DEFAULT 0;
