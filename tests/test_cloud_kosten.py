@@ -127,3 +127,25 @@ def test_onderdeel_volgt_het_verzoek(monkeypatch):
     o = asyncio.run(kosten.overzicht(7))
     assert o["per_onderdeel"][0]["onderdeel"] == "dossiervraag" and o["per_onderdeel"][0]["aandeel"] == 100.0
     get_config.cache_clear()
+
+
+def test_een_uur_cache_schrijven_kost_twee_keer_de_invoerprijs():
+    with kosten.meten() as teller:
+        kosten.tel("anthropic", "claude-sonnet-5", "tekst", in_tokens=1_000_000, cache_w=1_000_000,
+                   cache_w1h=1_000_000, cache_r=1_000_000)
+    # Sonnet 5: invoer 2.00, 5 min schrijven 2.50, 1 uur schrijven 4.00, lezen 0.20.
+    assert kosten.samenvatting(teller)["totaal"] == {"USD": round(2.00 + 2.50 + 4.00 + 0.20, 4)}
+    for sleutel, p in kosten.STANDAARD_PRIJZEN.items():
+        if sleutel.startswith("anthropic:"):
+            assert p["cache_w1h"] == pytest.approx(2 * p["in"]), sleutel
+            assert p["cache_w"] == pytest.approx(1.25 * p["in"]), sleutel
+            assert "1-uurscache" in p["bron"] and "2026-10-10" in p["bron"]
+
+
+def test_overzicht_toont_een_uur_cache_apart():
+    kosten.tel("anthropic", "claude-sonnet-5", "tekst", in_tokens=10, cache_w=5, cache_w1h=3000, cache_r=7)
+    uit = asyncio.run(kosten.overzicht(1))
+    regel = next(r for r in uit["regels"] if r["model"] == "claude-sonnet-5")
+    assert (regel["cache_w"], regel["cache_w1h"], regel["cache_r"]) == (5, 3000, 7)
+    rij = next(r for r in asyncio.run(kosten.gebruik(1)) if r["model"] == "claude-sonnet-5")
+    assert rij["cache_w1h"] == 3000

@@ -73,6 +73,9 @@ async def complete(
         cache_system: Markeer de system-prompt als cachebaar (Anthropic prompt
             caching). Levert pas korting op zodra de system-prompt boven de
             modeldrempel komt (~2048 tokens voor Haiku); kleiner wordt genegeerd.
+            True: 5-minutencache. "1h": 1-uurscache (schrijven kost 2x in plaats
+            van 1,25x de invoerprijs, maar overbrugt consulten die 5 tot 60
+            minuten uit elkaar liggen).
     """
     return zonder_gedachtestreepje(await _complete(
         system_prompt + SCHRIJFREGEL, user_prompt, provider, json_mode, max_tokens,
@@ -189,6 +192,23 @@ def _is_modern(model: str) -> bool:
 MODERN_MIN_MAX_TOKENS = 8000
 
 
+def _cache_tokens(usage) -> "tuple[int, int, int]":
+    """(5-minute writes, 1-hour writes, reads) from response.usage, a dict
+    (direct API) or an SDK object (Bedrock). The two write kinds have their own
+    price; without the breakdown in usage.cache_creation every write counts as
+    a 5-minute write, as before."""
+    def veld(obj, naam):
+        waarde = obj.get(naam) if isinstance(obj, dict) else getattr(obj, naam, None)
+        try:
+            return int(waarde or 0)
+        except (TypeError, ValueError):
+            return 0
+    totaal = veld(usage, "cache_creation_input_tokens")
+    uitsplitsing = usage.get("cache_creation") if isinstance(usage, dict) else getattr(usage, "cache_creation", None)
+    uur = veld(uitsplitsing, "ephemeral_1h_input_tokens") if uitsplitsing else 0
+    return max(totaal - uur, 0), uur, veld(usage, "cache_read_input_tokens")
+
+
 def _anthropic_text(data: dict) -> str:
     """First text block; modern models may put thinking blocks before it."""
     for block in data.get("content", []):
@@ -254,17 +274,19 @@ async def _complete_anthropic(
     data = response.json()
 
     usage = data.get("usage", {})
+    cache_w, cache_w1h, cache_r = _cache_tokens(usage)
     logger.info(
         "llm.anthropic.usage",
         model=model,
         input_tokens=usage.get("input_tokens"),
         output_tokens=usage.get("output_tokens"),
-        cache_read=usage.get("cache_read_input_tokens"),
-        cache_write=usage.get("cache_creation_input_tokens"),
+        cache_read=cache_r,
+        cache_write=cache_w,
+        cache_write_1h=cache_w1h,
     )
     from . import kosten
     kosten.tel("anthropic", model, "tekst", in_tokens=usage.get("input_tokens"), uit_tokens=usage.get("output_tokens"),
-               cache_w=usage.get("cache_creation_input_tokens"), cache_r=usage.get("cache_read_input_tokens"))
+               cache_w=cache_w, cache_w1h=cache_w1h, cache_r=cache_r)
 
     if data.get("stop_reason") == "refusal":
         raise ValueError("Het taalmodel weigerde dit verzoek.")
@@ -291,6 +313,8 @@ def _claude_body(model: str, system_prompt: str, user_prompt: str, json_mode: bo
     system_block = {"type": "text", "text": system_prompt}
     if cache_system:
         system_block["cache_control"] = {"type": "ephemeral"}
+        if cache_system == "1h":
+            system_block["cache_control"]["ttl"] = "1h"
 
     modern = _is_modern(model)
     if json_mode and json_schema and modern and not structured:
@@ -419,18 +443,20 @@ async def _complete_bedrock(
         raise _bedrock_error(exc) from exc
 
     usage = message.usage
+    cache_w, cache_w1h, cache_r = _cache_tokens(usage)
     logger.info(
         "llm.bedrock.usage",
         model=model,
         region=region,
         input_tokens=usage.input_tokens,
         output_tokens=usage.output_tokens,
-        cache_read=getattr(usage, "cache_read_input_tokens", None),
-        cache_write=getattr(usage, "cache_creation_input_tokens", None),
+        cache_read=cache_r,
+        cache_write=cache_w,
+        cache_write_1h=cache_w1h,
     )
     from . import kosten
     kosten.tel("bedrock", model, "tekst", in_tokens=usage.input_tokens, uit_tokens=usage.output_tokens,
-               cache_w=getattr(usage, "cache_creation_input_tokens", None), cache_r=getattr(usage, "cache_read_input_tokens", None))
+               cache_w=cache_w, cache_w1h=cache_w1h, cache_r=cache_r)
     if message.stop_reason == "refusal":
         raise ValueError("Het taalmodel weigerde dit verzoek.")
 

@@ -37,24 +37,25 @@ import structlog
 
 logger = structlog.get_logger()
 
-PRIJZEN_PER = "2026-10-09"
+PRIJZEN_PER = "2026-10-10"
 
-# Prices per unit. Tokens: per million (in, uit, cache_w, cache_r). Speech:
+# Prices per unit. Tokens: per million (in, uit, cache_w, cache_w1h, cache_r). Speech:
 # per minute. Voices: per million characters. Public list prices, looked up on
 # PRIJZEN_PER, so the overview can estimate in advance; where sources
 # disagreed, the higher price (an estimate should not turn out too low). Cache
-# writes at 1.25x and reads at 0.1x the input price (the usual 5-minute cache).
+# writes at 1.25x the input price for the 5-minute cache (cache_w) and 2x for
+# the 1-hour cache (cache_w1h, added 2026-10-10); reads at 0.1x for both.
 # The administrator can override any of them with the price on the invoice.
 STANDAARD_PRIJZEN: Dict[str, dict] = {
     # Anthropic, list prices.
-    "anthropic:claude-sonnet-5": {"in": 2.00, "uit": 10.00, "cache_w": 2.50, "cache_r": 0.20, "valuta": "USD",
-                                  "bron": "lijstprijs Anthropic"},
-    "anthropic:claude-sonnet-5-5": {"in": 2.00, "uit": 10.00, "cache_w": 2.50, "cache_r": 0.20, "valuta": "USD",
-                                    "bron": "lijstprijs Anthropic"},
-    "anthropic:claude-haiku-5-5": {"in": 0.10, "uit": 0.50, "cache_w": 0.125, "cache_r": 0.01, "valuta": "USD",
-                                   "bron": "lijstprijs Anthropic (tot 100K tokens per vraag)"},
-    "anthropic:claude-haiku-4-5": {"in": 1.00, "uit": 5.00, "cache_w": 1.25, "cache_r": 0.10, "valuta": "USD",
-                                   "bron": "lijstprijs Anthropic"},
+    "anthropic:claude-sonnet-5": {"in": 2.00, "uit": 10.00, "cache_w": 2.50, "cache_w1h": 4.00, "cache_r": 0.20, "valuta": "USD",
+                                  "bron": "lijstprijs Anthropic; 1-uurscache 2x invoer, per 2026-10-10"},
+    "anthropic:claude-sonnet-5-5": {"in": 2.00, "uit": 10.00, "cache_w": 2.50, "cache_w1h": 4.00, "cache_r": 0.20, "valuta": "USD",
+                                    "bron": "lijstprijs Anthropic; 1-uurscache 2x invoer, per 2026-10-10"},
+    "anthropic:claude-haiku-5-5": {"in": 0.10, "uit": 0.50, "cache_w": 0.125, "cache_w1h": 0.20, "cache_r": 0.01, "valuta": "USD",
+                                   "bron": "lijstprijs Anthropic (tot 100K tokens per vraag); 1-uurscache 2x invoer, per 2026-10-10"},
+    "anthropic:claude-haiku-4-5": {"in": 1.00, "uit": 5.00, "cache_w": 1.25, "cache_w1h": 2.00, "cache_r": 0.10, "valuta": "USD",
+                                   "bron": "lijstprijs Anthropic; 1-uurscache 2x invoer, per 2026-10-10"},
     # Mistral (EU), list prices on mistral.ai/pricing (Large 3, Small 4).
     "mistral:mistral-large-latest": {"in": 0.50, "uit": 1.50, "valuta": "USD", "bron": "lijstprijs Mistral (Large)"},
     "mistral:mistral-small-latest": {"in": 0.15, "uit": 0.60, "valuta": "USD", "bron": "lijstprijs Mistral (Small)"},
@@ -92,7 +93,8 @@ class Regel:
     aanroepen: int = 0
     in_tokens: int = 0
     uit_tokens: int = 0
-    cache_w: int = 0
+    cache_w: int = 0      # 5-minute cache writes (and every write before 2026-10-10)
+    cache_w1h: int = 0    # 1-hour cache writes, priced at 2x input
     cache_r: int = 0
     seconden: float = 0.0
     tekens: int = 0
@@ -102,6 +104,7 @@ class Regel:
         self.in_tokens += ander.in_tokens
         self.uit_tokens += ander.uit_tokens
         self.cache_w += ander.cache_w
+        self.cache_w1h += ander.cache_w1h
         self.cache_r += ander.cache_r
         self.seconden += ander.seconden
         self.tekens += ander.tekens
@@ -189,11 +192,11 @@ def _int(x) -> int:
 
 
 def tel(dienst: str, model: str = "", soort: str = "", *, in_tokens=0, uit_tokens=0, cache_w=0, cache_r=0,
-        seconden=0.0, tekens=0) -> None:
+        seconden=0.0, tekens=0, cache_w1h=0) -> None:
     """Count one use. Never raises: counting must not break the work itself."""
     try:
         regel = Regel(aanroepen=1, in_tokens=_int(in_tokens), uit_tokens=_int(uit_tokens), cache_w=_int(cache_w),
-                      cache_r=_int(cache_r), seconden=float(seconden or 0), tekens=_int(tekens))
+                      cache_w1h=_int(cache_w1h), cache_r=_int(cache_r), seconden=float(seconden or 0), tekens=_int(tekens))
         # The stored "soort" is the part of VitaScribe (spraakherkenning, verslaglegging, meedenken, ...).
         sleutel = (dienst, model or "", onderdeel_van(dienst))
         t = _teller.get()
@@ -218,15 +221,16 @@ async def _bewaar(dag: str, sleutel: Tuple[str, str, str], r: Regel) -> None:
     try:
         await register.execute(
             "INSERT INTO vs_ai_gebruik (dag, dienst, model, soort, aanroepen, in_tokens, uit_tokens, cache_w, cache_r, "
-            "seconden, tekens) VALUES ($1::date, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) "
+            "seconden, tekens, cache_w1h) VALUES ($1::date, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) "
             "ON CONFLICT (dag, dienst, model, soort) DO UPDATE SET "
             "aanroepen = vs_ai_gebruik.aanroepen + EXCLUDED.aanroepen, "
             "in_tokens = vs_ai_gebruik.in_tokens + EXCLUDED.in_tokens, "
             "uit_tokens = vs_ai_gebruik.uit_tokens + EXCLUDED.uit_tokens, "
             "cache_w = vs_ai_gebruik.cache_w + EXCLUDED.cache_w, cache_r = vs_ai_gebruik.cache_r + EXCLUDED.cache_r, "
+            "cache_w1h = vs_ai_gebruik.cache_w1h + EXCLUDED.cache_w1h, "
             "seconden = vs_ai_gebruik.seconden + EXCLUDED.seconden, tekens = vs_ai_gebruik.tekens + EXCLUDED.tekens",
             date.fromisoformat(dag), *sleutel, r.aanroepen, r.in_tokens, r.uit_tokens, r.cache_w, r.cache_r,
-            r.seconden, r.tekens)
+            r.seconden, r.tekens, r.cache_w1h)
     except Exception as exc:
         logger.warning("kosten.bewaar_fout", error=type(exc).__name__)
 
@@ -270,11 +274,11 @@ def bedrag(dienst: str, model: str, r: Regel, tabel: Dict[str, dict]) -> Optiona
     som = 0.0
     bekend = False
     for veld, aantal, deler in (("in", r.in_tokens, 1e6), ("uit", r.uit_tokens, 1e6), ("cache_w", r.cache_w, 1e6),
-                                ("cache_r", r.cache_r, 1e6), ("minuut", r.seconden, 60.0), ("tekens", r.tekens, 1e6)):
+                                ("cache_w1h", r.cache_w1h, 1e6), ("cache_r", r.cache_r, 1e6), ("minuut", r.seconden, 60.0), ("tekens", r.tekens, 1e6)):
         if aantal and p.get(veld) is not None:
             som += float(p[veld]) * aantal / deler
             bekend = True
-        elif aantal and p.get(veld) is None and veld != "cache_w" and veld != "cache_r":
+        elif aantal and p.get(veld) is None and veld not in ("cache_w", "cache_w1h", "cache_r"):
             return None   # a quantity without a price: no guess
     return (som, str(p.get("valuta") or "USD")) if bekend or not any(
         (r.in_tokens, r.uit_tokens, r.seconden, r.tekens)) else None
@@ -341,7 +345,8 @@ async def gebruik(dagen: int) -> List[dict]:
     vanaf = (datetime.now(timezone.utc).date() - timedelta(days=dagen - 1))
     if register.actief():
         rijen = await register.fetch(
-            "SELECT dag, dienst, model, soort, aanroepen, in_tokens, uit_tokens, cache_w, cache_r, seconden, tekens "
+            "SELECT dag, dienst, model, soort, aanroepen, in_tokens, uit_tokens, cache_w, cache_r, seconden, tekens, "
+            "cache_w1h "
             "FROM vs_ai_gebruik WHERE dag >= $1 ORDER BY dag", vanaf)
         return [{**dict(r), "dag": r["dag"].isoformat()} for r in rijen]
     uit = []
@@ -349,7 +354,7 @@ async def gebruik(dagen: int) -> List[dict]:
         if dag >= vanaf.isoformat():
             uit.append({"dag": dag, "dienst": dienst, "model": model, "soort": soort, "aanroepen": r.aanroepen,
                         "in_tokens": r.in_tokens, "uit_tokens": r.uit_tokens, "cache_w": r.cache_w,
-                        "cache_r": r.cache_r, "seconden": r.seconden, "tekens": r.tekens})
+                        "cache_w1h": r.cache_w1h, "cache_r": r.cache_r, "seconden": r.seconden, "tekens": r.tekens})
     return uit
 
 
@@ -365,7 +370,7 @@ async def overzicht(dagen: int) -> dict:
     onbekend = set()
     for rij in rijen:
         r = Regel(**{k: rij[k] for k in ("aanroepen", "in_tokens", "uit_tokens", "cache_w", "cache_r", "seconden",
-                                         "tekens")})
+                                         "tekens")}, cache_w1h=rij.get("cache_w1h") or 0)
         per_model.setdefault((rij["dienst"], rij["model"]), Regel()).tel(r)
         b = bedrag(rij["dienst"], rij["model"], r, tabel)
         dag = per_dag.setdefault(rij["dag"], {})
@@ -385,7 +390,7 @@ async def overzicht(dagen: int) -> dict:
             totaal[b[1]] = totaal.get(b[1], 0.0) + b[0]
         regels.append({"dienst": dienst, "model": model, "sleutel": prijssleutel(dienst, model),
                        "aanroepen": r.aanroepen, "in_tokens": r.in_tokens, "uit_tokens": r.uit_tokens,
-                       "cache_w": r.cache_w, "cache_r": r.cache_r, "minuten": round(r.seconden / 60, 1),
+                       "cache_w": r.cache_w, "cache_w1h": r.cache_w1h, "cache_r": r.cache_r, "minuten": round(r.seconden / 60, 1),
                        "tekens": r.tekens, "kosten": round(b[0], 4) if b else None, "valuta": b[1] if b else None})
     dagen_met_gebruik = max(1, len(per_dag))
     alles = sum(sum(w.values()) for w in per_deel.values()) or 1.0

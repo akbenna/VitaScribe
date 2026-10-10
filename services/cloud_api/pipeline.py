@@ -169,7 +169,8 @@ async def genereer_soep(gesprek: str, llm_provider: Optional[str] = None,
         max_tokens=SOEP_MAX_TOKENS,
         # The system prompt is a constant; huisstijl, language line and transcript
         # stay in the user prompt, so every consult reads the same cached prefix.
-        cache_system=True,
+        # One hour: consults are usually 8 to 15 minutes apart, past a 5-minute cache.
+        cache_system="1h",
         quality=True,
         json_schema=SOEP_JSON_SCHEMA,
         model=model,

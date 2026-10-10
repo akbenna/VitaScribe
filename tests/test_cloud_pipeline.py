@@ -455,7 +455,8 @@ async def test_soep_aanroep_cachet_alleen_het_vaste_systeemdeel(monkeypatch):
     fake_response.json = MagicMock(return_value={
         "content": [{"type": "text", "text": soep_json}],
         "usage": {"input_tokens": 100, "output_tokens": 20,
-                  "cache_creation_input_tokens": 3000, "cache_read_input_tokens": 0},
+                  "cache_creation_input_tokens": 3000, "cache_read_input_tokens": 0,
+                  "cache_creation": {"ephemeral_5m_input_tokens": 0, "ephemeral_1h_input_tokens": 3000}},
     })
     client = AsyncMock()
     client.post = AsyncMock(return_value=fake_response)
@@ -487,8 +488,9 @@ async def test_soep_aanroep_cachet_alleen_het_vaste_systeemdeel(monkeypatch):
         for gesprek in gesprekken:
             await pipeline.genereer_soep(gesprek, "anthropic")
 
-    # De kostenteller krijgt de cachetokens uit response.usage.
-    assert tel.call_args.kwargs["cache_w"] == 3000
+    # De kostenteller krijgt de cachetokens uit response.usage, de 1-uursschrijvingen apart.
+    assert tel.call_args.kwargs["cache_w1h"] == 3000
+    assert tel.call_args.kwargs["cache_w"] == 0
     assert tel.call_args.kwargs["cache_r"] == 0
 
     bodies = [c.kwargs["json"] for c in client.post.call_args_list]
@@ -496,7 +498,8 @@ async def test_soep_aanroep_cachet_alleen_het_vaste_systeemdeel(monkeypatch):
     systemen = [b["system"] for b in bodies]
     for systeem, body, gesprek in zip(systemen, bodies, gesprekken):
         assert len(systeem) == 1
-        assert systeem[0]["cache_control"] == {"type": "ephemeral"}
+        # 1-uurscache: consulten liggen meestal 8 tot 15 minuten uit elkaar.
+        assert systeem[0]["cache_control"] == {"type": "ephemeral", "ttl": "1h"}
         vast = systeem[0]["text"]
         assert vast == pipeline.SOEP_SYSTEM_PROMPT + llm_service.SCHRIJFREGEL
         # Niets consultspecifieks in het gecachte deel; het staat in de vraag.
@@ -522,4 +525,35 @@ async def test_controle_en_dictaat_markeren_hun_vaste_systeemdeel():
     import inspect
     bron = inspect.getsource(main)
     blok = bron[bron.index("system_prompt=DICTAAT_SOEP_SYSTEM_PROMPT"):][:600]
-    assert "cache_system=True" in blok
+    assert 'cache_system="1h"' in blok
+
+
+def test_cachetokens_uit_usage_per_soort():
+    """5-minuten- en 1-uursschrijvingen hebben een eigen prijs; zonder uitsplitsing
+    telt alles als 5 minuten, zoals voorheen."""
+    assert llm_service._cache_tokens({
+        "cache_creation_input_tokens": 3500, "cache_read_input_tokens": 700,
+        "cache_creation": {"ephemeral_5m_input_tokens": 500, "ephemeral_1h_input_tokens": 3000},
+    }) == (500, 3000, 700)
+    assert llm_service._cache_tokens({"cache_creation_input_tokens": 1200}) == (1200, 0, 0)
+    assert llm_service._cache_tokens({}) == (0, 0, 0)
+
+    class Uitsplitsing:
+        ephemeral_5m_input_tokens = 0
+        ephemeral_1h_input_tokens = 2000
+
+    class Usage:   # Bedrock: SDK-object in plaats van dict
+        cache_creation_input_tokens = 2000
+        cache_read_input_tokens = 50
+        cache_creation = Uitsplitsing()
+
+    assert llm_service._cache_tokens(Usage()) == (0, 2000, 50)
+
+
+def test_vijf_minuten_blijft_zonder_ttl():
+    body, _ = llm_service._claude_body("claude-sonnet-5", "sys", "vraag", False, 100, True, None,
+                                       structured=True, effort="medium")
+    assert body["system"][0]["cache_control"] == {"type": "ephemeral"}
+    body, _ = llm_service._claude_body("claude-sonnet-5", "sys", "vraag", False, 100, False, None,
+                                       structured=True, effort="medium")
+    assert "cache_control" not in body["system"][0]

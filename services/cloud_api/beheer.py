@@ -576,7 +576,7 @@ async def auditlog(gebruiker: str = "", dagen: int = 30, _: str = Depends(vereis
 
 # ── AI-gebruik en geschatte kosten (kosten.py) ──
 
-_PRIJSVELDEN = ("in", "uit", "cache_w", "cache_r", "minuut", "tekens")
+_PRIJSVELDEN = ("in", "uit", "cache_w", "cache_w1h", "cache_r", "minuut", "tekens")
 
 
 @router.get("/api/v1/beheer/kosten")
